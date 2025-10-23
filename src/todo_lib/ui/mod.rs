@@ -10,5 +10,5 @@ pub mod output_writer;
 
 // Re-export commonly used types
 pub use input_reader::InputReader;
-pub use interactive_prompt::InteractivePrompt;
+pub use interactive_prompt::InteractiveTaskPropertiesPrompt;
 pub use output_writer::OutputWriter;

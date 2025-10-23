@@ -7,14 +7,14 @@ use std::io::{Read, Write};
 
 /// Handles interactive prompts for user input.
 ///
-/// `InteractivePrompt` encapsulates the logic for prompting users
+/// `InteractiveTaskPropertiesPrompt` encapsulates the logic for prompting users
 /// to enter additional task properties like priority, due date, and category.
-pub struct InteractivePrompt<'a, R: Read, W: Write> {
+pub struct InteractiveTaskPropertiesPrompt<'a, R: Read, W: Write> {
     input: &'a mut InputReader<R>,
     output: &'a mut OutputWriter<W>,
 }
 
-impl<'a, R: Read, W: Write> InteractivePrompt<'a, R, W> {
+impl<'a, R: Read, W: Write> InteractiveTaskPropertiesPrompt<'a, R, W> {
     /// Creates a new interactive prompt handler.
     ///
     /// # Arguments
@@ -22,7 +22,7 @@ impl<'a, R: Read, W: Write> InteractivePrompt<'a, R, W> {
     /// * `input` - The input reader for getting user input
     /// * `output` - The output writer for displaying prompts
     pub fn new(input: &'a mut InputReader<R>, output: &'a mut OutputWriter<W>) -> Self {
-        InteractivePrompt { input, output }
+        InteractiveTaskPropertiesPrompt { input, output }
     }
 
     /// Prompts for all task properties (priority, due date, category).
@@ -123,7 +123,7 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output_writer = OutputWriter::with_writer(&mut buffer);
         
-        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(&mut input_reader, &mut output_writer);
         let result = prompt.prompt_priority();
         
         assert_eq!(result, Some(Priority::High));
@@ -136,7 +136,7 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output_writer = OutputWriter::with_writer(&mut buffer);
         
-        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(&mut input_reader, &mut output_writer);
         let result = prompt.prompt_priority();
         
         assert_eq!(result, Some(Priority::Medium));
@@ -149,7 +149,7 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output_writer = OutputWriter::with_writer(&mut buffer);
         
-        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(&mut input_reader, &mut output_writer);
         let result = prompt.prompt_priority();
         
         assert_eq!(result, Some(Priority::Low));
@@ -162,7 +162,7 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output_writer = OutputWriter::with_writer(&mut buffer);
         
-        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(&mut input_reader, &mut output_writer);
         let result = prompt.prompt_priority();
         
         assert_eq!(result, None);
@@ -175,7 +175,7 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output_writer = OutputWriter::with_writer(&mut buffer);
         
-        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(&mut input_reader, &mut output_writer);
         let result = prompt.prompt_priority();
         
         assert_eq!(result, None);
@@ -190,7 +190,7 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output_writer = OutputWriter::with_writer(&mut buffer);
         
-        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(&mut input_reader, &mut output_writer);
         let result = prompt.prompt_due_date();
         
         assert!(result.is_some());
@@ -205,7 +205,7 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output_writer = OutputWriter::with_writer(&mut buffer);
         
-        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(&mut input_reader, &mut output_writer);
         let result = prompt.prompt_due_date();
         
         assert_eq!(result, None);
@@ -218,7 +218,7 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output_writer = OutputWriter::with_writer(&mut buffer);
         
-        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(&mut input_reader, &mut output_writer);
         let result = prompt.prompt_due_date();
         
         assert_eq!(result, None);
@@ -233,7 +233,7 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output_writer = OutputWriter::with_writer(&mut buffer);
         
-        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(&mut input_reader, &mut output_writer);
         let result = prompt.prompt_category();
         
         assert_eq!(result, Some("Work".to_string()));
@@ -246,7 +246,7 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output_writer = OutputWriter::with_writer(&mut buffer);
         
-        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(&mut input_reader, &mut output_writer);
         let result = prompt.prompt_category();
         
         assert_eq!(result, None);
@@ -259,7 +259,7 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output_writer = OutputWriter::with_writer(&mut buffer);
         
-        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(&mut input_reader, &mut output_writer);
         let (priority, due_date, category) = prompt.prompt_task_properties();
         
         assert_eq!(priority, Some(Priority::High));
@@ -274,7 +274,7 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output_writer = OutputWriter::with_writer(&mut buffer);
         
-        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(&mut input_reader, &mut output_writer);
         let (priority, due_date, category) = prompt.prompt_task_properties();
         
         assert_eq!(priority, None);
