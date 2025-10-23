@@ -217,6 +217,12 @@ impl<W: Write> OutputWriter<W> {
     fn show_task_list(&mut self, title: &str, tasks: Vec<&Task>) {
         let separator = "-".repeat(title.len() + 8);
         
+        // Calculate the maximum width needed for task IDs
+        let max_id_width = tasks.iter()
+            .map(|t| t.id.to_string().len())
+            .max()
+            .unwrap_or(1);
+        
         self.print_line(&format!("\n{}", format!("--- {} ---", title).bright_cyan().bold()));
         for task in tasks {
             let status_symbol = if task.is_completed() {
@@ -233,15 +239,18 @@ impl<W: Write> OutputWriter<W> {
                 Priority::Low => priority_symbol.bright_blue().bold(),
             };
             
+            // Format task ID with right alignment based on max width
+            let task_id_formatted = format!("{:>width$}", task.id, width = max_id_width);
+            
             let task_text = if task.is_completed() {
                 format!("{}. {} {} {}", 
-                    task.id.to_string().bright_blue(), 
+                    task_id_formatted.bright_blue(), 
                     status_symbol, 
                     colored_priority,
                     task.description.bright_black())
             } else {
                 format!("{}. {} {} {}", 
-                    task.id.to_string().bright_blue(), 
+                    task_id_formatted.bright_blue(), 
                     status_symbol, 
                     colored_priority,
                     task.description.white())
@@ -357,6 +366,15 @@ impl<W: Write> OutputWriter<W> {
     /// * `message` - The error message to display
     pub fn show_error(&mut self, message: &str) {
         self.print_line(&format!("{} {}", "✗".bright_red().bold(), message.red()));
+    }
+
+    /// Displays a success message to the user.
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - The success message to display
+    pub fn show_success(&mut self, message: &str) {
+        self.print_line(&format!("{} {}", "✓".bright_green().bold(), message.green()));
     }
 
     /// Prints a line of text to the output.

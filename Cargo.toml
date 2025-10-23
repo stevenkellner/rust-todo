@@ -9,3 +9,4 @@ path = "src/todo_lib/lib.rs"
 
 [dependencies]
 colored = "3.0.0"
+rand = "0.9.2"

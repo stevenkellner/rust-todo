@@ -89,6 +89,9 @@ impl<R: Read> InputReader<R> {
             "toggle" => self.parse_toggle_command(&args),
             "priority" | "pri" => self.parse_priority_command(&args),
             "search" | "find" => self.parse_search_command(&args),
+            "debug" => self.parse_debug_command(&args),
+            "debug:gen" => self.parse_debug_generate_command(&args),
+            "debug:clear" => UiEvent::DebugClearAll,
             "help" | "h" => UiEvent::ShowHelp,
             "quit" | "exit" | "q" => UiEvent::Quit,
             _ => UiEvent::UnknownCommand(command),
@@ -196,6 +199,28 @@ impl<R: Read> InputReader<R> {
                 UiEvent::InvalidInput("Search keyword cannot be empty.".to_string())
             } else {
                 UiEvent::SearchTasks(keyword)
+            }
+        }
+    }
+
+    /// Parses the 'debug' command to toggle debug mode.
+    fn parse_debug_command(&self, args: &[&str]) -> UiEvent {
+        if !args.is_empty() {
+            UiEvent::InvalidInput("Usage: debug (no arguments needed)".to_string())
+        } else {
+            UiEvent::DebugToggle
+        }
+    }
+
+    /// Parses the 'debug:gen' command to generate random tasks.
+    fn parse_debug_generate_command(&self, args: &[&str]) -> UiEvent {
+        if args.is_empty() {
+            UiEvent::InvalidInput("Usage: debug:gen <count>".to_string())
+        } else {
+            match args[0].parse::<usize>() {
+                Ok(count) if count > 0 && count <= 100 => UiEvent::DebugGenerateTasks(count),
+                Ok(_) => UiEvent::InvalidInput("Count must be between 1 and 100".to_string()),
+                Err(_) => UiEvent::InvalidInput("Please enter a valid number.".to_string()),
             }
         }
     }

@@ -25,6 +25,7 @@ pub struct TodoController {
     todo_list: TodoList,
     input: InputReader,
     output: OutputWriter,
+    debug_mode: bool,
 }
 
 impl TodoController {
@@ -42,6 +43,7 @@ impl TodoController {
             todo_list: TodoList::new(),
             input: InputReader::new(),
             output: OutputWriter::new(),
+            debug_mode: false,
         }
     }
 
@@ -92,6 +94,9 @@ impl TodoController {
             UiEvent::SearchTasks(keyword) => self.handle_search_tasks(keyword),
             UiEvent::ShowHelp => self.handle_show_help(),
             UiEvent::Quit => return self.handle_quit(),
+            UiEvent::DebugGenerateTasks(count) => self.handle_debug_generate_tasks(*count),
+            UiEvent::DebugClearAll => self.handle_debug_clear_all(),
+            UiEvent::DebugToggle => self.handle_debug_toggle(),
             UiEvent::UnknownCommand(command) => self.handle_unknown_command(command),
             UiEvent::InvalidInput(message) => self.handle_invalid_input(message),
         }
@@ -207,6 +212,86 @@ impl TodoController {
     fn handle_quit(&mut self) -> LoopControl {
         self.output.show_goodbye();
         LoopControl::Exit
+    }
+
+    /// Handles the DebugGenerateTasks event.
+    fn handle_debug_generate_tasks(&mut self, count: usize) {
+        if !self.debug_mode {
+            self.output.show_error("Debug mode is not enabled. Type 'debug' to enable it.");
+            return;
+        }
+
+        use rand::Rng;
+        let mut rng = rand::rng();
+        
+        let task_templates = [
+            "Buy groceries",
+            "Complete project report",
+            "Schedule dentist appointment",
+            "Fix bug in authentication module",
+            "Write unit tests",
+            "Review pull request",
+            "Update documentation",
+            "Prepare presentation slides",
+            "Call client about requirements",
+            "Refactor database queries",
+            "Set up CI/CD pipeline",
+            "Research new framework",
+            "Organize team meeting",
+            "Deploy to production",
+            "Backup database",
+            "Update dependencies",
+            "Fix performance issue",
+            "Design new feature",
+            "Code review session",
+            "Optimize search algorithm",
+        ];
+
+        let priorities = [Priority::Low, Priority::Medium, Priority::High];
+        
+        for _ in 0..count {
+            let template = task_templates[rng.random_range(0..task_templates.len())];
+            let description = format!("{} #{}", template, rng.random_range(1000..9999));
+            
+            let task_id = self.todo_list.add_task(description.clone());
+            
+            // Randomly set priority
+            let priority = priorities[rng.random_range(0..priorities.len())];
+            self.todo_list.set_task_priority(task_id, priority);
+            
+            // Randomly complete some tasks (30% chance)
+            if rng.random_bool(0.3) {
+                self.todo_list.complete_task(task_id);
+            }
+        }
+        
+        self.output.show_success(&format!("Generated {} random tasks", count));
+    }
+
+    /// Handles the DebugClearAll event.
+    fn handle_debug_clear_all(&mut self) {
+        if !self.debug_mode {
+            self.output.show_error("Debug mode is not enabled. Type 'debug' to enable it.");
+            return;
+        }
+
+        let count = self.todo_list.get_tasks().len();
+        self.todo_list.clear_all();
+        self.output.show_success(&format!("Cleared {} tasks", count));
+    }
+
+    /// Handles the DebugToggle event.
+    fn handle_debug_toggle(&mut self) {
+        self.debug_mode = !self.debug_mode;
+        if self.debug_mode {
+            self.output.show_success("🐛 Debug mode ENABLED");
+            self.output.print_line("Debug commands available:");
+            self.output.print_line("  - debug:gen <count>  : Generate N random tasks");
+            self.output.print_line("  - debug:clear        : Clear all tasks");
+            self.output.print_line("  - debug               : Toggle debug mode");
+        } else {
+            self.output.show_success("Debug mode disabled");
+        }
     }
 
     /// Handles the UnknownCommand event.

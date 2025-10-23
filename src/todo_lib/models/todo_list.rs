@@ -110,6 +110,26 @@ impl TodoList {
         self.tasks.is_empty()
     }
 
+    /// Clears all tasks from the list.
+    ///
+    /// This is primarily intended for debug/testing purposes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    ///
+    /// let mut list = TodoList::new();
+    /// list.add_task("Task 1".to_string());
+    /// list.add_task("Task 2".to_string());
+    /// 
+    /// list.clear_all();
+    /// assert!(list.is_empty());
+    /// ```
+    pub fn clear_all(&mut self) {
+        self.tasks.clear();
+    }
+
     /// Removes a task from the list by its ID.
     ///
     /// # Arguments

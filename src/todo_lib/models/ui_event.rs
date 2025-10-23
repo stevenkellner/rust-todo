@@ -37,6 +37,15 @@ pub enum UiEvent {
     /// User wants to quit the application
     Quit,
     
+    /// Debug command: Generate random tasks
+    DebugGenerateTasks(usize),
+    
+    /// Debug command: Clear all tasks
+    DebugClearAll,
+    
+    /// Debug command: Toggle debug mode
+    DebugToggle,
+    
     /// Unknown command entered
     UnknownCommand(String),
     
