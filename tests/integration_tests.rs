@@ -3,8 +3,8 @@
 //! These tests verify that all components work together correctly
 //! and test the complete user workflows.
 
-use todo_manager::task::Task;
-use todo_manager::todo_list::TodoList;
+use todo_manager::models::task::Task;
+use todo_manager::models::todo_list::TodoList;
 
 /// Test the complete workflow: add, list, complete, and remove tasks
 #[test]

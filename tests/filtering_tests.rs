@@ -1,9 +1,9 @@
 //! Additional integration tests for combined filtering feature
 
-use todo_manager::todo_list::TodoList;
-use todo_manager::priority::Priority;
-use todo_manager::task_filter::TaskFilter;
-use todo_manager::task_status::TaskStatus;
+use todo_manager::models::todo_list::TodoList;
+use todo_manager::models::priority::Priority;
+use todo_manager::models::task_filter::TaskFilter;
+use todo_manager::models::task_status::TaskStatus;
 
 /// Test combined status and priority filtering
 #[test]

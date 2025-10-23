@@ -1,8 +1,8 @@
 use std::io::{self, BufRead, BufReader, Read};
-use super::ui_event::UiEvent;
-use super::task_filter::TaskFilter;
-use super::task_status::TaskStatus;
-use super::priority::Priority;
+use crate::models::ui_event::UiEvent;
+use crate::models::task_filter::TaskFilter;
+use crate::models::task_status::TaskStatus;
+use crate::models::priority::Priority;
 
 /// Handles input operations for the command-line interface.
 ///
@@ -12,7 +12,7 @@ use super::priority::Priority;
 /// # Examples
 ///
 /// ```no_run
-/// use todo_manager::input_reader::InputReader;
+/// use todo_manager::ui::input_reader::InputReader;
 ///
 /// let mut input = InputReader::new();
 /// let event = input.read_event();
@@ -27,7 +27,7 @@ impl InputReader<io::Stdin> {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::input_reader::InputReader;
+    /// use todo_manager::ui::input_reader::InputReader;
     ///
     /// let mut input = InputReader::new();
     /// ```
@@ -59,7 +59,7 @@ impl<R: Read> InputReader<R> {
     /// # Examples
     ///
     /// ```no_run
-    /// use todo_manager::input_reader::InputReader;
+    /// use todo_manager::ui::input_reader::InputReader;
     ///
     /// let mut input = InputReader::new();
     /// let event = input.read_event();
@@ -213,7 +213,7 @@ impl<R: Read> InputReader<R> {
     /// # Examples
     ///
     /// ```no_run
-    /// use todo_manager::input_reader::InputReader;
+    /// use todo_manager::ui::input_reader::InputReader;
     ///
     /// let mut input = InputReader::new();
     /// let user_input = input.read_input();

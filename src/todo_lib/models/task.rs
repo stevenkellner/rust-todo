@@ -8,7 +8,7 @@ use super::priority::Priority;
 /// # Examples
 ///
 /// ```
-/// use todo_manager::task::Task;
+/// use todo_manager::models::task::Task;
 ///
 /// let task = Task::new(1, "Write documentation".to_string());
 /// assert_eq!(task.id, 1);
@@ -39,7 +39,7 @@ impl Task {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::task::Task;
+    /// use todo_manager::models::task::Task;
     ///
     /// let task = Task::new(1, "Buy milk".to_string());
     /// assert_eq!(task.id, 1);
@@ -64,8 +64,8 @@ impl Task {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::task::Task;
-    /// use todo_manager::priority::Priority;
+    /// use todo_manager::models::task::Task;
+    /// use todo_manager::models::priority::Priority;
     ///
     /// let mut task = Task::new(1, "Important meeting".to_string());
     /// task.set_priority(Priority::High);
@@ -80,8 +80,8 @@ impl Task {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::task::Task;
-    /// use todo_manager::priority::Priority;
+    /// use todo_manager::models::task::Task;
+    /// use todo_manager::models::priority::Priority;
     ///
     /// let task = Task::new(1, "Regular task".to_string());
     /// assert_eq!(task.get_priority(), Priority::Medium);
@@ -96,7 +96,7 @@ impl Task {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::task::Task;
+    /// use todo_manager::models::task::Task;
     ///
     /// let mut task = Task::new(1, "Do laundry".to_string());
     /// assert!(!task.is_completed());
@@ -116,7 +116,7 @@ impl Task {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::task::Task;
+    /// use todo_manager::models::task::Task;
     ///
     /// let task = Task::new(1, "Read a book".to_string());
     /// assert_eq!(task.is_completed(), false);
@@ -132,7 +132,7 @@ impl Task {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::task::Task;
+    /// use todo_manager::models::task::Task;
     ///
     /// let mut task = Task::new(1, "Clean room".to_string());
     /// assert_eq!(task.get_status_symbol(), " ");

@@ -1,8 +1,8 @@
 use std::io::{self, Write};
-use super::task::Task;
-use super::priority::Priority;
-use super::task_filter::TaskFilter;
-use super::task_status::TaskStatus;
+use crate::models::task::Task;
+use crate::models::priority::Priority;
+use crate::models::task_filter::TaskFilter;
+use crate::models::task_status::TaskStatus;
 use colored::*;
 
 /// Handles output operations for the command-line interface.
@@ -13,7 +13,7 @@ use colored::*;
 /// # Examples
 ///
 /// ```
-/// use todo_manager::output_writer::OutputWriter;
+/// use todo_manager::ui::output_writer::OutputWriter;
 ///
 /// let mut output = OutputWriter::new();
 /// output.print_line("Hello, World!");
@@ -28,7 +28,7 @@ impl OutputWriter<io::Stdout> {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::output_writer::OutputWriter;
+    /// use todo_manager::ui::output_writer::OutputWriter;
     ///
     /// let output = OutputWriter::new();
     /// ```
@@ -349,7 +349,7 @@ impl<W: Write> OutputWriter<W> {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::output_writer::OutputWriter;
+    /// use todo_manager::ui::output_writer::OutputWriter;
     ///
     /// let mut output = OutputWriter::new();
     /// output.print_line("Task added successfully!");
@@ -363,7 +363,7 @@ impl<W: Write> OutputWriter<W> {
     /// # Examples
     ///
     /// ```no_run
-    /// use todo_manager::output_writer::OutputWriter;
+    /// use todo_manager::ui::output_writer::OutputWriter;
     ///
     /// let mut output = OutputWriter::new();
     /// output.print_prompt();
@@ -593,7 +593,7 @@ mod tests {
     #[test]
     fn test_show_all_tasks_with_tasks() {
         setup();
-        use crate::task::Task;
+        use crate::models::task::Task;
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         let tasks = vec![
@@ -621,7 +621,7 @@ mod tests {
     #[test]
     fn test_show_completed_tasks_with_tasks() {
         setup();
-        use crate::task::Task;
+        use crate::models::task::Task;
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         let task1 = Task { id: 1, description: "Completed task".to_string(), completed: true, priority: Priority::Medium };
@@ -648,7 +648,7 @@ mod tests {
     #[test]
     fn test_show_pending_tasks_with_tasks() {
         setup();
-        use crate::task::Task;
+        use crate::models::task::Task;
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         let task1 = Task { id: 1, description: "Pending task".to_string(), completed: false, priority: Priority::Medium };
@@ -664,7 +664,7 @@ mod tests {
     #[test]
     fn test_show_tasks_with_special_characters() {
         setup();
-        use crate::task::Task;
+        use crate::models::task::Task;
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         let tasks = vec![
@@ -679,7 +679,7 @@ mod tests {
 
     #[test]
     fn test_show_tasks_with_long_description() {
-        use crate::task::Task;
+        use crate::models::task::Task;
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         let long_desc = "A".repeat(200);
@@ -722,7 +722,7 @@ mod tests {
     #[test]
     fn test_task_list_separator_length() {
         setup();
-        use crate::task::Task;
+        use crate::models::task::Task;
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         let tasks = vec![

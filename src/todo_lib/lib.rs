@@ -14,32 +14,39 @@
 //!
 //! ## Architecture
 //!
-//! The library follows an event-driven architecture with clear separation of concerns:
-//! - `task`: Data structure for individual tasks
-//! - `todo_list`: Business logic for managing tasks
+//! The library follows a layered architecture with clear separation of concerns:
+//!
+//! ### Models Layer (`models`)
+//! - `task`: Data structure for individual tasks with priority and status
+//! - `todo_list`: Collection and business logic for managing tasks
+//! - `priority`: Task priority levels (Low, Medium, High)
+//! - `task_status`: Task completion status (Pending, Completed)
+//! - `task_filter`: Filter criteria for querying tasks
+//! - `ui_event`: Event definitions representing user actions
+//! - `loop_control`: Control flow signals for the application loop
+//!
+//! ### UI Layer (`ui`)
 //! - `input_reader`: Reading and parsing user input into events
 //! - `output_writer`: Displaying messages and formatting output
-//! - `ui_event`: Event definitions for UI interactions
-//! - `task_filter`: Filter options for listing tasks
-//! - `loop_control`: Control flow for the main event loop
-//! - `todo_controller`: Controller that reacts to UI events and manages state
+//!
+//! ### Controller Layer (`controller`)
+//! - `todo_controller`: Orchestrates UI events with model operations
 //!
 //! ## Examples
 //!
 //! ```no_run
-//! use todo_manager::todo_controller::TodoController;
+//! use todo_manager::controller::TodoController;
 //!
 //! let mut controller = TodoController::new();
 //! controller.run();  // Starts the interactive application
 //! ```
 
-pub mod priority;
-pub mod task_status;
-pub mod task;
-pub mod todo_list;
-pub mod input_reader;
-pub mod output_writer;
-pub mod ui_event;
-pub mod task_filter;
-pub mod loop_control;
-pub mod todo_controller;
+// Module declarations
+pub mod controller;
+pub mod models;
+pub mod ui;
+
+// Re-export commonly used types for convenience
+pub use controller::TodoController;
+pub use models::{LoopControl, Priority, Task, TaskFilter, TaskStatus, TodoList, UiEvent};
+pub use ui::{InputReader, OutputWriter};

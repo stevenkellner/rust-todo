@@ -1,11 +1,11 @@
-use super::todo_list::TodoList;
-use super::input_reader::InputReader;
-use super::output_writer::OutputWriter;
-use super::ui_event::UiEvent;
-use super::task_filter::TaskFilter;
-use super::task_status::TaskStatus;
-use super::loop_control::LoopControl;
-use super::priority::Priority;
+use crate::models::todo_list::TodoList;
+use crate::ui::input_reader::InputReader;
+use crate::ui::output_writer::OutputWriter;
+use crate::models::ui_event::UiEvent;
+use crate::models::task_filter::TaskFilter;
+use crate::models::task_status::TaskStatus;
+use crate::models::loop_control::LoopControl;
+use crate::models::priority::Priority;
 
 /// Controls the todo list application by reacting to UI events.
 ///
@@ -16,7 +16,7 @@ use super::priority::Priority;
 /// # Examples
 ///
 /// ```no_run
-/// use todo_manager::todo_controller::TodoController;
+/// use todo_manager::controller::todo_controller::TodoController;
 ///
 /// let mut controller = TodoController::new();
 /// controller.run();
@@ -33,7 +33,7 @@ impl TodoController {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::todo_controller::TodoController;
+    /// use todo_manager::controller::todo_controller::TodoController;
     ///
     /// let controller = TodoController::new();
     /// ```
@@ -53,7 +53,7 @@ impl TodoController {
     /// # Examples
     ///
     /// ```no_run
-    /// use todo_manager::todo_controller::TodoController;
+    /// use todo_manager::controller::todo_controller::TodoController;
     ///
     /// let mut controller = TodoController::new();
     /// controller.run();

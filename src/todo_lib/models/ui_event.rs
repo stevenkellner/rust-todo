@@ -1,5 +1,5 @@
-use super::task_filter::TaskFilter;
-use super::priority::Priority;
+use crate::models::task_filter::TaskFilter;
+use crate::models::priority::Priority;
 
 /// Represents events that occur in the user interface.
 ///

@@ -1,4 +1,4 @@
-use todo_manager::todo_controller::TodoController;
+use todo_manager::controller::TodoController;
 
 fn main() {
     let mut controller = TodoController::new();

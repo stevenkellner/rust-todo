@@ -1,101 +1,127 @@
 # Todo List Manager
 
-A command-line todo list application built in Rust with a clean, event-driven architecture and comprehensive test coverage.
+A command-line todo list application built in Rust with a clean, layered architecture and comprehensive test coverage.
 
 ## Features
 
-- Add tasks with descriptive names
-- List all tasks, or filter by completion status (all/completed/pending)
-- Mark tasks as complete or incomplete
-- Toggle task completion status
-- Remove tasks by ID
-- Intuitive command-line interface with descriptive commands
-- Event-driven architecture with clean separation of concerns
-- Comprehensive test suite with 70 tests (33 unit + 8 integration + 29 doc tests)
-- Full documentation with `cargo doc`
+- ✅ Add tasks with descriptive names
+- 🔍 List all tasks, or filter by completion status and priority
+- ✔️ Mark tasks as complete or incomplete
+- 🔄 Toggle task completion status
+- 🎯 Set task priorities (Low, Medium, High) with colored indicators
+- 🗑️ Remove tasks by ID
+- 🎨 Intuitive command-line interface with colored output
+- 📋 Combined filtering (e.g., "list pending high")
+- 🏗️ Event-driven architecture with clean separation of concerns
+- ✅ Comprehensive test suite with 166 tests (124 unit + 14 integration + 34 doc tests)
+- 📚 Full documentation with `cargo doc`
+
+## Quick Start
+
+```bash
+# Build and run
+cargo run
+
+# Run tests
+cargo test
+
+# Build optimized release version
+cargo build --release
+
+# Generate documentation
+cargo doc --open
+```
 
 ## Project Structure
 
+For a detailed explanation of the project organization, see **[STRUCTURE.md](STRUCTURE.md)**.
+
+### Quick Overview
+
 ```text
-src/
-├── main.rs         # Binary entry point
-└── todo_lib/       # Library module (todo_manager)
-    ├── lib.rs            # Library interface
-    ├── task.rs           # Task data structure and methods
-    ├── todo_list.rs      # Todo list management logic (business logic)
-    ├── input_reader.rs   # User input reading and command parsing
-    ├── output_writer.rs  # Output formatting and display
-    ├── ui_event.rs       # Event definitions for UI interactions
-    ├── task_filter.rs    # Filter options for listing tasks
-    ├── loop_control.rs   # Loop control flow enum
-    └── todo_controller.rs # Event-driven controller (reacts to UI events)
-
-tests/
-└── integration_tests.rs  # Comprehensive integration tests
-
-Cargo.toml          # Project configuration with todo_manager library
+src/todo_lib/
+├── models/         # Domain layer (business logic, data structures, events)
+├── ui/             # User interface layer (input/output)
+└── controller/     # Controller layer (orchestration)
 ```
+
+The application follows a **layered architecture** with three distinct layers:
+
+- **Models**: All business logic, domain types, and events
+- **UI**: Terminal I/O, command parsing, and output formatting  
+- **Controller**: Orchestrates interactions between UI and models
 
 ## Architecture Overview
 
-The application follows an **event-driven architecture** with clear separation of concerns:
-
 ### Core Components
 
-1. **Task** (`task.rs`)
+1. **Task** (`models/task.rs`)
    - Data structure representing a single todo item
-   - Methods: `new()`, `toggle_completion()`, `is_completed()`, `get_status_symbol()`
+   - Methods: `new()`, `toggle_completion()`, `set_priority()`, `get_priority()`, `is_completed()`, `get_status_symbol()`
    - Includes comprehensive unit tests
 
-2. **TodoList** (`todo_list.rs`)
+2. **TodoList** (`models/todo_list.rs`)
    - Business logic for managing a collection of tasks
    - CRUD operations: add, remove, complete, uncomplete, toggle
-   - Task querying: get all tasks, completed tasks, pending tasks
+   - Task querying: get all tasks, completed tasks, pending tasks, filtered tasks
+   - Priority management: set and query task priorities
    - Auto-incrementing task IDs
    - Extensively tested with edge cases
 
-3. **InputReader** (`input_reader.rs`)
+3. **Priority** (`models/priority.rs`)
+   - Priority levels: Low (▼), Medium (■), High (▲)
+   - Color-coded terminal output (green/yellow/red)
+   - String parsing with multiple aliases
+
+4. **TaskFilter** (`models/task_filter.rs`)
+   - Flexible filter builder for querying tasks
+   - Filter by status: completed/pending
+   - Filter by priority: high/medium/low
+   - Combined filters: both status AND priority
+   - Fluent builder API
+
+5. **UiEvent** (`models/ui_event.rs`)
+   - Event definitions: `AddTask`, `ListTasks`, `RemoveTask`, `CompleteTask`, `SetPriority`, etc.
+   - Clean abstraction between UI input and controller actions
+   - Domain events representing user intentions
+
+6. **LoopControl** (`models/loop_control.rs`)
+   - Control flow enum: `Continue`, `Break`
+   - More descriptive than boolean for loop control
+
+7. **InputReader** (`ui/input_reader.rs`)
    - Handles reading user input from stdin
    - Parses user commands into `UiEvent` enums
    - Validates command syntax and arguments
+   - Supports command aliases (e.g., "rm", "done", "h")
    - Clean separation of input concerns
 
-4. **OutputWriter** (`output_writer.rs`)
+8. **OutputWriter** (`ui/output_writer.rs`)
    - Handles all output operations to stdout
-   - Semantic display methods for different scenarios (task added, removed, etc.)
+   - Colored terminal output using the `colored` crate
+   - Semantic display methods for different scenarios
    - Formats task lists with proper styling
    - Separates presentation logic from business logic
 
-5. **UiEvent** (`ui_event.rs`)
-   - Event definitions: `AddTask`, `ListTasks`, `RemoveTask`, `CompleteTask`, etc.
-   - Clean abstraction between UI input and controller actions
-
-6. **TaskFilter** (`task_filter.rs`)
-   - Filter options: `All`, `Completed`, `Pending`
-   - Used for listing tasks by status
-
-7. **LoopControl** (`loop_control.rs`)
-   - Control flow enum: `Continue`, `Exit`
-   - More descriptive than boolean for loop control
-
-8. **TodoController** (`todo_controller.rs`)
+9. **TodoController** (`controller/todo_controller.rs`)
    - Event-driven controller that reacts to UI events
    - Coordinates between InputReader, OutputWriter, and TodoList
    - Owns InputReader, OutputWriter, and TodoList
    - Clean handler methods for each event type
+   - Main application loop
 
-9. **Main** (`main.rs`)
-   - Simple application entry point
-   - Creates and runs the TodoController
+10. **Main** (`main.rs`)
+    - Simple application entry point
+    - Creates and runs the TodoController
 
 ### Event Flow
 
 ```text
-User Input → InputReader.read_input() 
-          → InputReader.parse_command() 
-          → UiEvent 
-          → TodoController.handle_event() 
-          → TodoList operations 
+User Input → InputReader.read_input()
+          → InputReader.parse_command()
+          → UiEvent
+          → TodoController.handle_event()
+          → TodoList operations
           → OutputWriter.show_*() methods 
           → Output to user
 ```

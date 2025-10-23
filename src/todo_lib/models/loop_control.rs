@@ -6,7 +6,7 @@
 /// # Examples
 ///
 /// ```
-/// use todo_manager::loop_control::LoopControl;
+/// use todo_manager::models::loop_control::LoopControl;
 ///
 /// let control = LoopControl::Continue;
 /// assert_eq!(control, LoopControl::Continue);

@@ -11,7 +11,7 @@ use super::task_status::TaskStatus;
 /// # Examples
 ///
 /// ```
-/// use todo_manager::todo_list::TodoList;
+/// use todo_manager::models::todo_list::TodoList;
 ///
 /// let mut list = TodoList::new();
 /// let id = list.add_task("Write tests".to_string());
@@ -32,7 +32,7 @@ impl TodoList {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::todo_list::TodoList;
+    /// use todo_manager::models::todo_list::TodoList;
     ///
     /// let list = TodoList::new();
     /// assert!(list.is_empty());
@@ -59,7 +59,7 @@ impl TodoList {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::todo_list::TodoList;
+    /// use todo_manager::models::todo_list::TodoList;
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task("Buy groceries".to_string());
@@ -81,7 +81,7 @@ impl TodoList {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::todo_list::TodoList;
+    /// use todo_manager::models::todo_list::TodoList;
     ///
     /// let mut list = TodoList::new();
     /// list.add_task("Task 1".to_string());
@@ -98,7 +98,7 @@ impl TodoList {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::todo_list::TodoList;
+    /// use todo_manager::models::todo_list::TodoList;
     ///
     /// let mut list = TodoList::new();
     /// assert!(list.is_empty());
@@ -123,7 +123,7 @@ impl TodoList {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::todo_list::TodoList;
+    /// use todo_manager::models::todo_list::TodoList;
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task("Remove this".to_string());
@@ -153,7 +153,7 @@ impl TodoList {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::todo_list::TodoList;
+    /// use todo_manager::models::todo_list::TodoList;
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task("Toggle me".to_string());
@@ -176,7 +176,7 @@ impl TodoList {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::todo_list::TodoList;
+    /// use todo_manager::models::todo_list::TodoList;
     ///
     /// let mut list = TodoList::new();
     /// let id1 = list.add_task("Completed task".to_string());
@@ -195,7 +195,7 @@ impl TodoList {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::todo_list::TodoList;
+    /// use todo_manager::models::todo_list::TodoList;
     ///
     /// let mut list = TodoList::new();
     /// let id1 = list.add_task("Completed task".to_string());
@@ -218,8 +218,8 @@ impl TodoList {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::todo_list::TodoList;
-    /// use todo_manager::priority::Priority;
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::priority::Priority;
     ///
     /// let mut list = TodoList::new();
     /// let id1 = list.add_task("High priority task".to_string());
@@ -246,9 +246,9 @@ impl TodoList {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::todo_list::TodoList;
-    /// use todo_manager::task_filter::TaskFilter;
-    /// use todo_manager::priority::Priority;
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task_filter::TaskFilter;
+    /// use todo_manager::models::priority::Priority;
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task("High priority task".to_string());
@@ -289,8 +289,8 @@ impl TodoList {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::todo_list::TodoList;
-    /// use todo_manager::priority::Priority;
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::priority::Priority;
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task("Important task".to_string());
@@ -322,7 +322,7 @@ impl TodoList {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::todo_list::TodoList;
+    /// use todo_manager::models::todo_list::TodoList;
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task("Finish this".to_string());
@@ -357,7 +357,7 @@ impl TodoList {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::todo_list::TodoList;
+    /// use todo_manager::models::todo_list::TodoList;
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task("Do this again".to_string());
