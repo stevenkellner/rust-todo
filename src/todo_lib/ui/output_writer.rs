@@ -93,6 +93,8 @@ impl<W: Write> OutputWriter<W> {
         self.print_line(&MessageFormatter::subinfo("Levels:", "high/h, medium/med/m, low/l"));
         self.print_line(&MessageFormatter::label("Alias:", "pri"));
         self.print_line("");
+        self.print_line(&MessageFormatter::command("edit <id> <description>", "Edit task description"));
+        self.print_line("");
         self.print_line(&MessageFormatter::command("search <keyword>", "Search tasks by keyword"));
         self.print_line(&MessageFormatter::label("Alias:", "find"));
         self.print_line("");
@@ -360,6 +362,17 @@ impl<W: Write> OutputWriter<W> {
         } else {
             self.print_line(&MessageFormatter::warning(&message));
         }
+    }
+
+    /// Displays a message when a task description is edited.
+    ///
+    /// # Arguments
+    ///
+    /// * `old_description` - The previous description of the task
+    /// * `new_description` - The new description of the task
+    pub fn show_task_edited(&mut self, old_description: &str, new_description: &str) {
+        let message = format!("Task '{}' updated to '{}'.", old_description, new_description);
+        self.print_line(&MessageFormatter::success(&message));
     }
 
     /// Displays a message when a task priority is set.

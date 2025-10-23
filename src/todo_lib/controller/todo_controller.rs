@@ -92,6 +92,7 @@ impl TodoController {
             UiEvent::UncompleteTask(id) => self.handle_uncomplete_task(*id),
             UiEvent::ToggleTask(id) => self.handle_toggle_task(*id),
             UiEvent::SetPriority(id, priority) => self.handle_set_priority(*id, *priority),
+            UiEvent::EditTask(id, new_description) => self.handle_edit_task(*id, new_description),
             UiEvent::SearchTasks(keyword) => self.handle_search_tasks(keyword),
             UiEvent::ShowStatistics => self.handle_show_statistics(),
             UiEvent::ShowHelp => self.handle_show_help(),
@@ -192,6 +193,26 @@ impl TodoController {
         match self.todo_list.set_task_priority(id, priority) {
             Some(task) => {
                 self.output.show_priority_set(&task.description, priority);
+            }
+            None => {
+                self.output.show_task_not_found(id);
+            }
+        }
+    }
+
+    /// Handles the EditTask event.
+    fn handle_edit_task(&mut self, id: usize, new_description: &str) {
+        // Get the old description before editing
+        let old_description = self.todo_list.get_tasks()
+            .iter()
+            .find(|task| task.id == id)
+            .map(|task| task.description.clone());
+        
+        match self.todo_list.edit_task(id, new_description.to_string()) {
+            Some(_task) => {
+                if let Some(old_desc) = old_description {
+                    self.output.show_task_edited(&old_desc, new_description);
+                }
             }
             None => {
                 self.output.show_task_not_found(id);

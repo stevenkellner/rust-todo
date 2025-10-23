@@ -88,6 +88,7 @@ impl<R: Read> InputReader<R> {
             "uncomplete" | "undo" => self.parse_uncomplete_command(&args),
             "toggle" => self.parse_toggle_command(&args),
             "priority" | "pri" => self.parse_priority_command(&args),
+            "edit" => self.parse_edit_command(&args),
             "search" | "find" => self.parse_search_command(&args),
             "statistics" | "stats" => UiEvent::ShowStatistics,
             "debug" => self.parse_debug_command(&args),
@@ -201,6 +202,25 @@ impl<R: Read> InputReader<R> {
             } else {
                 UiEvent::SearchTasks(keyword)
             }
+        }
+    }
+
+    /// Parses the 'edit' command to edit a task description.
+    fn parse_edit_command(&self, args: &[&str]) -> UiEvent {
+        if args.len() < 2 {
+            return UiEvent::InvalidInput("Usage: edit <id> <new description>".to_string());
+        }
+        
+        match args[0].parse::<usize>() {
+            Ok(id) => {
+                let new_description = args[1..].join(" ");
+                if new_description.trim().is_empty() {
+                    UiEvent::InvalidInput("Task description cannot be empty.".to_string())
+                } else {
+                    UiEvent::EditTask(id, new_description)
+                }
+            }
+            Err(_) => UiEvent::InvalidInput(format!("Invalid task ID: '{}'", args[0])),
         }
     }
 

@@ -28,6 +28,9 @@ pub enum UiEvent {
     /// User wants to set the priority of a task
     SetPriority(usize, Priority),
     
+    /// User wants to edit a task's description
+    EditTask(usize, String),
+    
     /// User wants to search for tasks by keyword
     SearchTasks(String),
     

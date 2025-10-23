@@ -116,7 +116,7 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 ### 4. Edit Task Description
 
-**Status:** Pending  
+**Status:** ✅ Complete  
 **Complexity:** Easy  
 **Description:**
 
@@ -130,6 +130,28 @@ This document tracks the 19 features selected for implementation in the TODO man
 - Parse edit command in InputReader
 - Update task description
 - Display confirmation message
+
+**Implementation Notes:**
+
+- Added `EditTask(usize, String)` event variant to UiEvent enum
+- Implemented `edit_task()` method in TodoList that:
+  - Finds task by ID
+  - Updates description
+  - Returns `Option<&Task>` (Some if found, None if not)
+- Added `parse_edit_command()` in InputReader:
+  - Validates ID format
+  - Validates description is not empty
+  - Joins multi-word descriptions
+- Added `show_task_edited()` in OutputWriter:
+  - Shows old and new descriptions
+  - Uses success message formatting
+- Added `handle_edit_task()` in TodoController:
+  - Stores old description before editing
+  - Displays appropriate success/error message
+- Command: `edit <id> <description>`
+- Added to help output with proper formatting
+- All tests passing (202 total tests)
+- Doc test included in edit_task() method
 
 ---
 

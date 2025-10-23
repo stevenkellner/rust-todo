@@ -378,6 +378,40 @@ impl TodoList {
             .collect()
     }
 
+    /// Edits the description of a task by its ID.
+    ///
+    /// If the task with the given ID exists, its description is updated.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The unique identifier of the task to edit
+    /// * `new_description` - The new description for the task
+    ///
+    /// # Returns
+    ///
+    /// `Some(&Task)` containing a reference to the edited task if found,
+    /// or `None` if no task with the given ID exists.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id = list.add_task("Old description".to_string());
+    /// 
+    /// list.edit_task(id, "New description".to_string());
+    /// assert_eq!(list.get_tasks()[0].description, "New description");
+    /// ```
+    pub fn edit_task(&mut self, id: usize, new_description: String) -> Option<&Task> {
+        if let Some(task) = self.tasks.iter_mut().find(|task| task.id == id) {
+            task.description = new_description;
+            Some(task)
+        } else {
+            None
+        }
+    }
+
     /// Marks a task as completed by its ID.
     ///
     /// If the task is already completed, this method has no effect but still returns the task.
