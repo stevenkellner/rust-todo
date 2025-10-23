@@ -33,6 +33,8 @@
 //! controller.run();  // Starts the interactive application
 //! ```
 
+pub mod priority;
+pub mod task_status;
 pub mod task;
 pub mod todo_list;
 pub mod input_reader;

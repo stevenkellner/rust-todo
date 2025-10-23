@@ -1,4 +1,5 @@
 use super::task_filter::TaskFilter;
+use super::priority::Priority;
 
 /// Represents events that occur in the user interface.
 ///
@@ -23,6 +24,9 @@ pub enum UiEvent {
     
     /// User wants to toggle a task's completion status
     ToggleTask(usize),
+    
+    /// User wants to set the priority of a task
+    SetPriority(usize, Priority),
     
     /// User wants to see help information
     ShowHelp,

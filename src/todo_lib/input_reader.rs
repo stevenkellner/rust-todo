@@ -1,6 +1,8 @@
 use std::io::{self, BufRead, BufReader, Read};
 use super::ui_event::UiEvent;
 use super::task_filter::TaskFilter;
+use super::task_status::TaskStatus;
+use super::priority::Priority;
 
 /// Handles input operations for the command-line interface.
 ///
@@ -85,6 +87,7 @@ impl<R: Read> InputReader<R> {
             "complete" | "done" => self.parse_complete_command(&args),
             "uncomplete" | "undo" => self.parse_uncomplete_command(&args),
             "toggle" => self.parse_toggle_command(&args),
+            "priority" | "pri" => self.parse_priority_command(&args),
             "help" | "h" => UiEvent::ShowHelp,
             "quit" | "exit" | "q" => UiEvent::Quit,
             _ => UiEvent::UnknownCommand(command),
@@ -107,11 +110,39 @@ impl<R: Read> InputReader<R> {
 
     /// Parses the 'list' command and determines the filter.
     fn parse_list_command(&self, args: &[&str]) -> UiEvent {
-        let filter = args.get(0).map(|s| s.to_lowercase());
-        match filter.as_deref() {
-            Some("completed") | Some("done") => UiEvent::ListTasks(Some(TaskFilter::Completed)),
-            Some("pending") | Some("todo") => UiEvent::ListTasks(Some(TaskFilter::Pending)),
-            _ => UiEvent::ListTasks(Some(TaskFilter::All)),
+        // Parse first argument for status or priority
+        let first_filter = args.get(0).map(|s| s.to_lowercase());
+        let second_filter = args.get(1).map(|s| s.to_lowercase());
+        
+        let mut filter = TaskFilter::all();
+        
+        // Parse both arguments to allow combinations like "list completed high"
+        for arg in [first_filter, second_filter].iter().flatten() {
+            match arg.as_str() {
+                "completed" | "done" => {
+                    filter = filter.with_status(TaskStatus::Completed);
+                }
+                "pending" | "todo" => {
+                    filter = filter.with_status(TaskStatus::Pending);
+                }
+                "high" | "h" => {
+                    filter = filter.with_priority(Priority::High);
+                }
+                "medium" | "med" | "m" => {
+                    filter = filter.with_priority(Priority::Medium);
+                }
+                "low" | "l" => {
+                    filter = filter.with_priority(Priority::Low);
+                }
+                _ => {}
+            }
+        }
+        
+        // If no filter was specified, return None to show all tasks
+        if filter.status.is_none() && filter.priority.is_none() {
+            UiEvent::ListTasks(None)
+        } else {
+            UiEvent::ListTasks(Some(filter))
         }
     }
 
@@ -133,6 +164,25 @@ impl<R: Read> InputReader<R> {
     /// Parses the 'toggle' command and validates the task ID.
     fn parse_toggle_command(&self, args: &[&str]) -> UiEvent {
         self.parse_id_command(args, "toggle", UiEvent::ToggleTask)
+    }
+
+    /// Parses the 'priority' command to set task priority.
+    fn parse_priority_command(&self, args: &[&str]) -> UiEvent {
+        if args.len() < 2 {
+            return UiEvent::InvalidInput("Usage: priority <task_id> <high|medium|low>".to_string());
+        }
+        
+        match args[0].parse::<usize>() {
+            Ok(id) => {
+                match Priority::from_str(args[1]) {
+                    Some(priority) => UiEvent::SetPriority(id, priority),
+                    None => UiEvent::InvalidInput(
+                        "Invalid priority level. Use: high, medium, or low".to_string()
+                    ),
+                }
+            }
+            Err(_) => UiEvent::InvalidInput("Please enter a valid task ID (number).".to_string()),
+        }
     }
 
     /// Helper method to parse commands that require a task ID.
@@ -235,8 +285,8 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("list");
         match event {
-            UiEvent::ListTasks(Some(TaskFilter::All)) => {},
-            _ => panic!("Expected ListTasks with All filter"),
+            UiEvent::ListTasks(None) => {},
+            _ => panic!("Expected ListTasks with no filter"),
         }
     }
 
@@ -245,7 +295,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("list completed");
         match event {
-            UiEvent::ListTasks(Some(TaskFilter::Completed)) => {},
+            UiEvent::ListTasks(Some(filter)) if filter.status == Some(TaskStatus::Completed) && filter.priority.is_none() => {},
             _ => panic!("Expected ListTasks with Completed filter"),
         }
     }
@@ -255,7 +305,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("list done");
         match event {
-            UiEvent::ListTasks(Some(TaskFilter::Completed)) => {},
+            UiEvent::ListTasks(Some(filter)) if filter.status == Some(TaskStatus::Completed) && filter.priority.is_none() => {},
             _ => panic!("Expected ListTasks with Completed filter"),
         }
     }
@@ -265,7 +315,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("list pending");
         match event {
-            UiEvent::ListTasks(Some(TaskFilter::Pending)) => {},
+            UiEvent::ListTasks(Some(filter)) if filter.status == Some(TaskStatus::Pending) && filter.priority.is_none() => {},
             _ => panic!("Expected ListTasks with Pending filter"),
         }
     }
@@ -275,7 +325,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("list todo");
         match event {
-            UiEvent::ListTasks(Some(TaskFilter::Pending)) => {},
+            UiEvent::ListTasks(Some(filter)) if filter.status == Some(TaskStatus::Pending) && filter.priority.is_none() => {},
             _ => panic!("Expected ListTasks with Pending filter"),
         }
     }
@@ -663,7 +713,7 @@ mod tests {
         let mut reader = InputReader::with_reader(&input_data[..]);
         let event = reader.read_event();
         match event {
-            UiEvent::ListTasks(Some(TaskFilter::Completed)) => {},
+            UiEvent::ListTasks(Some(filter)) if filter.status == Some(TaskStatus::Completed) => {},
             _ => panic!("Expected ListTasks(Completed) event"),
         }
     }

@@ -1,5 +1,8 @@
 use std::io::{self, Write};
 use super::task::Task;
+use super::priority::Priority;
+use super::task_filter::TaskFilter;
+use super::task_status::TaskStatus;
 use colored::*;
 
 /// Handles output operations for the command-line interface.
@@ -69,7 +72,10 @@ impl<W: Write> OutputWriter<W> {
         self.print_line("");
         self.print_line(&format!("{:<25} - Add a new task", "add <description>".bright_green()));
         self.print_line("");
-        self.print_line(&format!("{:<25} - List tasks (all/completed/pending)", "list [filter]".bright_green()));
+        self.print_line(&format!("{:<28} - List tasks (filters can be combined)", "list [status] [priority]".bright_green()));
+        self.print_line(&format!("    {} {}", "↳ Status:".bright_black().italic(), "completed/done, pending/todo".bright_yellow()));
+        self.print_line(&format!("    {} {}", "↳ Priority:".bright_black().italic(), "high/h, medium/med/m, low/l".bright_yellow()));
+        self.print_line(&format!("    {} {}", "↳ Example:".bright_black().italic(), "list pending high".bright_cyan()));
         self.print_line("");
         self.print_line(&format!("{:<25} - Remove a task by ID", "remove <id>".bright_green()));
         self.print_line(&format!("    {} {}", "↳ Aliases:".bright_black().italic(), "rm, delete".bright_yellow()));
@@ -81,6 +87,10 @@ impl<W: Write> OutputWriter<W> {
         self.print_line(&format!("    {} {}", "↳ Alias:".bright_black().italic(), "undo".bright_yellow()));
         self.print_line("");
         self.print_line(&format!("{:<25} - Toggle task completion status", "toggle <id>".bright_green()));
+        self.print_line("");
+        self.print_line(&format!("{:<25} - Set task priority", "priority <id> <level>".bright_green()));
+        self.print_line(&format!("    {} {}", "↳ Levels:".bright_black().italic(), "high/h, medium/med/m, low/l".bright_yellow()));
+        self.print_line(&format!("    {} {}", "↳ Alias:".bright_black().italic(), "pri".bright_yellow()));
         self.print_line("");
         self.print_line(&format!("{:<25} - Show this help message", "help".bright_green()));
         self.print_line(&format!("    {} {}", "↳ Alias:".bright_black().italic(), "h".bright_yellow()));
@@ -121,6 +131,64 @@ impl<W: Write> OutputWriter<W> {
         self.show_task_list("Pending Tasks", tasks.to_vec());
     }
 
+    /// Displays tasks filtered by priority level.
+    ///
+    /// # Arguments
+    ///
+    /// * `tasks` - A slice of task references to display
+    /// * `priority` - The priority level being filtered
+    pub fn show_tasks_by_priority(&mut self, tasks: &[&Task], priority: Priority) {
+        if tasks.is_empty() {
+            self.print_line(&format!("No {} priority tasks found.", priority.as_str()).yellow().to_string());
+            return;
+        }
+
+        let title = format!("{} Priority Tasks", priority.as_str());
+        self.show_task_list(&title, tasks.to_vec());
+    }
+
+    /// Displays tasks filtered by both status and priority.
+    ///
+    /// # Arguments
+    ///
+    /// * `tasks` - A slice of task references to display
+    /// * `filter` - The filter criteria used
+    pub fn show_filtered_tasks(&mut self, tasks: &[&Task], filter: &TaskFilter) {
+        if tasks.is_empty() {
+            let status_str = match filter.status {
+                Some(TaskStatus::Completed) => "completed ",
+                Some(TaskStatus::Pending) => "pending ",
+                None => "",
+            };
+            let priority_str = match filter.priority {
+                Some(priority) => format!("{} priority ", priority.as_str()),
+                None => String::new(),
+            };
+            self.print_line(&format!("No {}{}tasks found.", status_str, priority_str).yellow().to_string());
+            return;
+        }
+
+        // Build title based on filter
+        let mut title_parts = Vec::new();
+        if let Some(priority) = filter.priority {
+            title_parts.push(format!("{} Priority", priority.as_str()));
+        }
+        if let Some(status) = filter.status {
+            match status {
+                TaskStatus::Completed => title_parts.push("Completed".to_string()),
+                TaskStatus::Pending => title_parts.push("Pending".to_string()),
+            }
+        }
+        
+        let title = if title_parts.is_empty() {
+            "Tasks".to_string()
+        } else {
+            format!("{} Tasks", title_parts.join(" "))
+        };
+        
+        self.show_task_list(&title, tasks.to_vec());
+    }
+
     /// Helper method to display a list of tasks with a given title.
     ///
     /// # Arguments
@@ -138,10 +206,26 @@ impl<W: Write> OutputWriter<W> {
                 format!("[{}]", " ".white())
             };
             
+            // Get priority symbol and color
+            let priority_symbol = task.priority.symbol();
+            let colored_priority = match task.priority {
+                Priority::High => priority_symbol.bright_red().bold(),
+                Priority::Medium => priority_symbol.bright_yellow().bold(),
+                Priority::Low => priority_symbol.bright_blue().bold(),
+            };
+            
             let task_text = if task.is_completed() {
-                format!("{}. {} {}", task.id.to_string().bright_blue(), status_symbol, task.description.bright_black())
+                format!("{}. {} {} {}", 
+                    task.id.to_string().bright_blue(), 
+                    status_symbol, 
+                    colored_priority,
+                    task.description.bright_black())
             } else {
-                format!("{}. {} {}", task.id.to_string().bright_blue(), status_symbol, task.description.white())
+                format!("{}. {} {} {}", 
+                    task.id.to_string().bright_blue(), 
+                    status_symbol, 
+                    colored_priority,
+                    task.description.white())
             };
             
             self.print_line(&task_text);
@@ -208,6 +292,21 @@ impl<W: Write> OutputWriter<W> {
             ("↻".bright_yellow().bold(), "pending".bright_yellow())
         };
         self.print_line(&format!("{} Task '{}' marked as {}.", icon, description, status));
+    }
+
+    /// Displays a message when a task priority is set.
+    ///
+    /// # Arguments
+    ///
+    /// * `description` - The description of the task
+    /// * `priority` - The new priority level
+    pub fn show_priority_set(&mut self, description: &str, priority: Priority) {
+        let colored_priority = match priority {
+            Priority::High => format!("{} {}", priority.symbol(), priority.as_str()).bright_red().bold(),
+            Priority::Medium => format!("{} {}", priority.symbol(), priority.as_str()).bright_yellow().bold(),
+            Priority::Low => format!("{} {}", priority.symbol(), priority.as_str()).bright_blue().bold(),
+        };
+        self.print_line(&format!("{} Priority set to {} for task: '{}'", "✓".bright_green().bold(), colored_priority, description));
     }
 
     /// Displays a goodbye message.
@@ -426,11 +525,12 @@ mod tests {
         let result = String::from_utf8(buffer).unwrap();
         assert!(result.contains("=== To-Do List Manager Commands ==="));
         assert!(result.contains("add <description>"));
-        assert!(result.contains("list [filter]"));
+        assert!(result.contains("list [status] [priority]"));
         assert!(result.contains("remove <id>"));
         assert!(result.contains("complete <id>"));
         assert!(result.contains("uncomplete <id>"));
         assert!(result.contains("toggle <id>"));
+        assert!(result.contains("priority <id> <level>"));
         assert!(result.contains("help"));
         assert!(result.contains("quit"));
         assert!(result.contains("Alias:") || result.contains("Aliases:"));
@@ -497,14 +597,14 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         let tasks = vec![
-            Task { id: 1, description: "Task 1".to_string(), completed: false },
-            Task { id: 2, description: "Task 2".to_string(), completed: true },
+            Task { id: 1, description: "Task 1".to_string(), completed: false, priority: Priority::Medium },
+            Task { id: 2, description: "Task 2".to_string(), completed: true, priority: Priority::Medium },
         ];
         output.show_all_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
         assert!(result.contains("All Tasks"));
-        assert!(result.contains("1. [ ] Task 1"));
-        assert!(result.contains("2. [✓] Task 2"));
+        assert!(result.contains("1. [ ] ■ Task 1"));
+        assert!(result.contains("2. [✓] ■ Task 2"));
     }
 
     #[test]
@@ -524,14 +624,14 @@ mod tests {
         use crate::task::Task;
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
-        let task1 = Task { id: 1, description: "Completed task".to_string(), completed: true };
-        let task2 = Task { id: 2, description: "Another completed".to_string(), completed: true };
+        let task1 = Task { id: 1, description: "Completed task".to_string(), completed: true, priority: Priority::Medium };
+        let task2 = Task { id: 2, description: "Another completed".to_string(), completed: true, priority: Priority::Medium };
         let tasks = vec![&task1, &task2];
         output.show_completed_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
         assert!(result.contains("Completed Tasks"));
-        assert!(result.contains("1. [✓] Completed task"));
-        assert!(result.contains("2. [✓] Another completed"));
+        assert!(result.contains("1. [✓] ■ Completed task"));
+        assert!(result.contains("2. [✓] ■ Another completed"));
     }
 
     #[test]
@@ -551,14 +651,14 @@ mod tests {
         use crate::task::Task;
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
-        let task1 = Task { id: 1, description: "Pending task".to_string(), completed: false };
-        let task2 = Task { id: 2, description: "Another pending".to_string(), completed: false };
+        let task1 = Task { id: 1, description: "Pending task".to_string(), completed: false, priority: Priority::Medium };
+        let task2 = Task { id: 2, description: "Another pending".to_string(), completed: false, priority: Priority::Medium };
         let tasks = vec![&task1, &task2];
         output.show_pending_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
         assert!(result.contains("Pending Tasks"));
-        assert!(result.contains("1. [ ] Pending task"));
-        assert!(result.contains("2. [ ] Another pending"));
+        assert!(result.contains("1. [ ] ■ Pending task"));
+        assert!(result.contains("2. [ ] ■ Another pending"));
     }
 
     #[test]
@@ -568,8 +668,8 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         let tasks = vec![
-            Task { id: 1, description: "Task with émojis 🎉".to_string(), completed: false },
-            Task { id: 2, description: "Special chars: <>&\"'".to_string(), completed: true },
+            Task { id: 1, description: "Task with émojis 🎉".to_string(), completed: false, priority: Priority::Medium },
+            Task { id: 2, description: "Special chars: <>&\"'".to_string(), completed: true, priority: Priority::Medium },
         ];
         output.show_all_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
@@ -584,7 +684,7 @@ mod tests {
         let mut output = OutputWriter::with_writer(&mut buffer);
         let long_desc = "A".repeat(200);
         let tasks = vec![
-            Task { id: 1, description: long_desc.clone(), completed: false },
+            Task { id: 1, description: long_desc.clone(), completed: false, priority: Priority::Medium },
         ];
         output.show_all_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
@@ -626,7 +726,7 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         let tasks = vec![
-            Task { id: 1, description: "Test".to_string(), completed: false },
+            Task { id: 1, description: "Test".to_string(), completed: false, priority: Priority::Medium },
         ];
         output.show_all_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();

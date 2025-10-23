@@ -3,7 +3,9 @@ use super::input_reader::InputReader;
 use super::output_writer::OutputWriter;
 use super::ui_event::UiEvent;
 use super::task_filter::TaskFilter;
+use super::task_status::TaskStatus;
 use super::loop_control::LoopControl;
+use super::priority::Priority;
 
 /// Controls the todo list application by reacting to UI events.
 ///
@@ -86,6 +88,7 @@ impl TodoController {
             UiEvent::CompleteTask(id) => self.handle_complete_task(*id),
             UiEvent::UncompleteTask(id) => self.handle_uncomplete_task(*id),
             UiEvent::ToggleTask(id) => self.handle_toggle_task(*id),
+            UiEvent::SetPriority(id, priority) => self.handle_set_priority(*id, *priority),
             UiEvent::ShowHelp => self.handle_show_help(),
             UiEvent::Quit => return self.handle_quit(),
             UiEvent::UnknownCommand(command) => self.handle_unknown_command(command),
@@ -103,18 +106,29 @@ impl TodoController {
 
     /// Handles the ListTasks event with optional filter.
     fn handle_list_tasks(&mut self, filter: &Option<TaskFilter>) {
+        let tasks = match filter {
+            Some(filter) => self.todo_list.get_filtered_tasks(filter),
+            None => self.todo_list.get_tasks().iter().collect(),
+        };
+        
+        // Determine the appropriate display method based on filter
         match filter {
-            Some(TaskFilter::Completed) => {
-                let tasks = self.todo_list.get_completed_tasks();
+            Some(f) if f.status == Some(TaskStatus::Completed) && f.priority.is_none() => {
                 self.output.show_completed_tasks(&tasks);
             }
-            Some(TaskFilter::Pending) => {
-                let tasks = self.todo_list.get_pending_tasks();
+            Some(f) if f.status == Some(TaskStatus::Pending) && f.priority.is_none() => {
                 self.output.show_pending_tasks(&tasks);
             }
-            _ => {
-                let tasks = self.todo_list.get_tasks();
-                self.output.show_all_tasks(tasks);
+            Some(f) if f.status.is_none() && f.priority.is_some() => {
+                self.output.show_tasks_by_priority(&tasks, f.priority.unwrap());
+            }
+            Some(f) => {
+                // Combined filters
+                self.output.show_filtered_tasks(&tasks, f);
+            }
+            None => {
+                let all_tasks = self.todo_list.get_tasks();
+                self.output.show_all_tasks(all_tasks);
             }
         }
     }
@@ -162,6 +176,18 @@ impl TodoController {
             self.output.show_task_toggled(&task.description, task.is_completed());
         } else {
             self.output.show_task_not_found(id);
+        }
+    }
+
+    /// Handles the SetPriority event.
+    fn handle_set_priority(&mut self, id: usize, priority: Priority) {
+        match self.todo_list.set_task_priority(id, priority) {
+            Some(task) => {
+                self.output.show_priority_set(&task.description, priority);
+            }
+            None => {
+                self.output.show_task_not_found(id);
+            }
         }
     }
 
@@ -324,7 +350,7 @@ mod tests {
         controller.handle_add_task("Task 2");
         controller.handle_complete_task(1);
         
-        controller.handle_list_tasks(&Some(TaskFilter::All));
+        controller.handle_list_tasks(&None);
         
         assert_eq!(controller.todo_list.get_tasks().len(), 2);
     }
@@ -337,7 +363,7 @@ mod tests {
         controller.handle_add_task("Task 2");
         controller.handle_complete_task(1);
         
-        controller.handle_list_tasks(&Some(TaskFilter::Completed));
+        controller.handle_list_tasks(&Some(TaskFilter::completed()));
         
         assert_eq!(controller.todo_list.get_completed_tasks().len(), 1);
     }
@@ -350,7 +376,7 @@ mod tests {
         controller.handle_add_task("Task 2");
         controller.handle_complete_task(1);
         
-        controller.handle_list_tasks(&Some(TaskFilter::Pending));
+        controller.handle_list_tasks(&Some(TaskFilter::pending()));
         
         assert_eq!(controller.todo_list.get_pending_tasks().len(), 1);
     }

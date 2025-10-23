@@ -1,7 +1,9 @@
+use super::priority::Priority;
+
 /// Represents a single task in the todo list.
 ///
 /// A task contains a unique identifier, a description of what needs to be done,
-/// and a completion status indicating whether the task has been finished.
+/// a completion status indicating whether the task has been finished, and a priority level.
 ///
 /// # Examples
 ///
@@ -20,12 +22,14 @@ pub struct Task {
     pub description: String,
     /// Whether the task has been completed
     pub completed: bool,
+    /// The priority level of the task
+    pub priority: Priority,
 }
 
 impl Task {
     /// Creates a new task with the given ID and description.
     ///
-    /// The task is initialized with `completed` set to `false`.
+    /// The task is initialized with `completed` set to `false` and priority set to `Medium`.
     ///
     /// # Arguments
     ///
@@ -47,9 +51,44 @@ impl Task {
             id,
             description,
             completed: false,
+            priority: Priority::default(),
         }
     }
 
+    /// Sets the priority of the task.
+    ///
+    /// # Arguments
+    ///
+    /// * `priority` - The new priority level for the task
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::task::Task;
+    /// use todo_manager::priority::Priority;
+    ///
+    /// let mut task = Task::new(1, "Important meeting".to_string());
+    /// task.set_priority(Priority::High);
+    /// assert_eq!(task.priority, Priority::High);
+    /// ```
+    pub fn set_priority(&mut self, priority: Priority) {
+        self.priority = priority;
+    }
+
+    /// Gets the priority of the task.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::task::Task;
+    /// use todo_manager::priority::Priority;
+    ///
+    /// let task = Task::new(1, "Regular task".to_string());
+    /// assert_eq!(task.get_priority(), Priority::Medium);
+    /// ```
+    pub fn get_priority(&self) -> Priority {
+        self.priority
+    }
     /// Toggles the completion status of the task.
     ///
     /// If the task is completed, it becomes pending. If it's pending, it becomes completed.
@@ -137,5 +176,45 @@ mod tests {
         
         task.toggle_completion();
         assert_eq!(task.get_status_symbol(), "✓");
+    }
+
+    #[test]
+    fn test_priority_default() {
+        let task = Task::new(1, "Test task".to_string());
+        assert_eq!(task.get_priority(), Priority::Medium);
+    }
+
+    #[test]
+    fn test_set_priority() {
+        let mut task = Task::new(1, "Test task".to_string());
+        
+        task.set_priority(Priority::High);
+        assert_eq!(task.get_priority(), Priority::High);
+        
+        task.set_priority(Priority::Low);
+        assert_eq!(task.get_priority(), Priority::Low);
+    }
+
+    #[test]
+    fn test_priority_from_str() {
+        assert_eq!(Priority::from_str("high"), Some(Priority::High));
+        assert_eq!(Priority::from_str("h"), Some(Priority::High));
+        assert_eq!(Priority::from_str("HIGH"), Some(Priority::High));
+        
+        assert_eq!(Priority::from_str("medium"), Some(Priority::Medium));
+        assert_eq!(Priority::from_str("med"), Some(Priority::Medium));
+        assert_eq!(Priority::from_str("m"), Some(Priority::Medium));
+        
+        assert_eq!(Priority::from_str("low"), Some(Priority::Low));
+        assert_eq!(Priority::from_str("l"), Some(Priority::Low));
+        
+        assert_eq!(Priority::from_str("invalid"), None);
+    }
+
+    #[test]
+    fn test_priority_ordering() {
+        assert!(Priority::High > Priority::Medium);
+        assert!(Priority::Medium > Priority::Low);
+        assert!(Priority::High > Priority::Low);
     }
 }

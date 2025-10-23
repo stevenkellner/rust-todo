@@ -1,4 +1,7 @@
 use super::task::Task;
+use super::priority::Priority;
+use super::task_filter::TaskFilter;
+use super::task_status::TaskStatus;
 
 /// A collection of tasks with methods to manage them.
 ///
@@ -204,6 +207,104 @@ impl TodoList {
     /// ```
     pub fn get_pending_tasks(&self) -> Vec<&Task> {
         self.tasks.iter().filter(|task| !task.is_completed()).collect()
+    }
+
+    /// Returns a vector of references to all tasks with the specified priority.
+    ///
+    /// # Arguments
+    ///
+    /// * `priority` - The priority level to filter by
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::todo_list::TodoList;
+    /// use todo_manager::priority::Priority;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id1 = list.add_task("High priority task".to_string());
+    /// let id2 = list.add_task("Low priority task".to_string());
+    /// 
+    /// list.set_task_priority(id1, Priority::High);
+    /// let high_tasks = list.get_tasks_by_priority(Priority::High);
+    /// assert_eq!(high_tasks.len(), 1);
+    /// ```
+    pub fn get_tasks_by_priority(&self, priority: Priority) -> Vec<&Task> {
+        self.tasks.iter().filter(|task| task.priority == priority).collect()
+    }
+
+    /// Gets tasks filtered by both status and priority.
+    ///
+    /// # Arguments
+    ///
+    /// * `filter` - The filter criteria (status and/or priority)
+    ///
+    /// # Returns
+    ///
+    /// A vector of references to tasks that match the filter criteria.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::todo_list::TodoList;
+    /// use todo_manager::task_filter::TaskFilter;
+    /// use todo_manager::priority::Priority;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id = list.add_task("High priority task".to_string());
+    /// list.set_task_priority(id, Priority::High);
+    /// 
+    /// let filter = TaskFilter::pending_with_priority(Priority::High);
+    /// let tasks = list.get_filtered_tasks(&filter);
+    /// assert_eq!(tasks.len(), 1);
+    /// ```
+    pub fn get_filtered_tasks(&self, filter: &TaskFilter) -> Vec<&Task> {
+        self.tasks.iter().filter(|task| {
+            let status_matches = match filter.status {
+                Some(TaskStatus::Completed) => task.is_completed(),
+                Some(TaskStatus::Pending) => !task.is_completed(),
+                None => true,
+            };
+            
+            let priority_matches = match filter.priority {
+                Some(priority) => task.priority == priority,
+                None => true,
+            };
+            
+            status_matches && priority_matches
+        }).collect()
+    }
+
+    /// Sets the priority of a task by its ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The unique identifier of the task
+    /// * `priority` - The new priority level to set
+    ///
+    /// # Returns
+    ///
+    /// `Some(&Task)` containing a reference to the task if found, or `None` if no task with the given ID exists.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::todo_list::TodoList;
+    /// use todo_manager::priority::Priority;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id = list.add_task("Important task".to_string());
+    /// 
+    /// let task = list.set_task_priority(id, Priority::High);
+    /// assert!(task.is_some());
+    /// assert_eq!(task.unwrap().priority, Priority::High);
+    /// ```
+    pub fn set_task_priority(&mut self, id: usize, priority: Priority) -> Option<&Task> {
+        if let Some(task) = self.tasks.iter_mut().find(|t| t.id == id) {
+            task.set_priority(priority);
+            return self.tasks.iter().find(|t| t.id == id);
+        }
+        None
     }
 
     /// Marks a task as completed by its ID.
