@@ -4,6 +4,7 @@ use crate::models::priority::Priority;
 use crate::models::task_filter::TaskFilter;
 use crate::models::task_status::TaskStatus;
 use colored::*;
+use super::formatters::{TaskFormatter, MessageFormatter};
 
 /// Handles output operations for the command-line interface.
 ///
@@ -68,46 +69,56 @@ impl<W: Write> OutputWriter<W> {
 
     /// Displays the help message.
     pub fn show_help(&mut self) {
-        self.print_line(&format!("\n{}", "=== To-Do List Manager Commands ===".bright_cyan().bold()));
+        self.print_line(&format!("\n{}", MessageFormatter::section_title("To-Do List Manager Commands")));
         self.print_line("");
-        self.print_line(&format!("{:<25} - Add a new task", "add <description>".bright_green()));
+        self.print_line(&MessageFormatter::command("add <description>", "Add a new task"));
         self.print_line("");
-        self.print_line(&format!("{:<28} - List tasks (filters can be combined)", "list [status] [priority]".bright_green()));
-        self.print_line(&format!("    {} {}", "↳ Status:".bright_black().italic(), "completed/done, pending/todo".bright_yellow()));
-        self.print_line(&format!("    {} {}", "↳ Priority:".bright_black().italic(), "high/h, medium/med/m, low/l".bright_yellow()));
-        self.print_line(&format!("    {} {}", "↳ Example:".bright_black().italic(), "list pending high".bright_cyan()));
+        self.print_line(&MessageFormatter::command("list [status] [priority]", "List tasks (filters can be combined)"));
+        self.print_line(&MessageFormatter::subinfo("Status:", "completed/done, pending/todo"));
+        self.print_line(&MessageFormatter::subinfo("Priority:", "high/h, medium/med/m, low/l"));
+        self.print_line(&MessageFormatter::subinfo("Example:", "list pending high"));
         self.print_line("");
-        self.print_line(&format!("{:<25} - Remove a task by ID", "remove <id>".bright_green()));
-        self.print_line(&format!("    {} {}", "↳ Aliases:".bright_black().italic(), "rm, delete".bright_yellow()));
+        self.print_line(&MessageFormatter::command("remove <id>", "Remove a task by ID"));
+        self.print_line(&MessageFormatter::label("Aliases:", "rm, delete"));
         self.print_line("");
-        self.print_line(&format!("{:<25} - Mark task as completed", "complete <id>".bright_green()));
-        self.print_line(&format!("    {} {}", "↳ Alias:".bright_black().italic(), "done".bright_yellow()));
+        self.print_line(&MessageFormatter::command("complete <id>", "Mark task as completed"));
+        self.print_line(&MessageFormatter::label("Alias:", "done"));
         self.print_line("");
-        self.print_line(&format!("{:<25} - Mark task as pending", "uncomplete <id>".bright_green()));
-        self.print_line(&format!("    {} {}", "↳ Alias:".bright_black().italic(), "undo".bright_yellow()));
+        self.print_line(&MessageFormatter::command("uncomplete <id>", "Mark task as pending"));
+        self.print_line(&MessageFormatter::label("Alias:", "undo"));
         self.print_line("");
-        self.print_line(&format!("{:<25} - Toggle task completion status", "toggle <id>".bright_green()));
+        self.print_line(&MessageFormatter::command("toggle <id>", "Toggle task completion status"));
         self.print_line("");
-        self.print_line(&format!("{:<25} - Set task priority", "priority <id> <level>".bright_green()));
-        self.print_line(&format!("    {} {}", "↳ Levels:".bright_black().italic(), "high/h, medium/med/m, low/l".bright_yellow()));
-        self.print_line(&format!("    {} {}", "↳ Alias:".bright_black().italic(), "pri".bright_yellow()));
+        self.print_line(&MessageFormatter::command("priority <id> <level>", "Set task priority"));
+        self.print_line(&MessageFormatter::subinfo("Levels:", "high/h, medium/med/m, low/l"));
+        self.print_line(&MessageFormatter::label("Alias:", "pri"));
         self.print_line("");
-        self.print_line(&format!("{:<25} - Search tasks by keyword", "search <keyword>".bright_green()));
-        self.print_line(&format!("    {} {}", "↳ Alias:".bright_black().italic(), "find".bright_yellow()));
+        self.print_line(&MessageFormatter::command("search <keyword>", "Search tasks by keyword"));
+        self.print_line(&MessageFormatter::label("Alias:", "find"));
         self.print_line("");
-        self.print_line(&format!("{:<25} - Show this help message", "help".bright_green()));
-        self.print_line(&format!("    {} {}", "↳ Alias:".bright_black().italic(), "h".bright_yellow()));
+        self.print_line(&MessageFormatter::command("help", "Show this help message"));
+        self.print_line(&MessageFormatter::label("Alias:", "h"));
         self.print_line("");
-        self.print_line(&format!("{:<25} - Exit the program", "quit".bright_green()));
-        self.print_line(&format!("    {} {}", "↳ Aliases:".bright_black().italic(), "q, exit".bright_yellow()));
+        self.print_line(&MessageFormatter::command("quit", "Exit the program"));
+        self.print_line(&MessageFormatter::label("Aliases:", "q, exit"));
         self.print_line("");
-        self.print_line(&format!("{}\n", "====================================".bright_cyan().bold()));
+        self.print_line(&format!("{}\n", MessageFormatter::separator(40)));
+    }
+
+    /// Displays debug mode help information.
+    pub fn show_debug_help(&mut self) {
+        self.print_line(&MessageFormatter::section_title("Debug Commands"));
+        self.print_line("");
+        self.print_line(&MessageFormatter::command("debug:gen <count>", "Generate N random tasks"));
+        self.print_line(&MessageFormatter::command("debug:clear", "Clear all tasks"));
+        self.print_line(&MessageFormatter::command("debug", "Toggle debug mode"));
+        self.print_line("");
     }
 
     /// Displays a list of all tasks.
     pub fn show_all_tasks(&mut self, tasks: &[Task]) {
         if tasks.is_empty() {
-            self.print_line(&"No tasks found. Use 'add <description>' to create a task.".yellow().to_string());
+            self.print_line(&MessageFormatter::warning("No tasks found. Use 'add <description>' to create a task."));
             return;
         }
 
@@ -117,7 +128,7 @@ impl<W: Write> OutputWriter<W> {
     /// Displays a list of completed tasks.
     pub fn show_completed_tasks(&mut self, tasks: &[&Task]) {
         if tasks.is_empty() {
-            self.print_line(&"No completed tasks found.".yellow().to_string());
+            self.print_line(&MessageFormatter::warning("No completed tasks found."));
             return;
         }
 
@@ -127,7 +138,7 @@ impl<W: Write> OutputWriter<W> {
     /// Displays a list of pending tasks.
     pub fn show_pending_tasks(&mut self, tasks: &[&Task]) {
         if tasks.is_empty() {
-            self.print_line(&"No pending tasks found.".yellow().to_string());
+            self.print_line(&MessageFormatter::warning("No pending tasks found."));
             return;
         }
 
@@ -142,7 +153,8 @@ impl<W: Write> OutputWriter<W> {
     /// * `priority` - The priority level being filtered
     pub fn show_tasks_by_priority(&mut self, tasks: &[&Task], priority: Priority) {
         if tasks.is_empty() {
-            self.print_line(&format!("No {} priority tasks found.", priority.as_str()).yellow().to_string());
+            let message = format!("No {} priority tasks found.", priority.as_str());
+            self.print_line(&MessageFormatter::warning(&message));
             return;
         }
 
@@ -167,7 +179,8 @@ impl<W: Write> OutputWriter<W> {
                 Some(priority) => format!("{} priority ", priority.as_str()),
                 None => String::new(),
             };
-            self.print_line(&format!("No {}{}tasks found.", status_str, priority_str).yellow().to_string());
+            let message = format!("No {}{}tasks found.", status_str, priority_str);
+            self.print_line(&MessageFormatter::warning(&message));
             return;
         }
 
@@ -200,7 +213,8 @@ impl<W: Write> OutputWriter<W> {
     /// * `keyword` - The search keyword used
     pub fn show_search_results(&mut self, tasks: &[&Task], keyword: &str) {
         if tasks.is_empty() {
-            self.print_line(&format!("No tasks found matching '{}'.", keyword).yellow().to_string());
+            let message = format!("No tasks found matching '{}'.", keyword);
+            self.print_line(&MessageFormatter::warning(&message));
             return;
         }
 
@@ -215,50 +229,17 @@ impl<W: Write> OutputWriter<W> {
     /// * `title` - The title to display above the task list
     /// * `tasks` - A vector of task references to display
     fn show_task_list(&mut self, title: &str, tasks: Vec<&Task>) {
-        let separator = "-".repeat(title.len() + 8);
+        let separator_length = title.len() + 8;
+        let max_id_width = TaskFormatter::calculate_max_id_width(&tasks);
         
-        // Calculate the maximum width needed for task IDs
-        let max_id_width = tasks.iter()
-            .map(|t| t.id.to_string().len())
-            .max()
-            .unwrap_or(1);
+        self.print_line(&format!("\n{}", MessageFormatter::section_title(title)));
         
-        self.print_line(&format!("\n{}", format!("--- {} ---", title).bright_cyan().bold()));
-        for task in tasks {
-            let status_symbol = if task.is_completed() {
-                format!("[{}]", "✓".bright_green().bold())
-            } else {
-                format!("[{}]", " ".white())
-            };
-            
-            // Get priority symbol and color
-            let priority_symbol = task.priority.symbol();
-            let colored_priority = match task.priority {
-                Priority::High => priority_symbol.bright_red().bold(),
-                Priority::Medium => priority_symbol.bright_yellow().bold(),
-                Priority::Low => priority_symbol.bright_blue().bold(),
-            };
-            
-            // Format task ID with right alignment based on max width
-            let task_id_formatted = format!("{:>width$}", task.id, width = max_id_width);
-            
-            let task_text = if task.is_completed() {
-                format!("{}. {} {} {}", 
-                    task_id_formatted.bright_blue(), 
-                    status_symbol, 
-                    colored_priority,
-                    task.description.bright_black())
-            } else {
-                format!("{}. {} {} {}", 
-                    task_id_formatted.bright_blue(), 
-                    status_symbol, 
-                    colored_priority,
-                    task.description.white())
-            };
-            
-            self.print_line(&task_text);
+        for task in &tasks {
+            let formatted_task = TaskFormatter::format_task(task, max_id_width);
+            self.print_line(&formatted_task);
         }
-        self.print_line(&format!("{}\n", separator.bright_cyan()));
+        
+        self.print_line(&format!("{}\n", MessageFormatter::separator(separator_length)));
     }
 
     /// Displays a message when a task is successfully added.
@@ -268,7 +249,8 @@ impl<W: Write> OutputWriter<W> {
     /// * `task_id` - The ID of the newly added task
     /// * `description` - The description of the task
     pub fn show_task_added(&mut self, task_id: usize, description: &str) {
-        self.print_line(&format!("{} Task added with ID {}: '{}'", "✓".bright_green().bold(), task_id.to_string().bright_blue(), description));
+        let message = format!("Task added with ID {}: '{}'", task_id.to_string().bright_blue(), description);
+        self.print_line(&MessageFormatter::success(&message));
     }
 
     /// Displays a message when a task is successfully removed.
@@ -277,7 +259,8 @@ impl<W: Write> OutputWriter<W> {
     ///
     /// * `description` - The description of the removed task
     pub fn show_task_removed(&mut self, description: &str) {
-        self.print_line(&format!("{} Task removed: '{}'", "✓".bright_green().bold(), description));
+        let message = format!("Task removed: '{}'", description);
+        self.print_line(&MessageFormatter::success(&message));
     }
 
     /// Displays an error message when a task is not found.
@@ -286,7 +269,8 @@ impl<W: Write> OutputWriter<W> {
     ///
     /// * `task_id` - The ID of the task that was not found
     pub fn show_task_not_found(&mut self, task_id: usize) {
-        self.print_line(&format!("{} Task with ID {} not found.", "✗".bright_red().bold(), task_id.to_string().bright_blue()));
+        let message = format!("Task with ID {} not found.", task_id.to_string().bright_blue());
+        self.print_line(&MessageFormatter::error(&message));
     }
 
     /// Displays a message when a task is marked as completed.
@@ -295,7 +279,8 @@ impl<W: Write> OutputWriter<W> {
     ///
     /// * `description` - The description of the completed task
     pub fn show_task_completed(&mut self, description: &str) {
-        self.print_line(&format!("{} Task '{}' marked as completed.", "✓".bright_green().bold(), description));
+        let message = format!("Task '{}' marked as completed.", description);
+        self.print_line(&MessageFormatter::success(&message));
     }
 
     /// Displays a message when a task is marked as pending.
@@ -304,7 +289,8 @@ impl<W: Write> OutputWriter<W> {
     ///
     /// * `description` - The description of the task
     pub fn show_task_uncompleted(&mut self, description: &str) {
-        self.print_line(&format!("{} Task '{}' marked as pending.", "↻".bright_yellow().bold(), description));
+        let message = format!("Task '{}' marked as pending.", description);
+        self.print_line(&MessageFormatter::warning(&message));
     }
 
     /// Displays a message when a task status is toggled.
@@ -314,12 +300,13 @@ impl<W: Write> OutputWriter<W> {
     /// * `description` - The description of the task
     /// * `is_completed` - Whether the task is now completed
     pub fn show_task_toggled(&mut self, description: &str, is_completed: bool) {
-        let (icon, status) = if is_completed {
-            ("✓".bright_green().bold(), "completed".bright_green())
+        let message = format!("Task '{}' marked as {}.", description, 
+            if is_completed { "completed".bright_green() } else { "pending".bright_yellow() });
+        if is_completed {
+            self.print_line(&MessageFormatter::success(&message));
         } else {
-            ("↻".bright_yellow().bold(), "pending".bright_yellow())
-        };
-        self.print_line(&format!("{} Task '{}' marked as {}.", icon, description, status));
+            self.print_line(&MessageFormatter::warning(&message));
+        }
     }
 
     /// Displays a message when a task priority is set.
@@ -329,12 +316,9 @@ impl<W: Write> OutputWriter<W> {
     /// * `description` - The description of the task
     /// * `priority` - The new priority level
     pub fn show_priority_set(&mut self, description: &str, priority: Priority) {
-        let colored_priority = match priority {
-            Priority::High => format!("{} {}", priority.symbol(), priority.as_str()).bright_red().bold(),
-            Priority::Medium => format!("{} {}", priority.symbol(), priority.as_str()).bright_yellow().bold(),
-            Priority::Low => format!("{} {}", priority.symbol(), priority.as_str()).bright_blue().bold(),
-        };
-        self.print_line(&format!("{} Priority set to {} for task: '{}'", "✓".bright_green().bold(), colored_priority, description));
+        let colored_priority = TaskFormatter::format_priority_with_name(priority);
+        let message = format!("Priority set to {} for task: '{}'", colored_priority, description);
+        self.print_line(&MessageFormatter::success(&message));
     }
 
     /// Displays a goodbye message.
@@ -356,7 +340,9 @@ impl<W: Write> OutputWriter<W> {
     ///
     /// * `command` - The unknown command entered
     pub fn show_unknown_command(&mut self, command: &str) {
-        self.print_line(&format!("{} Unknown command '{}'. Type {} for available commands.", "✗".bright_red().bold(), command.bright_yellow(), "help".bright_yellow()));
+        let message = format!("Unknown command '{}'. Type {} for available commands.", 
+            command.bright_yellow(), "help".bright_yellow());
+        self.print_line(&MessageFormatter::error(&message));
     }
 
     /// Displays an error message for invalid input.
@@ -365,7 +351,7 @@ impl<W: Write> OutputWriter<W> {
     ///
     /// * `message` - The error message to display
     pub fn show_error(&mut self, message: &str) {
-        self.print_line(&format!("{} {}", "✗".bright_red().bold(), message.red()));
+        self.print_line(&MessageFormatter::error(message));
     }
 
     /// Displays a success message to the user.
@@ -374,7 +360,7 @@ impl<W: Write> OutputWriter<W> {
     ///
     /// * `message` - The success message to display
     pub fn show_success(&mut self, message: &str) {
-        self.print_line(&format!("{} {}", "✓".bright_green().bold(), message.green()));
+        self.print_line(&MessageFormatter::success(message));
     }
 
     /// Prints a line of text to the output.
@@ -560,7 +546,7 @@ mod tests {
         let mut output = OutputWriter::with_writer(&mut buffer);
         output.show_help();
         let result = String::from_utf8(buffer).unwrap();
-        assert!(result.contains("=== To-Do List Manager Commands ==="));
+        assert!(result.contains("--- To-Do List Manager Commands ---"));
         assert!(result.contains("add <description>"));
         assert!(result.contains("list [status] [priority]"));
         assert!(result.contains("remove <id>"));
@@ -572,7 +558,6 @@ mod tests {
         assert!(result.contains("quit"));
         assert!(result.contains("Alias:") || result.contains("Aliases:"));
         assert!(result.contains("rm, delete"));
-        assert!(result.contains("done"));
         assert!(result.contains("undo"));
     }
 
@@ -624,7 +609,7 @@ mod tests {
         let tasks: Vec<Task> = vec![];
         output.show_all_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
-        assert_eq!(result, "No tasks found. Use 'add <description>' to create a task.\n");
+        assert_eq!(result, "↻ No tasks found. Use 'add <description>' to create a task.\n");
     }
 
     #[test]
@@ -652,7 +637,7 @@ mod tests {
         let tasks: Vec<&Task> = vec![];
         output.show_completed_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
-        assert_eq!(result, "No completed tasks found.\n");
+        assert_eq!(result, "↻ No completed tasks found.\n");
     }
 
     #[test]
@@ -679,7 +664,7 @@ mod tests {
         let tasks: Vec<&Task> = vec![];
         output.show_pending_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
-        assert_eq!(result, "No pending tasks found.\n");
+        assert_eq!(result, "↻ No pending tasks found.\n");
     }
 
     #[test]

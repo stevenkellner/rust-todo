@@ -1,0 +1,115 @@
+use crate::models::task::Task;
+use crate::models::priority::Priority;
+use colored::*;
+
+/// Handles formatting of tasks for display
+pub struct TaskFormatter;
+
+impl TaskFormatter {
+    /// Formats a task for display with colored output
+    ///
+    /// # Arguments
+    ///
+    /// * `task` - The task to format
+    /// * `id_width` - The width to use for ID alignment
+    ///
+    /// # Returns
+    ///
+    /// A formatted string ready for display
+    pub fn format_task(task: &Task, id_width: usize) -> String {
+        let status_symbol = Self::format_status_symbol(task.is_completed());
+        let colored_priority = Self::format_priority(task.priority);
+        let task_id_formatted = format!("{:>width$}", task.id, width = id_width);
+        
+        let description_color = if task.is_completed() {
+            task.description.bright_black()
+        } else {
+            task.description.white()
+        };
+        
+        format!("{}. {} {} {}", 
+            task_id_formatted.bright_blue(), 
+            status_symbol, 
+            colored_priority,
+            description_color)
+    }
+    
+    /// Formats the status symbol for a task
+    fn format_status_symbol(is_completed: bool) -> String {
+        if is_completed {
+            format!("[{}]", "✓".bright_green().bold())
+        } else {
+            format!("[{}]", " ".white())
+        }
+    }
+    
+    /// Formats a priority with appropriate color
+    pub fn format_priority(priority: Priority) -> ColoredString {
+        let symbol = priority.symbol();
+        match priority {
+            Priority::High => symbol.bright_red().bold(),
+            Priority::Medium => symbol.bright_yellow().bold(),
+            Priority::Low => symbol.bright_blue().bold(),
+        }
+    }
+    
+    /// Formats a priority with its name and color
+    pub fn format_priority_with_name(priority: Priority) -> ColoredString {
+        let formatted = format!("{} {}", priority.symbol(), priority.as_str());
+        match priority {
+            Priority::High => formatted.bright_red().bold(),
+            Priority::Medium => formatted.bright_yellow().bold(),
+            Priority::Low => formatted.bright_blue().bold(),
+        }
+    }
+    
+    /// Calculates the maximum ID width for a list of tasks
+    pub fn calculate_max_id_width(tasks: &[&Task]) -> usize {
+        tasks.iter()
+            .map(|t| t.id.to_string().len())
+            .max()
+            .unwrap_or(1)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    fn setup() {
+        colored::control::set_override(false);
+    }
+    
+    #[test]
+    fn test_format_status_symbol_completed() {
+        setup();
+        let result = TaskFormatter::format_status_symbol(true);
+        assert!(result.contains("✓"));
+    }
+    
+    #[test]
+    fn test_format_status_symbol_pending() {
+        setup();
+        let result = TaskFormatter::format_status_symbol(false);
+        assert!(result.contains("[ ]"));
+    }
+    
+    #[test]
+    fn test_calculate_max_id_width_single_digit() {
+        let task1 = Task { id: 1, description: "Test".to_string(), completed: false, priority: Priority::Medium };
+        let task2 = Task { id: 5, description: "Test".to_string(), completed: false, priority: Priority::Medium };
+        let tasks = vec![&task1, &task2];
+        
+        assert_eq!(TaskFormatter::calculate_max_id_width(&tasks), 1);
+    }
+    
+    #[test]
+    fn test_calculate_max_id_width_mixed() {
+        let task1 = Task { id: 9, description: "Test".to_string(), completed: false, priority: Priority::Medium };
+        let task2 = Task { id: 10, description: "Test".to_string(), completed: false, priority: Priority::Medium };
+        let task3 = Task { id: 100, description: "Test".to_string(), completed: false, priority: Priority::Medium };
+        let tasks = vec![&task1, &task2, &task3];
+        
+        assert_eq!(TaskFormatter::calculate_max_id_width(&tasks), 3);
+    }
+}

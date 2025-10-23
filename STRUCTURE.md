@@ -12,7 +12,7 @@ src/
     │
     ├── models/                      # Domain Models Layer
     │   ├── mod.rs                   # Models module definition
-    │   ├── loop_control.rs          # Control flow enum (Continue, Break)
+    │   ├── loop_control.rs          # Control flow enum (Continue, Exit)
     │   ├── priority.rs              # Priority enum (Low, Medium, High)
     │   ├── task.rs                  # Task struct with priority and status
     │   ├── task_filter.rs           # Filter criteria for querying tasks
@@ -23,11 +23,16 @@ src/
     ├── ui/                          # User Interface Layer
     │   ├── mod.rs                   # UI module definition
     │   ├── input_reader.rs          # Reads and parses user commands
-    │   └── output_writer.rs         # Formats and displays output
+    │   ├── output_writer.rs         # Formats and displays output
+    │   └── formatters/              # Formatting modules
+    │       ├── mod.rs               # Formatters module definition
+    │       ├── task_formatter.rs    # Task display formatting
+    │       └── message_formatter.rs # Message and UI element formatting
     │
     └── controller/                  # Controller Layer
         ├── mod.rs                   # Controller module definition
-        └── todo_controller.rs       # Orchestrates UI events with models
+        ├── todo_controller.rs       # Main application controller
+        └── debug_controller.rs      # Debug mode functionality
 
 tests/
 ├── integration_tests.rs             # Integration tests for workflows
@@ -72,7 +77,7 @@ The domain layer containing all business logic and data structures.
 
 - **`loop_control.rs`** - Control flow signals:
   - Continue - keep running the application loop
-  - Break - exit the application
+  - Exit - exit the application
 
 ### 2. UI Layer (`ui/`)
 
@@ -88,6 +93,17 @@ Handles all user interaction and terminal I/O.
   - Task list formatting
   - Error and success messages
   - Help text display
+  - Delegates formatting to formatter modules
+
+- **`formatters/task_formatter.rs`** - Task formatting:
+  - Task display with status symbols, priorities, descriptions
+  - Dynamic ID width calculation for alignment
+  - Reusable formatting functions
+
+- **`formatters/message_formatter.rs`** - Message formatting:
+  - Success, error, and warning messages with icons
+  - Section titles and separators
+  - Help text formatting (commands, labels, sub-info)
 
 ### 3. Controller Layer (`controller/`)
 
@@ -98,6 +114,12 @@ Coordinates between UI and model layers.
   - Updates TodoList based on events
   - Delegates output to OutputWriter
   - Main application loop
+
+- **`debug_controller.rs`** - Debug functionality:
+  - Debug mode toggle and state management
+  - Random task generation for testing
+  - Bulk operations (clear all tasks)
+  - Isolated from production code
 
 ## Import Paths
 

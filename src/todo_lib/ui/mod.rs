@@ -3,6 +3,7 @@
 //! This module handles all user interactions including reading input
 //! and writing output to the terminal.
 
+pub mod formatters;
 pub mod input_reader;
 pub mod output_writer;
 
