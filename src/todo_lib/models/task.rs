@@ -27,6 +27,8 @@ pub struct Task {
     pub priority: Priority,
     /// The optional due date for the task
     pub due_date: Option<NaiveDate>,
+    /// The optional category/tag for the task
+    pub category: Option<String>,
 }
 
 impl Task {
@@ -56,6 +58,7 @@ impl Task {
             completed: false,
             priority: Priority::default(),
             due_date: None,
+            category: None,
         }
     }
 
@@ -211,6 +214,43 @@ impl Task {
         } else {
             false
         }
+    }
+
+    /// Sets the category of the task.
+    ///
+    /// # Arguments
+    ///
+    /// * `category` - The category/tag to assign (None to clear)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    ///
+    /// let mut task = Task::new(1, "Task".to_string());
+    /// task.set_category(Some("work".to_string()));
+    /// assert_eq!(task.get_category(), Some(&"work".to_string()));
+    /// ```
+    pub fn set_category(&mut self, category: Option<String>) {
+        self.category = category;
+    }
+
+    /// Gets the category of the task.
+    ///
+    /// # Returns
+    ///
+    /// A reference to the optional category string
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    ///
+    /// let task = Task::new(1, "Task".to_string());
+    /// assert_eq!(task.get_category(), None);
+    /// ```
+    pub fn get_category(&self) -> Option<&String> {
+        self.category.as_ref()
     }
 }
 

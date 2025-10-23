@@ -5,17 +5,21 @@ A command-line todo list application built in Rust with a clean, layered archite
 ## Features
 
 - ✅ Add tasks with descriptive names
-- 🔍 List all tasks, or filter by completion status and priority
+- 🔍 List all tasks, or filter by completion status, priority, and category
 - ✔️ Mark tasks as complete or incomplete
 - 🔄 Toggle task completion status
 - 🎯 Set task priorities (Low, Medium, High) with colored indicators
-- � Search tasks by keyword
-- �🗑️ Remove tasks by ID
+- 🔖 Assign categories/tags to tasks for better organization
+- 📅 Set due dates for tasks with visual indicators for overdue items
+- 📝 Edit task descriptions
+- 📊 View task statistics (completion rate, priority breakdown, category breakdown)
+- 🔍 Search tasks by keyword
+- �️ Remove tasks by ID
 - 🎨 Intuitive command-line interface with colored output
-- 📋 Combined filtering (e.g., "list pending high")
+- 📋 Combined filtering (e.g., "list pending high category:work")
 - 🐛 Debug mode for testing and development
 - 🏗️ Event-driven architecture with clean separation of concerns
-- ✅ Comprehensive test suite with 200 tests (150 unit + 8 integration + 6 filtering + 36 doc tests)
+- ✅ Comprehensive test suite with 211 tests (150 unit + 8 integration + 6 filtering + 47 doc tests)
 - 📚 Full documentation with `cargo doc`
 
 ## Quick Start
@@ -99,7 +103,12 @@ When you run the application, you'll see a command prompt where you can enter va
 | `uncomplete <id>` | Mark task as pending | `uncomplete 1` |
 | `toggle <id>` | Toggle task completion status | `toggle 1` |
 | `priority <id> <level>` | Set task priority (high/medium/low) | `priority 1 high` |
+| `set-category <id> <name>` | Assign category to task | `set-category 1 work` |
+| `categories` | List all categories | `categories` |
+| `set-due <id> <date>` | Set task due date (YYYY-MM-DD) | `set-due 1 2024-12-31` |
+| `edit <id> <description>` | Edit task description | `edit 1 New description` |
 | `search <keyword>` | Search tasks by keyword | `search groceries` |
+| `statistics` | Show task statistics | `statistics` |
 | `help` | Show help message | `help` |
 | `quit` | Exit the program | `quit` |
 
@@ -124,15 +133,37 @@ Debug mode provides additional commands for testing and development:
 > add Read a book
 ✓ Task added with ID 2: 'Read a book'
 
+> add Write report
+✓ Task added with ID 3: 'Write report'
+
 > priority 1 high
 ✓ Priority set to ▲ High for task: 'Buy groceries'
+
+> category 2 personal
+✓ Category for task 'Read a book' set to: personal
+
+> set-category 3 work
+✓ Category for task 'Write report' set to: work
 
 > list
 
 --- All Tasks ---
+─────────────────────────────────────────────────────
+
 1. [ ] ▲ Buy groceries
-2. [ ] ■ Read a book
------------------
+2. [ ] ■ Read a book [personal]
+3. [ ] ■ Write report [work]
+
+─────────────────────────────────────────────────────
+
+> list category:work
+
+--- All Tasks ---
+─────────────────────────────────────────────────────
+
+3. [ ] ■ Write report [work]
+
+─────────────────────────────────────────────────────
 
 > complete 1
 ✓ Task 'Buy groceries' marked as completed.
@@ -140,8 +171,11 @@ Debug mode provides additional commands for testing and development:
 > search book
 
 --- Search Results for 'book' ---
-2. [ ] ■ Read a book
------------------------------
+─────────────────────────────────────────────────────
+
+2. [ ] ■ Read a book [personal]
+
+─────────────────────────────────────────────────────
 
 > quit
 
@@ -156,7 +190,7 @@ Debug mode provides additional commands for testing and development:
 
 ## Testing
 
-The project has a comprehensive test suite with **200 total tests** (150 unit tests + 8 integration tests + 6 filtering tests + 36 doc tests):
+The project has a comprehensive test suite with **211 total tests** (150 unit tests + 8 integration tests + 6 filtering tests + 47 doc tests):
 
 ### Run All Tests
 

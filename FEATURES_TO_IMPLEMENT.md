@@ -211,7 +211,7 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 ### 7. Task Categories/Tags (User-Created)
 
-**Status:** Pending  
+**Status:** ✅ Complete  
 **Complexity:** Medium  
 **Description:**
 
@@ -230,6 +230,43 @@ This document tracks the 19 features selected for implementation in the TODO man
 - Add category filter: `list category:<name>`
 - Assign colors to categories dynamically
 - Display category in task list
+
+**Implementation Notes:**
+
+- Added `category: Option<String>` field to Task struct
+- Implemented category helper methods in Task:
+  - `set_category(category)` - Sets or clears the category (None to clear)
+  - `get_category()` - Returns the optional category reference
+- Added `SetCategory(usize, Option<String>)` event variant to UiEvent
+- Added `ListCategories` event variant to UiEvent
+- Implemented `set_task_category()` method in TodoList
+- Implemented `get_all_categories()` method in TodoList:
+  - Returns sorted, deduplicated Vec of all category names
+  - Efficiently collects unique categories from all tasks
+- Added `parse_set_category_command()` in InputReader:
+  - Parses category names (single or multi-word)
+  - Accepts "none" or "clear" to remove category
+  - Validates task ID format
+- Extended list command parser to support category filtering:
+  - Syntax: `category:name` or `cat:name`
+  - Example: `list pending category:work`
+  - Detects conflicts with other category filters
+- Added category field to TaskFilter struct
+- Updated `get_filtered_tasks()` in TodoList to filter by category
+- Added `format_category()` in TaskFormatter:
+  - Displays category badges in bright magenta color
+  - Format: `[category]`
+- Added `show_category_set()` in OutputWriter for confirmation messages
+- Added `show_categories()` in OutputWriter to list all categories
+- Added `handle_set_category()` in TodoController
+- Added `handle_list_categories()` in TodoController
+- Commands:
+  - `set-category <id> <name>` (aliases: `category`, `cat`)
+  - `categories` (alias: `list-categories`)
+- Filters: `list category:work` or `list cat:work`
+- All category badges displayed in bright magenta color
+- Updated help text with category commands and filtering syntax
+- All tests passing (211 total: 150 unit + 6 filtering + 8 integration + 47 doc tests)
 
 ---
 

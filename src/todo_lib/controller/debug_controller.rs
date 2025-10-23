@@ -77,6 +77,19 @@ impl DebugController {
         
         let priorities = [Priority::High, Priority::Medium, Priority::Low];
         
+        let categories = [
+            "work",
+            "personal",
+            "urgent",
+            "bug",
+            "feature",
+            "documentation",
+            "testing",
+            "deployment",
+            "maintenance",
+            "research",
+        ];
+        
         for _ in 0..count {
             let template_idx = rng.random_range(0..task_templates.len());
             let description = task_templates[template_idx].to_string();
@@ -98,6 +111,13 @@ impl DebugController {
                 let days_offset = rng.random_range(-7..31);
                 let due_date = today + chrono::Duration::days(days_offset);
                 let _ = todo_list.set_due_date(task_id, Some(due_date));
+            }
+            
+            // Randomly add categories (~70% chance)
+            if rng.random_bool(0.7) {
+                let category_idx = rng.random_range(0..categories.len());
+                let category = Some(categories[category_idx].to_string());
+                let _ = todo_list.set_task_category(task_id, category);
             }
         }
         

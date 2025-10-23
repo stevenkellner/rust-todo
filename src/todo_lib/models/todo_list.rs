@@ -320,7 +320,12 @@ impl TodoList {
                 OverdueFilter::OnlyNotOverdue => !task.is_overdue(today),
             };
             
-            status_matches && priority_matches && overdue_matches
+            let category_matches = match &filter.category {
+                Some(category) => task.category.as_ref().map(|c| c == category).unwrap_or(false),
+                None => true,
+            };
+            
+            status_matches && priority_matches && overdue_matches && category_matches
         }).collect()
     }
 
@@ -456,6 +461,75 @@ impl TodoList {
         } else {
             None
         }
+    }
+
+    /// Sets the category of a task by its ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The unique identifier of the task
+    /// * `category` - An optional category name. Pass `None` to clear the category.
+    ///
+    /// # Returns
+    ///
+    /// `Some(&Task)` containing a reference to the updated task if found, or `None` if no task with the given ID exists.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id = list.add_task("Write code".to_string());
+    /// 
+    /// list.set_task_category(id, Some("work".to_string()));
+    /// assert_eq!(list.get_tasks()[0].category, Some("work".to_string()));
+    /// 
+    /// list.set_task_category(id, None);
+    /// assert_eq!(list.get_tasks()[0].category, None);
+    /// ```
+    pub fn set_task_category(&mut self, id: usize, category: Option<String>) -> Option<&Task> {
+        if let Some(task) = self.tasks.iter_mut().find(|task| task.id == id) {
+            task.set_category(category);
+            Some(task)
+        } else {
+            None
+        }
+    }
+
+    /// Gets all unique categories from all tasks.
+    ///
+    /// # Returns
+    ///
+    /// A vector of unique category names sorted alphabetically.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id1 = list.add_task("Task 1".to_string());
+    /// let id2 = list.add_task("Task 2".to_string());
+    /// let id3 = list.add_task("Task 3".to_string());
+    /// 
+    /// list.set_task_category(id1, Some("work".to_string()));
+    /// list.set_task_category(id2, Some("personal".to_string()));
+    /// list.set_task_category(id3, Some("work".to_string()));
+    /// 
+    /// let categories = list.get_all_categories();
+    /// assert_eq!(categories, vec!["personal", "work"]);
+    /// ```
+    pub fn get_all_categories(&self) -> Vec<String> {
+        let mut categories: Vec<String> = self.tasks
+            .iter()
+            .filter_map(|task| task.category.clone())
+            .collect();
+        
+        // Remove duplicates and sort
+        categories.sort();
+        categories.dedup();
+        categories
     }
 
     /// Marks a task as completed by its ID.

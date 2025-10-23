@@ -15,6 +15,9 @@ pub struct TaskFilter {
     
     /// Filter by overdue status
     pub overdue: OverdueFilter,
+    
+    /// Filter by category (None means all categories)
+    pub category: Option<String>,
 }
 
 impl TaskFilter {
@@ -59,6 +62,7 @@ impl TaskFilter {
             status,
             priority,
             overdue,
+            category: None,
         }
     }
 
@@ -82,6 +86,12 @@ impl TaskFilter {
     /// Sets the overdue filter.
     pub fn with_overdue(mut self, overdue: OverdueFilter) -> Self {
         self.overdue = overdue;
+        self
+    }
+
+    /// Sets the category filter.
+    pub fn with_category(mut self, category: String) -> Self {
+        self.category = Some(category);
         self
     }
 }

@@ -93,6 +93,8 @@ impl TodoController {
             UiEvent::ToggleTask(id) => self.handle_toggle_task(*id),
             UiEvent::SetPriority(id, priority) => self.handle_set_priority(*id, *priority),
             UiEvent::SetDueDate(id, due_date) => self.handle_set_due_date(*id, *due_date),
+            UiEvent::SetCategory(id, category) => self.handle_set_category(*id, category.clone()),
+            UiEvent::ListCategories => self.handle_list_categories(),
             UiEvent::EditTask(id, new_description) => self.handle_edit_task(*id, new_description),
             UiEvent::SearchTasks(keyword) => self.handle_search_tasks(keyword),
             UiEvent::ShowStatistics => self.handle_show_statistics(),
@@ -211,6 +213,24 @@ impl TodoController {
                 self.output.show_task_not_found(id);
             }
         }
+    }
+
+    /// Handles the SetCategory event.
+    fn handle_set_category(&mut self, id: usize, category: Option<String>) {
+        match self.todo_list.set_task_category(id, category.clone()) {
+            Some(task) => {
+                self.output.show_category_set(&task.description, category);
+            }
+            None => {
+                self.output.show_task_not_found(id);
+            }
+        }
+    }
+
+    /// Handles the ListCategories event.
+    fn handle_list_categories(&mut self) {
+        let categories = self.todo_list.get_all_categories();
+        self.output.show_categories(&categories);
     }
 
     /// Handles the EditTask event.

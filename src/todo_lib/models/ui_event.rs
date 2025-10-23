@@ -35,6 +35,12 @@ pub enum UiEvent {
     /// User wants to edit a task's description
     EditTask(usize, String),
     
+    /// User wants to set the category of a task
+    SetCategory(usize, Option<String>),
+    
+    /// User wants to list all categories
+    ListCategories,
+    
     /// User wants to search for tasks by keyword
     SearchTasks(String),
     

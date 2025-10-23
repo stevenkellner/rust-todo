@@ -90,6 +90,8 @@ impl<R: Read> InputReader<R> {
             "toggle" => self.parse_toggle_command(&args),
             "priority" | "pri" => self.parse_priority_command(&args),
             "set-due" | "due" => self.parse_set_due_command(&args),
+            "set-category" | "category" | "cat" => self.parse_set_category_command(&args),
+            "categories" | "list-categories" => UiEvent::ListCategories,
             "edit" => self.parse_edit_command(&args),
             "search" | "find" => self.parse_search_command(&args),
             "statistics" | "stats" => UiEvent::ShowStatistics,
@@ -121,10 +123,37 @@ impl<R: Read> InputReader<R> {
         let mut filter = TaskFilter::all();
         let mut status_set = false;
         let mut priority_set = false;
+        let mut category_set = false;
         
         // Parse all arguments to allow combinations like "list completed high overdue"
-        for arg in args.iter().map(|s| s.to_lowercase()) {
-            match arg.as_str() {
+        for arg in args.iter().map(|s| s.to_string()) {
+            let arg_lower = arg.to_lowercase();
+            
+            // Check for category filter (format: category:name or cat:name)
+            if arg_lower.starts_with("category:") || arg_lower.starts_with("cat:") {
+                if category_set {
+                    return UiEvent::InvalidInput(
+                        "Cannot specify multiple category filters.".to_string()
+                    );
+                }
+                let category = if arg_lower.starts_with("category:") {
+                    arg[9..].to_string()
+                } else {
+                    arg[4..].to_string()
+                };
+                
+                if category.trim().is_empty() {
+                    return UiEvent::InvalidInput(
+                        "Category name cannot be empty. Use: list category:name".to_string()
+                    );
+                }
+                
+                filter = filter.with_category(category);
+                category_set = true;
+                continue;
+            }
+            
+            match arg_lower.as_str() {
                 "completed" | "done" => {
                     if status_set {
                         return UiEvent::InvalidInput(
@@ -175,14 +204,14 @@ impl<R: Read> InputReader<R> {
                 }
                 _ => {
                     return UiEvent::InvalidInput(
-                        format!("Unknown filter: '{}'. Valid filters: done, todo, high, medium, low, overdue", arg)
+                        format!("Unknown filter: '{}'. Valid filters: done, todo, high, medium, low, overdue, category:name", arg)
                     );
                 }
             }
         }
         
         // If no filter was specified, return None to show all tasks
-        if filter.status.is_none() && filter.priority.is_none() && filter.overdue == OverdueFilter::All {
+        if filter.status.is_none() && filter.priority.is_none() && filter.overdue == OverdueFilter::All && filter.category.is_none() {
             UiEvent::ListTasks(None)
         } else {
             UiEvent::ListTasks(Some(filter))
@@ -246,6 +275,37 @@ impl<R: Read> InputReader<R> {
                     Err(_) => UiEvent::InvalidInput(
                         "Invalid date format. Use DD.MM.YYYY (e.g., 31.12.2025) or 'none' to clear.".to_string()
                     ),
+                }
+            }
+            Err(_) => UiEvent::InvalidInput("Please enter a valid task ID (number).".to_string()),
+        }
+    }
+
+    /// Parses the 'set-category' command to set or clear a task's category.
+    fn parse_set_category_command(&self, args: &[&str]) -> UiEvent {
+        if args.is_empty() {
+            return UiEvent::InvalidInput("Usage: set-category <task_id> <category|none>".to_string());
+        }
+        
+        match args[0].parse::<usize>() {
+            Ok(id) => {
+                if args.len() < 2 {
+                    // No category specified, clear it
+                    return UiEvent::SetCategory(id, None);
+                }
+                
+                let category = args[1..].join(" ");
+                
+                // Check if user wants to clear the category
+                if category.to_lowercase() == "none" || category.to_lowercase() == "clear" {
+                    return UiEvent::SetCategory(id, None);
+                }
+                
+                // Set the category
+                if category.trim().is_empty() {
+                    UiEvent::InvalidInput("Category name cannot be empty.".to_string())
+                } else {
+                    UiEvent::SetCategory(id, Some(category))
                 }
             }
             Err(_) => UiEvent::InvalidInput("Please enter a valid task ID (number).".to_string()),

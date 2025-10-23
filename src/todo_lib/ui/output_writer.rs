@@ -76,7 +76,8 @@ impl<W: Write> OutputWriter<W> {
         self.print_line(&MessageFormatter::command("list [status] [priority]", "List tasks (filters can be combined)"));
         self.print_line(&MessageFormatter::subinfo("Status:", "completed/done, pending/todo, overdue"));
         self.print_line(&MessageFormatter::subinfo("Priority:", "high/h, medium/med/m, low/l"));
-        self.print_line(&MessageFormatter::subinfo("Example:", "list pending high"));
+        self.print_line(&MessageFormatter::subinfo("Category:", "category:name or cat:name"));
+        self.print_line(&MessageFormatter::subinfo("Example:", "list pending high category:work"));
         self.print_line("");
         self.print_line(&MessageFormatter::command("remove <id>", "Remove a task by ID"));
         self.print_line(&MessageFormatter::label("Aliases:", "rm, delete"));
@@ -98,6 +99,13 @@ impl<W: Write> OutputWriter<W> {
         self.print_line(&MessageFormatter::label("Alias:", "due"));
         self.print_line("");
         self.print_line(&MessageFormatter::command("edit <id> <description>", "Edit task description"));
+        self.print_line("");
+        self.print_line(&MessageFormatter::command("set-category <id> <name>", "Set task category"));
+        self.print_line(&MessageFormatter::subinfo("Format:", "<name> or 'none' to clear"));
+        self.print_line(&MessageFormatter::label("Aliases:", "category, cat"));
+        self.print_line("");
+        self.print_line(&MessageFormatter::command("categories", "List all categories"));
+        self.print_line(&MessageFormatter::label("Alias:", "list-categories"));
         self.print_line("");
         self.print_line(&MessageFormatter::command("search <keyword>", "Search tasks by keyword"));
         self.print_line(&MessageFormatter::label("Alias:", "find"));
@@ -406,6 +414,42 @@ impl<W: Write> OutputWriter<W> {
         self.print_line(&MessageFormatter::success(&message));
     }
 
+    /// Displays a message when a task category is set or cleared.
+    ///
+    /// # Arguments
+    ///
+    /// * `description` - The description of the task
+    /// * `category` - The new category (or None to clear)
+    pub fn show_category_set(&mut self, description: &str, category: Option<String>) {
+        let message = if let Some(cat) = category {
+            format!("Category set to '{}' for task: '{}'", cat.bright_magenta(), description)
+        } else {
+            format!("Category cleared for task: '{}'", description)
+        };
+        self.print_line(&MessageFormatter::success(&message));
+    }
+
+    /// Displays all unique categories.
+    ///
+    /// # Arguments
+    ///
+    /// * `categories` - Vector of category names
+    pub fn show_categories(&mut self, categories: &[String]) {
+        self.print_line("");
+        if categories.is_empty() {
+            self.print_line(&"↻ No categories found.".bright_yellow().to_string());
+        } else {
+            self.print_line(&"--- All Categories ---".bright_cyan().bold().to_string());
+            self.print_line("");
+            for category in categories {
+                self.print_line(&format!("  {}", category.bright_magenta()));
+            }
+            self.print_line("");
+            self.print_line(&format!("Total: {} categories", categories.len()).bright_black().to_string());
+        }
+        self.print_line("");
+    }
+
     /// Displays a goodbye message.
     pub fn show_goodbye(&mut self) {
         self.print_line("");
@@ -704,8 +748,8 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         let tasks = vec![
-            Task { id: 1, description: "Task 1".to_string(), completed: false, priority: Priority::Medium, due_date: None },
-            Task { id: 2, description: "Task 2".to_string(), completed: true, priority: Priority::Medium, due_date: None },
+            Task { id: 1, description: "Task 1".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None },
+            Task { id: 2, description: "Task 2".to_string(), completed: true, priority: Priority::Medium, due_date: None, category: None },
         ];
         output.show_all_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
@@ -731,8 +775,8 @@ mod tests {
         use crate::models::task::Task;
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
-        let task1 = Task { id: 1, description: "Completed task".to_string(), completed: true, priority: Priority::Medium, due_date: None };
-        let task2 = Task { id: 2, description: "Another completed".to_string(), completed: true, priority: Priority::Medium, due_date: None };
+        let task1 = Task { id: 1, description: "Completed task".to_string(), completed: true, priority: Priority::Medium, due_date: None, category: None };
+        let task2 = Task { id: 2, description: "Another completed".to_string(), completed: true, priority: Priority::Medium, due_date: None, category: None };
         let tasks = vec![&task1, &task2];
         output.show_completed_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
@@ -758,8 +802,8 @@ mod tests {
         use crate::models::task::Task;
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
-        let task1 = Task { id: 1, description: "Pending task".to_string(), completed: false, priority: Priority::Medium, due_date: None };
-        let task2 = Task { id: 2, description: "Another pending".to_string(), completed: false, priority: Priority::Medium, due_date: None };
+        let task1 = Task { id: 1, description: "Pending task".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None };
+        let task2 = Task { id: 2, description: "Another pending".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None };
         let tasks = vec![&task1, &task2];
         output.show_pending_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
@@ -775,8 +819,8 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         let tasks = vec![
-            Task { id: 1, description: "Task with émojis 🎉".to_string(), completed: false, priority: Priority::Medium, due_date: None },
-            Task { id: 2, description: "Special chars: <>&\"'".to_string(), completed: true, priority: Priority::Medium, due_date: None },
+            Task { id: 1, description: "Task with émojis 🎉".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None },
+            Task { id: 2, description: "Special chars: <>&\"'".to_string(), completed: true, priority: Priority::Medium, due_date: None, category: None },
         ];
         output.show_all_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
@@ -791,7 +835,7 @@ mod tests {
         let mut output = OutputWriter::with_writer(&mut buffer);
         let long_desc = "A".repeat(200);
         let tasks = vec![
-            Task { id: 1, description: long_desc.clone(), completed: false, priority: Priority::Medium, due_date: None },
+            Task { id: 1, description: long_desc.clone(), completed: false, priority: Priority::Medium, due_date: None, category: None },
         ];
         output.show_all_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
@@ -833,7 +877,7 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         let tasks = vec![
-            Task { id: 1, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None },
+            Task { id: 1, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None },
         ];
         output.show_all_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
