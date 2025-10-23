@@ -15,22 +15,31 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 ### 1. Task Priorities
 
-**Status:** Pending  
+**Status:** ✅ Complete  
 **Complexity:** Easy  
 **Description:**
 
-- Add priority levels: High, Medium, Low
-- Color-code tasks by priority (High=Red, Medium=Yellow, Low=Blue)
-- Sort and filter tasks by priority
-- Display priority in task list
+- ✅ Add priority levels: High, Medium, Low
+- ✅ Color-code tasks by priority (High=Red, Medium=Yellow, Low=Blue)
+- ✅ Sort and filter tasks by priority
+- ✅ Display priority in task list
 
 **Implementation Details:**
 
-- Add `priority: Priority` enum field to Task struct
-- Update task creation to accept optional priority (default: Medium)
-- Add `set-priority <id> <high|medium|low>` command
-- Modify display to show priority indicator
-- Add priority filter to list command
+- ✅ Add `priority: Priority` enum field to Task struct
+- ✅ Update task creation to accept optional priority (default: Medium)
+- ✅ Add `priority <id> <high|medium|low>` command (alias: `pri`)
+- ✅ Modify display to show priority indicator (▼ ■ ▲)
+- ✅ Add priority filter to list command
+- ✅ Support combined filtering (e.g., `list pending high`)
+
+**Implementation Notes:**
+
+- Priority enum in `models/priority.rs` with Low/Medium/High variants
+- Visual indicators: ▼ (Low/Blue), ■ (Medium/Yellow), ▲ (High/Red)
+- `TaskFilter` struct supports combined status + priority filtering
+- `get_filtered_tasks()` method filters by both criteria simultaneously
+- Command aliases: high/h, medium/med/m, low/l
 
 ---
 
