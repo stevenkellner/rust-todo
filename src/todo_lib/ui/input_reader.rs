@@ -88,6 +88,7 @@ impl<R: Read> InputReader<R> {
             "uncomplete" | "undo" => self.parse_uncomplete_command(&args),
             "toggle" => self.parse_toggle_command(&args),
             "priority" | "pri" => self.parse_priority_command(&args),
+            "search" | "find" => self.parse_search_command(&args),
             "help" | "h" => UiEvent::ShowHelp,
             "quit" | "exit" | "q" => UiEvent::Quit,
             _ => UiEvent::UnknownCommand(command),
@@ -182,6 +183,20 @@ impl<R: Read> InputReader<R> {
                 }
             }
             Err(_) => UiEvent::InvalidInput("Please enter a valid task ID (number).".to_string()),
+        }
+    }
+
+    /// Parses the 'search' command and validates the keyword.
+    fn parse_search_command(&self, args: &[&str]) -> UiEvent {
+        if args.is_empty() {
+            UiEvent::InvalidInput("Usage: search <keyword>".to_string())
+        } else {
+            let keyword = args.join(" ");
+            if keyword.trim().is_empty() {
+                UiEvent::InvalidInput("Search keyword cannot be empty.".to_string())
+            } else {
+                UiEvent::SearchTasks(keyword)
+            }
         }
     }
 
@@ -843,4 +858,71 @@ mod tests {
             _ => panic!("Expected RemoveTask event"),
         }
     }
+
+    #[test]
+    fn test_parse_search_command_valid() {
+        let input_data = b"search meeting\n";
+        let mut reader = InputReader::with_reader(&input_data[..]);
+        let event = reader.read_event();
+        match event {
+            UiEvent::SearchTasks(keyword) => assert_eq!(keyword, "meeting"),
+            _ => panic!("Expected SearchTasks event"),
+        }
+    }
+
+    #[test]
+    fn test_parse_search_command_multiple_words() {
+        let input_data = b"search buy groceries\n";
+        let mut reader = InputReader::with_reader(&input_data[..]);
+        let event = reader.read_event();
+        match event {
+            UiEvent::SearchTasks(keyword) => assert_eq!(keyword, "buy groceries"),
+            _ => panic!("Expected SearchTasks event"),
+        }
+    }
+
+    #[test]
+    fn test_parse_search_command_find_alias() {
+        let input_data = b"find important\n";
+        let mut reader = InputReader::with_reader(&input_data[..]);
+        let event = reader.read_event();
+        match event {
+            UiEvent::SearchTasks(keyword) => assert_eq!(keyword, "important"),
+            _ => panic!("Expected SearchTasks event"),
+        }
+    }
+
+    #[test]
+    fn test_parse_search_command_empty() {
+        let input_data = b"search\n";
+        let mut reader = InputReader::with_reader(&input_data[..]);
+        let event = reader.read_event();
+        match event {
+            UiEvent::InvalidInput(msg) => assert!(msg.contains("Usage: search")),
+            _ => panic!("Expected InvalidInput event"),
+        }
+    }
+
+    #[test]
+    fn test_parse_search_command_whitespace_only() {
+        let input_data = b"search   \n";
+        let mut reader = InputReader::with_reader(&input_data[..]);
+        let event = reader.read_event();
+        match event {
+            UiEvent::InvalidInput(msg) => assert!(msg.contains("Usage: search")),
+            _ => panic!("Expected InvalidInput event"),
+        }
+    }
+
+    #[test]
+    fn test_parse_search_command_case_insensitive() {
+        let input_data = b"SEARCH test\n";
+        let mut reader = InputReader::with_reader(&input_data[..]);
+        let event = reader.read_event();
+        match event {
+            UiEvent::SearchTasks(keyword) => assert_eq!(keyword, "test"),
+            _ => panic!("Expected SearchTasks event"),
+        }
+    }
 }
+

@@ -307,6 +307,38 @@ impl TodoList {
         None
     }
 
+    /// Searches for tasks containing the given keyword in their description.
+    ///
+    /// The search is case-insensitive and matches partial strings.
+    ///
+    /// # Arguments
+    ///
+    /// * `keyword` - The search term to look for in task descriptions
+    ///
+    /// # Returns
+    ///
+    /// A vector of references to tasks that match the search criteria.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    ///
+    /// let mut list = TodoList::new();
+    /// list.add_task("Buy groceries at the store".to_string());
+    /// list.add_task("Read a book".to_string());
+    /// list.add_task("Buy concert tickets".to_string());
+    /// 
+    /// let results = list.search_tasks("buy");
+    /// assert_eq!(results.len(), 2);
+    /// ```
+    pub fn search_tasks(&self, keyword: &str) -> Vec<&Task> {
+        let keyword_lower = keyword.to_lowercase();
+        self.tasks.iter()
+            .filter(|task| task.description.to_lowercase().contains(&keyword_lower))
+            .collect()
+    }
+
     /// Marks a task as completed by its ID.
     ///
     /// If the task is already completed, this method has no effect but still returns the task.
@@ -470,5 +502,68 @@ mod tests {
         assert_eq!(pending_tasks.len(), 1);
         assert_eq!(completed_tasks[0].description, "Completed task");
         assert_eq!(pending_tasks[0].description, "Pending task");
+    }
+
+    #[test]
+    fn test_search_tasks_case_insensitive() {
+        let mut todo_list = TodoList::new();
+        todo_list.add_task("Buy groceries at the store".to_string());
+        todo_list.add_task("Read a book".to_string());
+        todo_list.add_task("Buy concert tickets".to_string());
+        
+        let results = todo_list.search_tasks("buy");
+        assert_eq!(results.len(), 2);
+        
+        let results = todo_list.search_tasks("BUY");
+        assert_eq!(results.len(), 2);
+        
+        let results = todo_list.search_tasks("Buy");
+        assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn test_search_tasks_partial_match() {
+        let mut todo_list = TodoList::new();
+        todo_list.add_task("Programming homework".to_string());
+        todo_list.add_task("Program the microwave".to_string());
+        todo_list.add_task("Write documentation".to_string());
+        
+        let results = todo_list.search_tasks("program");
+        assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn test_search_tasks_no_results() {
+        let mut todo_list = TodoList::new();
+        todo_list.add_task("Task one".to_string());
+        todo_list.add_task("Task two".to_string());
+        
+        let results = todo_list.search_tasks("nonexistent");
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn test_search_tasks_empty_list() {
+        let todo_list = TodoList::new();
+        
+        let results = todo_list.search_tasks("anything");
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn test_search_tasks_with_completed_and_pending() {
+        let mut todo_list = TodoList::new();
+        let task1_id = todo_list.add_task("Buy milk".to_string());
+        todo_list.add_task("Buy bread".to_string());
+        todo_list.add_task("Sell old laptop".to_string());
+        
+        todo_list.complete_task(task1_id);
+        
+        let results = todo_list.search_tasks("buy");
+        assert_eq!(results.len(), 2);
+        
+        // Verify both completed and pending tasks are found
+        let completed_count = results.iter().filter(|t| t.is_completed()).count();
+        assert_eq!(completed_count, 1);
     }
 }

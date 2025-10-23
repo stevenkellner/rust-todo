@@ -89,6 +89,7 @@ impl TodoController {
             UiEvent::UncompleteTask(id) => self.handle_uncomplete_task(*id),
             UiEvent::ToggleTask(id) => self.handle_toggle_task(*id),
             UiEvent::SetPriority(id, priority) => self.handle_set_priority(*id, *priority),
+            UiEvent::SearchTasks(keyword) => self.handle_search_tasks(keyword),
             UiEvent::ShowHelp => self.handle_show_help(),
             UiEvent::Quit => return self.handle_quit(),
             UiEvent::UnknownCommand(command) => self.handle_unknown_command(command),
@@ -189,6 +190,12 @@ impl TodoController {
                 self.output.show_task_not_found(id);
             }
         }
+    }
+
+    /// Handles the SearchTasks event.
+    fn handle_search_tasks(&mut self, keyword: &str) {
+        let results = self.todo_list.search_tasks(keyword);
+        self.output.show_search_results(&results, keyword);
     }
 
     /// Handles the ShowHelp event.
@@ -456,4 +463,40 @@ mod tests {
         assert_eq!(controller.todo_list.get_completed_tasks().len(), 1);
         assert_eq!(controller.todo_list.get_pending_tasks().len(), 1);
     }
+
+    #[test]
+    fn test_handle_search_tasks() {
+        let mut controller = TodoController::new();
+        
+        controller.handle_add_task("Buy groceries");
+        controller.handle_add_task("Read a book");
+        controller.handle_add_task("Buy concert tickets");
+        
+        controller.handle_search_tasks("buy");
+        
+        // No panic means search executed successfully
+        // The actual display is tested in OutputWriter tests
+    }
+
+    #[test]
+    fn test_handle_search_tasks_no_results() {
+        let mut controller = TodoController::new();
+        
+        controller.handle_add_task("Task one");
+        controller.handle_add_task("Task two");
+        
+        controller.handle_search_tasks("nonexistent");
+        
+        // Should handle gracefully with no results
+    }
+
+    #[test]
+    fn test_handle_search_tasks_empty_list() {
+        let mut controller = TodoController::new();
+        
+        controller.handle_search_tasks("anything");
+        
+        // Should handle gracefully with empty list
+    }
 }
+

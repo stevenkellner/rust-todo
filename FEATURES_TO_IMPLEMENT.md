@@ -19,19 +19,19 @@ This document tracks the 19 features selected for implementation in the TODO man
 **Complexity:** Easy  
 **Description:**
 
-- ✅ Add priority levels: High, Medium, Low
-- ✅ Color-code tasks by priority (High=Red, Medium=Yellow, Low=Blue)
-- ✅ Sort and filter tasks by priority
-- ✅ Display priority in task list
+- Add priority levels: High, Medium, Low
+- Color-code tasks by priority (High=Red, Medium=Yellow, Low=Blue)
+- Sort and filter tasks by priority
+- Display priority in task list
 
 **Implementation Details:**
 
-- ✅ Add `priority: Priority` enum field to Task struct
-- ✅ Update task creation to accept optional priority (default: Medium)
-- ✅ Add `priority <id> <high|medium|low>` command (alias: `pri`)
-- ✅ Modify display to show priority indicator (▼ ■ ▲)
-- ✅ Add priority filter to list command
-- ✅ Support combined filtering (e.g., `list pending high`)
+- Add `priority: Priority` enum field to Task struct
+- Update task creation to accept optional priority (default: Medium)
+- Add `priority <id> <high|medium|low>` command (alias: `pri`)
+- Modify display to show priority indicator (▼ ■ ▲)
+- Add priority filter to list command
+- Support combined filtering (e.g., `list pending high`)
 
 **Implementation Notes:**
 
@@ -45,7 +45,7 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 ### 2. Task Search
 
-**Status:** Pending  
+**Status:** ✅ Complete  
 **Complexity:** Easy  
 **Description:**
 
@@ -55,10 +55,21 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 **Implementation Details:**
 
-- Add `search <keyword>` command
-- Implement search method in TodoList
+- Add `search <keyword>` command with `find` alias
+- Implement search method in TodoList (case-insensitive, partial match)
 - Return tasks matching keyword
-- Display results with highlighting
+- Display results with title "Search Results for '&lt;keyword&gt;'"
+- Handle empty results gracefully
+
+**Implementation Notes:**
+
+- Added SearchTasks(String) event variant to UiEvent
+- Implemented parse_search_command() in InputReader
+- Implemented search_tasks() method in TodoList (case-insensitive filtering)
+- Implemented show_search_results() in OutputWriter
+- Implemented handle_search_tasks() in TodoController
+- Added comprehensive unit tests (11 new tests)
+- Updated help text to include search command
 
 ---
 

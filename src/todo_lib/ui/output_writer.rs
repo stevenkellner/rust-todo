@@ -92,6 +92,9 @@ impl<W: Write> OutputWriter<W> {
         self.print_line(&format!("    {} {}", "↳ Levels:".bright_black().italic(), "high/h, medium/med/m, low/l".bright_yellow()));
         self.print_line(&format!("    {} {}", "↳ Alias:".bright_black().italic(), "pri".bright_yellow()));
         self.print_line("");
+        self.print_line(&format!("{:<25} - Search tasks by keyword", "search <keyword>".bright_green()));
+        self.print_line(&format!("    {} {}", "↳ Alias:".bright_black().italic(), "find".bright_yellow()));
+        self.print_line("");
         self.print_line(&format!("{:<25} - Show this help message", "help".bright_green()));
         self.print_line(&format!("    {} {}", "↳ Alias:".bright_black().italic(), "h".bright_yellow()));
         self.print_line("");
@@ -186,6 +189,22 @@ impl<W: Write> OutputWriter<W> {
             format!("{} Tasks", title_parts.join(" "))
         };
         
+        self.show_task_list(&title, tasks.to_vec());
+    }
+
+    /// Displays search results for tasks matching a keyword.
+    ///
+    /// # Arguments
+    ///
+    /// * `tasks` - A slice of task references that match the search
+    /// * `keyword` - The search keyword used
+    pub fn show_search_results(&mut self, tasks: &[&Task], keyword: &str) {
+        if tasks.is_empty() {
+            self.print_line(&format!("No tasks found matching '{}'.", keyword).yellow().to_string());
+            return;
+        }
+
+        let title = format!("Search Results for '{}'", keyword);
         self.show_task_list(&title, tasks.to_vec());
     }
 
