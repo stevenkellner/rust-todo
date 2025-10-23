@@ -3,24 +3,25 @@ use crate::ui::output_writer::OutputWriter;
 use crate::models::priority::Priority;
 use colored::Colorize;
 use chrono::NaiveDate;
+use std::io::{Read, Write};
 
 /// Handles interactive prompts for user input.
 ///
 /// `InteractivePrompt` encapsulates the logic for prompting users
 /// to enter additional task properties like priority, due date, and category.
-pub struct InteractivePrompt<'a> {
-    input: &'a mut InputReader,
-    output: &'a mut OutputWriter,
+pub struct InteractivePrompt<'a, R: Read, W: Write> {
+    input: &'a mut InputReader<R>,
+    output: &'a mut OutputWriter<W>,
 }
 
-impl<'a> InteractivePrompt<'a> {
+impl<'a, R: Read, W: Write> InteractivePrompt<'a, R, W> {
     /// Creates a new interactive prompt handler.
     ///
     /// # Arguments
     ///
     /// * `input` - The input reader for getting user input
     /// * `output` - The output writer for displaying prompts
-    pub fn new(input: &'a mut InputReader, output: &'a mut OutputWriter) -> Self {
+    pub fn new(input: &'a mut InputReader<R>, output: &'a mut OutputWriter<W>) -> Self {
         InteractivePrompt { input, output }
     }
 
@@ -116,21 +117,168 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_prompt_priority_valid() {
+    fn test_prompt_priority_valid_high() {
         let input_data = b"high\n";
-        let _input_reader = InputReader::with_reader(&input_data[..]);
-        let _output_writer = OutputWriter::new();
+        let mut input_reader = InputReader::with_reader(&input_data[..]);
+        let mut buffer = Vec::new();
+        let mut output_writer = OutputWriter::with_writer(&mut buffer);
         
-        // Note: This test would need to be adjusted to work with the actual implementation
-        // For now, it demonstrates the structure
+        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let result = prompt.prompt_priority();
+        
+        assert_eq!(result, Some(Priority::High));
+    }
+
+    #[test]
+    fn test_prompt_priority_valid_medium() {
+        let input_data = b"medium\n";
+        let mut input_reader = InputReader::with_reader(&input_data[..]);
+        let mut buffer = Vec::new();
+        let mut output_writer = OutputWriter::with_writer(&mut buffer);
+        
+        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let result = prompt.prompt_priority();
+        
+        assert_eq!(result, Some(Priority::Medium));
+    }
+
+    #[test]
+    fn test_prompt_priority_valid_low() {
+        let input_data = b"low\n";
+        let mut input_reader = InputReader::with_reader(&input_data[..]);
+        let mut buffer = Vec::new();
+        let mut output_writer = OutputWriter::with_writer(&mut buffer);
+        
+        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let result = prompt.prompt_priority();
+        
+        assert_eq!(result, Some(Priority::Low));
     }
 
     #[test]
     fn test_prompt_priority_empty() {
         let input_data = b"\n";
-        let _input_reader = InputReader::with_reader(&input_data[..]);
-        let _output_writer = OutputWriter::new();
+        let mut input_reader = InputReader::with_reader(&input_data[..]);
+        let mut buffer = Vec::new();
+        let mut output_writer = OutputWriter::with_writer(&mut buffer);
         
-        // Test that empty input returns None
+        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let result = prompt.prompt_priority();
+        
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_prompt_priority_invalid() {
+        let input_data = b"invalid\n";
+        let mut input_reader = InputReader::with_reader(&input_data[..]);
+        let mut buffer = Vec::new();
+        let mut output_writer = OutputWriter::with_writer(&mut buffer);
+        
+        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let result = prompt.prompt_priority();
+        
+        assert_eq!(result, None);
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Invalid priority"));
+    }
+
+    #[test]
+    fn test_prompt_due_date_valid() {
+        let input_data = b"25.12.2025\n";
+        let mut input_reader = InputReader::with_reader(&input_data[..]);
+        let mut buffer = Vec::new();
+        let mut output_writer = OutputWriter::with_writer(&mut buffer);
+        
+        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let result = prompt.prompt_due_date();
+        
+        assert!(result.is_some());
+        let date = result.unwrap();
+        assert_eq!(date.format("%d.%m.%Y").to_string(), "25.12.2025");
+    }
+
+    #[test]
+    fn test_prompt_due_date_empty() {
+        let input_data = b"\n";
+        let mut input_reader = InputReader::with_reader(&input_data[..]);
+        let mut buffer = Vec::new();
+        let mut output_writer = OutputWriter::with_writer(&mut buffer);
+        
+        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let result = prompt.prompt_due_date();
+        
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_prompt_due_date_invalid_format() {
+        let input_data = b"2025-12-25\n";
+        let mut input_reader = InputReader::with_reader(&input_data[..]);
+        let mut buffer = Vec::new();
+        let mut output_writer = OutputWriter::with_writer(&mut buffer);
+        
+        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let result = prompt.prompt_due_date();
+        
+        assert_eq!(result, None);
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Invalid date format"));
+    }
+
+    #[test]
+    fn test_prompt_category_valid() {
+        let input_data = b"Work\n";
+        let mut input_reader = InputReader::with_reader(&input_data[..]);
+        let mut buffer = Vec::new();
+        let mut output_writer = OutputWriter::with_writer(&mut buffer);
+        
+        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let result = prompt.prompt_category();
+        
+        assert_eq!(result, Some("Work".to_string()));
+    }
+
+    #[test]
+    fn test_prompt_category_empty() {
+        let input_data = b"\n";
+        let mut input_reader = InputReader::with_reader(&input_data[..]);
+        let mut buffer = Vec::new();
+        let mut output_writer = OutputWriter::with_writer(&mut buffer);
+        
+        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let result = prompt.prompt_category();
+        
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_prompt_task_properties_all_filled() {
+        let input_data = b"high\n25.12.2025\nWork\n";
+        let mut input_reader = InputReader::with_reader(&input_data[..]);
+        let mut buffer = Vec::new();
+        let mut output_writer = OutputWriter::with_writer(&mut buffer);
+        
+        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let (priority, due_date, category) = prompt.prompt_task_properties();
+        
+        assert_eq!(priority, Some(Priority::High));
+        assert!(due_date.is_some());
+        assert_eq!(category, Some("Work".to_string()));
+    }
+
+    #[test]
+    fn test_prompt_task_properties_all_skipped() {
+        let input_data = b"\n\n\n";
+        let mut input_reader = InputReader::with_reader(&input_data[..]);
+        let mut buffer = Vec::new();
+        let mut output_writer = OutputWriter::with_writer(&mut buffer);
+        
+        let mut prompt = InteractivePrompt::new(&mut input_reader, &mut output_writer);
+        let (priority, due_date, category) = prompt.prompt_task_properties();
+        
+        assert_eq!(priority, None);
+        assert_eq!(due_date, None);
+        assert_eq!(category, None);
     }
 }
