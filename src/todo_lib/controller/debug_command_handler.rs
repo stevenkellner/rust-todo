@@ -1,14 +1,15 @@
 use crate::models::todo_list::TodoList;
-use crate::models::priority::Priority;
 use crate::models::debug_command::DebugCommand;
+use crate::controller::task_generator::RandomTaskGenerator;
 use crate::ui::output_writer::OutputWriter;
-use rand::Rng;
 use std::io::Write;
 
 /// Handler for debug commands and operations
 pub struct DebugCommandHandler {
     /// Flag to track if debug mode is enabled
     debug_mode: bool,
+    /// Task generator for creating random tasks
+    task_generator: RandomTaskGenerator,
 }
 
 impl DebugCommandHandler {
@@ -16,6 +17,7 @@ impl DebugCommandHandler {
     pub fn new() -> Self {
         Self {
             debug_mode: false,
+            task_generator: RandomTaskGenerator::new(),
         }
     }
     
@@ -71,74 +73,12 @@ impl DebugCommandHandler {
             return;
         }
         
-        let mut rng = rand::rng();
-        let task_templates = [
-            "Buy groceries",
-            "Write documentation",
-            "Review pull requests",
-            "Update dependencies",
-            "Fix bug in authentication",
-            "Implement new feature",
-            "Refactor legacy code",
-            "Write unit tests",
-            "Deploy to production",
-            "Meeting with team",
-            "Code review session",
-            "Update README",
-            "Optimize database queries",
-            "Design new UI",
-            "Research new technology",
-            "Client presentation",
-            "Performance testing",
-            "Security audit",
-            "Backup database",
-            "Configure CI/CD pipeline",
-        ];
+        // Generate random tasks
+        let new_tasks = self.task_generator.generate(count);
         
-        let priorities = [Priority::High, Priority::Medium, Priority::Low];
-        
-        let categories = [
-            "work",
-            "personal",
-            "urgent",
-            "bug",
-            "feature",
-            "documentation",
-            "testing",
-            "deployment",
-            "maintenance",
-            "research",
-        ];
-        
-        for _ in 0..count {
-            let template_idx = rng.random_range(0..task_templates.len());
-            let description = task_templates[template_idx].to_string();
-            let priority_idx = rng.random_range(0..priorities.len());
-            let priority = priorities[priority_idx];
-            
-            let task_id = todo_list.add_task(description.clone());
-            let _ = todo_list.set_task_priority(task_id, priority);
-            
-            // Randomly complete some tasks (~30% chance)
-            if rng.random_bool(0.3) {
-                let _ = todo_list.complete_task(task_id);
-            }
-            
-            // Randomly add due dates (~60% chance)
-            if rng.random_bool(0.6) {
-                let today = chrono::Local::now().date_naive();
-                // Generate due dates from -7 days to +30 days
-                let days_offset = rng.random_range(-7..31);
-                let due_date = today + chrono::Duration::days(days_offset);
-                let _ = todo_list.set_due_date(task_id, Some(due_date));
-            }
-            
-            // Randomly add categories (~70% chance)
-            if rng.random_bool(0.7) {
-                let category_idx = rng.random_range(0..categories.len());
-                let category = Some(categories[category_idx].to_string());
-                let _ = todo_list.set_task_category(task_id, category);
-            }
+        // Add each generated task to the todo list
+        for new_task in new_tasks {
+            let _ = todo_list.add_task(new_task);
         }
         
         output.show_success(&format!("Generated {} random tasks", count));
@@ -175,6 +115,7 @@ impl Default for DebugCommandHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::task::TaskWithoutId;
     
     #[test]
     fn test_new_debug_controller() {
@@ -228,7 +169,7 @@ mod tests {
     fn test_clear_all_tasks_without_debug_mode() {
         let controller = DebugCommandHandler::new();
         let mut todo_list = TodoList::new();
-        todo_list.add_task("Test task".to_string());
+        todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         
@@ -243,8 +184,8 @@ mod tests {
     fn test_clear_all_tasks_with_debug_mode() {
         let mut controller = DebugCommandHandler::new();
         let mut todo_list = TodoList::new();
-        todo_list.add_task("Test task 1".to_string());
-        todo_list.add_task("Test task 2".to_string());
+        todo_list.add_task(TaskWithoutId::new("Test task 1".to_string()));
+        todo_list.add_task(TaskWithoutId::new("Test task 2".to_string()));
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         

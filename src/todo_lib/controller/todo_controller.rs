@@ -1,9 +1,7 @@
 use crate::models::todo_list::TodoList;
 use crate::ui::input_reader::InputReader;
-use crate::ui::interactive_prompt::InteractivePrompt;
 use crate::ui::output_writer::OutputWriter;
 use crate::models::ui_event::UiEvent;
-use crate::models::task_command::TaskCommand;
 use crate::models::loop_control::LoopControl;
 use crate::controller::debug_command_handler::DebugCommandHandler;
 use crate::controller::task_command_handler::TaskCommandHandler;
@@ -28,8 +26,6 @@ pub struct TodoController {
     output: OutputWriter,
     task_handler: TaskCommandHandler,
     debug_handler: DebugCommandHandler,
-    #[cfg(test)]
-    test_mode: bool,
 }
 
 impl TodoController {
@@ -49,8 +45,6 @@ impl TodoController {
             output: OutputWriter::new(),
             task_handler: TaskCommandHandler::new(),
             debug_handler: DebugCommandHandler::new(),
-            #[cfg(test)]
-            test_mode: true,
         }
     }
 
@@ -92,21 +86,7 @@ impl TodoController {
     fn handle_event(&mut self, event: &UiEvent) -> LoopControl {
         match event {
             UiEvent::Task(task_command) => {
-                // Handle interactive add separately
-                if let TaskCommand::Add(description) = task_command {
-                    #[cfg(test)]
-                    let interactive = !self.test_mode;
-                    #[cfg(not(test))]
-                    let interactive = true;
-                    
-                    if interactive {
-                        self.handle_add_task_interactive(description);
-                    } else {
-                        self.task_handler.handle(task_command, &mut self.todo_list, &mut self.output);
-                    }
-                } else {
-                    self.task_handler.handle(task_command, &mut self.todo_list, &mut self.output);
-                }
+                self.task_handler.handle(task_command, &mut self.todo_list, &mut self.output);
             }
             UiEvent::Debug(debug_command) => {
                 self.debug_handler.handle(debug_command, &mut self.todo_list, &mut self.output);
@@ -118,29 +98,6 @@ impl TodoController {
         }
         
         LoopControl::Continue
-    }
-
-    /// Handles the AddTask event with interactive prompts.
-    fn handle_add_task_interactive(&mut self, description: &str) {
-        let task_id = self.todo_list.add_task(description.to_string());
-        self.output.show_task_added(task_id, description);
-        
-        // Use InteractivePrompt to gather additional properties
-        let mut prompt = InteractivePrompt::new(&mut self.input, &mut self.output);
-        let (priority, due_date, category) = prompt.prompt_task_properties();
-        
-        // Apply the properties to the task
-        if let Some(p) = priority {
-            self.todo_list.set_task_priority(task_id, p);
-        }
-        
-        if let Some(date) = due_date {
-            self.todo_list.set_due_date(task_id, Some(date));
-        }
-        
-        if let Some(cat) = category {
-            self.todo_list.set_task_category(task_id, Some(cat));
-        }
     }
 
     /// Handles the Quit event.

@@ -118,8 +118,8 @@ mod tests {
     #[test]
     fn test_prompt_priority_valid() {
         let input_data = b"high\n";
-        let input_reader = InputReader::with_reader(&input_data[..]);
-        let output_writer = OutputWriter::new();
+        let _input_reader = InputReader::with_reader(&input_data[..]);
+        let _output_writer = OutputWriter::new();
         
         // Note: This test would need to be adjusted to work with the actual implementation
         // For now, it demonstrates the structure
@@ -128,8 +128,8 @@ mod tests {
     #[test]
     fn test_prompt_priority_empty() {
         let input_data = b"\n";
-        let input_reader = InputReader::with_reader(&input_data[..]);
-        let output_writer = OutputWriter::new();
+        let _input_reader = InputReader::with_reader(&input_data[..]);
+        let _output_writer = OutputWriter::new();
         
         // Test that empty input returns None
     }

@@ -1,4 +1,4 @@
-use super::task::Task;
+use super::task::{Task, TaskWithoutId};
 use super::priority::Priority;
 use super::task_filter::TaskFilter;
 use super::task_status::TaskStatus;
@@ -32,9 +32,10 @@ pub struct TaskStatistics {
 ///
 /// ```
 /// use todo_manager::models::todo_list::TodoList;
+/// use todo_manager::models::task::TaskWithoutId;
 ///
 /// let mut list = TodoList::new();
-/// let id = list.add_task("Write tests".to_string());
+/// let id = list.add_task(TaskWithoutId::new("Write tests".to_string()));
 /// assert_eq!(list.is_empty(), false);
 /// assert_eq!(list.get_tasks().len(), 1);
 /// ```
@@ -53,6 +54,7 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     ///
     /// let list = TodoList::new();
     /// assert!(list.is_empty());
@@ -64,32 +66,35 @@ impl TodoList {
         }
     }
 
-    /// Adds a new task to the list with the given description.
+    /// Adds a task to the list.
     ///
-    /// The task is automatically assigned a unique ID and is initially marked as incomplete.
+    /// Creates a Task from the provided TaskWithoutId data and assigns it the next available ID.
     ///
     /// # Arguments
     ///
-    /// * `description` - A string describing the task
+    /// * `new_task` - The task data to add to the list
     ///
     /// # Returns
     ///
-    /// The unique ID assigned to the newly created task.
+    /// The unique ID assigned to the newly added task.
     ///
     /// # Examples
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     ///
     /// let mut list = TodoList::new();
-    /// let id = list.add_task("Buy groceries".to_string());
+    /// let new_task = TaskWithoutId::new("Buy groceries".to_string());
+    /// let id = list.add_task(new_task);
     /// assert_eq!(id, 1);
     /// 
-    /// let id2 = list.add_task("Walk the dog".to_string());
+    /// let new_task2 = TaskWithoutId::new("Walk the dog".to_string());
+    /// let id2 = list.add_task(new_task2);
     /// assert_eq!(id2, 2);
     /// ```
-    pub fn add_task(&mut self, description: String) -> usize {
-        let task = Task::new(self.next_id, description);
+    pub fn add_task(&mut self, new_task: TaskWithoutId) -> usize {
+        let task = new_task.to_task(self.next_id);
         let task_id = task.id;
         self.tasks.push(task);
         self.next_id += 1;
@@ -102,10 +107,11 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     ///
     /// let mut list = TodoList::new();
-    /// list.add_task("Task 1".to_string());
-    /// list.add_task("Task 2".to_string());
+    /// list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// list.add_task(TaskWithoutId::new("Task 2".to_string()));
     /// 
     /// assert_eq!(list.get_tasks().len(), 2);
     /// ```
@@ -119,11 +125,12 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     ///
     /// let mut list = TodoList::new();
     /// assert!(list.is_empty());
     /// 
-    /// list.add_task("First task".to_string());
+    /// list.add_task(TaskWithoutId::new("First task".to_string()));
     /// assert!(!list.is_empty());
     /// ```
     pub fn is_empty(&self) -> bool {
@@ -138,10 +145,11 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     ///
     /// let mut list = TodoList::new();
-    /// list.add_task("Task 1".to_string());
-    /// list.add_task("Task 2".to_string());
+    /// list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// list.add_task(TaskWithoutId::new("Task 2".to_string()));
     /// 
     /// list.clear_all();
     /// assert!(list.is_empty());
@@ -164,9 +172,10 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     ///
     /// let mut list = TodoList::new();
-    /// let id = list.add_task("Remove this".to_string());
+    /// let id = list.add_task(TaskWithoutId::new("Remove this".to_string()));
     /// 
     /// let removed = list.remove_task(id);
     /// assert!(removed.is_some());
@@ -194,9 +203,10 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     ///
     /// let mut list = TodoList::new();
-    /// let id = list.add_task("Toggle me".to_string());
+    /// let id = list.add_task(TaskWithoutId::new("Toggle me".to_string()));
     /// 
     /// list.toggle_task(id);
     /// let task = list.get_tasks().iter().find(|t| t.id == id).unwrap();
@@ -217,10 +227,11 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     ///
     /// let mut list = TodoList::new();
-    /// let id1 = list.add_task("Completed task".to_string());
-    /// let id2 = list.add_task("Pending task".to_string());
+    /// let id1 = list.add_task(TaskWithoutId::new("Completed task".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Pending task".to_string()));
     /// 
     /// list.toggle_task(id1);
     /// let completed = list.get_completed_tasks();
@@ -236,10 +247,11 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     ///
     /// let mut list = TodoList::new();
-    /// let id1 = list.add_task("Completed task".to_string());
-    /// let id2 = list.add_task("Pending task".to_string());
+    /// let id1 = list.add_task(TaskWithoutId::new("Completed task".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Pending task".to_string()));
     /// 
     /// list.toggle_task(id1);
     /// let pending = list.get_pending_tasks();
@@ -259,11 +271,12 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     /// use todo_manager::models::priority::Priority;
     ///
     /// let mut list = TodoList::new();
-    /// let id1 = list.add_task("High priority task".to_string());
-    /// let id2 = list.add_task("Low priority task".to_string());
+    /// let id1 = list.add_task(TaskWithoutId::new("High priority task".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Low priority task".to_string()));
     /// 
     /// list.set_task_priority(id1, Priority::High);
     /// let high_tasks = list.get_tasks_by_priority(Priority::High);
@@ -287,12 +300,13 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     /// use todo_manager::models::task_filter::TaskFilter;
     /// use todo_manager::models::task_status::TaskStatus;
     /// use todo_manager::models::priority::Priority;
     ///
     /// let mut list = TodoList::new();
-    /// let id = list.add_task("High priority task".to_string());
+    /// let id = list.add_task(TaskWithoutId::new("High priority task".to_string()));
     /// list.set_task_priority(id, Priority::High);
     /// 
     /// let filter = TaskFilter::all().with_status(TaskStatus::Pending).with_priority(Priority::High);
@@ -344,10 +358,11 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     /// use todo_manager::models::priority::Priority;
     ///
     /// let mut list = TodoList::new();
-    /// let id = list.add_task("Important task".to_string());
+    /// let id = list.add_task(TaskWithoutId::new("Important task".to_string()));
     /// 
     /// let task = list.set_task_priority(id, Priority::High);
     /// assert!(task.is_some());
@@ -377,11 +392,12 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     ///
     /// let mut list = TodoList::new();
-    /// list.add_task("Buy groceries at the store".to_string());
-    /// list.add_task("Read a book".to_string());
-    /// list.add_task("Buy concert tickets".to_string());
+    /// list.add_task(TaskWithoutId::new("Buy groceries at the store".to_string()));
+    /// list.add_task(TaskWithoutId::new("Read a book".to_string()));
+    /// list.add_task(TaskWithoutId::new("Buy concert tickets".to_string()));
     /// 
     /// let results = list.search_tasks("buy");
     /// assert_eq!(results.len(), 2);
@@ -411,9 +427,10 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     ///
     /// let mut list = TodoList::new();
-    /// let id = list.add_task("Old description".to_string());
+    /// let id = list.add_task(TaskWithoutId::new("Old description".to_string()));
     /// 
     /// list.edit_task(id, "New description".to_string());
     /// assert_eq!(list.get_tasks()[0].description, "New description");
@@ -442,10 +459,11 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     /// use chrono::NaiveDate;
     ///
     /// let mut list = TodoList::new();
-    /// let id = list.add_task("Submit report".to_string());
+    /// let id = list.add_task(TaskWithoutId::new("Submit report".to_string()));
     /// let due = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
     /// 
     /// list.set_due_date(id, Some(due));
@@ -478,9 +496,10 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     ///
     /// let mut list = TodoList::new();
-    /// let id = list.add_task("Write code".to_string());
+    /// let id = list.add_task(TaskWithoutId::new("Write code".to_string()));
     /// 
     /// list.set_task_category(id, Some("work".to_string()));
     /// assert_eq!(list.get_tasks()[0].category, Some("work".to_string()));
@@ -507,11 +526,12 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     ///
     /// let mut list = TodoList::new();
-    /// let id1 = list.add_task("Task 1".to_string());
-    /// let id2 = list.add_task("Task 2".to_string());
-    /// let id3 = list.add_task("Task 3".to_string());
+    /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// let id3 = list.add_task(TaskWithoutId::new("Task 3".to_string()));
     /// 
     /// list.set_task_category(id1, Some("work".to_string()));
     /// list.set_task_category(id2, Some("personal".to_string()));
@@ -548,9 +568,10 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     ///
     /// let mut list = TodoList::new();
-    /// let id = list.add_task("Finish this".to_string());
+    /// let id = list.add_task(TaskWithoutId::new("Finish this".to_string()));
     /// 
     /// list.complete_task(id);
     /// let task = list.get_tasks().iter().find(|t| t.id == id).unwrap();
@@ -583,9 +604,10 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     ///
     /// let mut list = TodoList::new();
-    /// let id = list.add_task("Do this again".to_string());
+    /// let id = list.add_task(TaskWithoutId::new("Do this again".to_string()));
     /// 
     /// list.complete_task(id);
     /// assert!(list.get_tasks()[0].is_completed());
@@ -616,11 +638,12 @@ impl TodoList {
     ///
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
     /// use todo_manager::models::priority::Priority;
     ///
     /// let mut list = TodoList::new();
-    /// let id1 = list.add_task("Task 1".to_string());
-    /// let id2 = list.add_task("Task 2".to_string());
+    /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
     /// list.set_task_priority(id1, Priority::High);
     /// list.complete_task(id1);
     ///
@@ -678,7 +701,7 @@ mod tests {
     #[test]
     fn test_add_task() {
         let mut todo_list = TodoList::new();
-        let task_id = todo_list.add_task("Test task".to_string());
+        let task_id = todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
         
         assert_eq!(task_id, 1);
         assert!(!todo_list.is_empty());
@@ -692,8 +715,8 @@ mod tests {
     #[test]
     fn test_add_multiple_tasks() {
         let mut todo_list = TodoList::new();
-        let task1_id = todo_list.add_task("First task".to_string());
-        let task2_id = todo_list.add_task("Second task".to_string());
+        let task1_id = todo_list.add_task(TaskWithoutId::new("First task".to_string()));
+        let task2_id = todo_list.add_task(TaskWithoutId::new("Second task".to_string()));
         
         assert_eq!(task1_id, 1);
         assert_eq!(task2_id, 2);
@@ -703,7 +726,7 @@ mod tests {
     #[test]
     fn test_remove_task() {
         let mut todo_list = TodoList::new();
-        let task_id = todo_list.add_task("Test task".to_string());
+        let task_id = todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
         
         let removed_task = todo_list.remove_task(task_id);
         assert!(removed_task.is_some());
@@ -721,7 +744,7 @@ mod tests {
     #[test]
     fn test_toggle_task() {
         let mut todo_list = TodoList::new();
-        let task_id = todo_list.add_task("Test task".to_string());
+        let task_id = todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
         
         let task = todo_list.toggle_task(task_id);
         assert!(task.is_some());
@@ -742,8 +765,8 @@ mod tests {
     #[test]
     fn test_get_completed_and_pending_tasks() {
         let mut todo_list = TodoList::new();
-        let task1_id = todo_list.add_task("Completed task".to_string());
-        let _task2_id = todo_list.add_task("Pending task".to_string());
+        let task1_id = todo_list.add_task(TaskWithoutId::new("Completed task".to_string()));
+        let _task2_id = todo_list.add_task(TaskWithoutId::new("Pending task".to_string()));
         
         todo_list.toggle_task(task1_id);
         
@@ -759,9 +782,9 @@ mod tests {
     #[test]
     fn test_search_tasks_case_insensitive() {
         let mut todo_list = TodoList::new();
-        todo_list.add_task("Buy groceries at the store".to_string());
-        todo_list.add_task("Read a book".to_string());
-        todo_list.add_task("Buy concert tickets".to_string());
+        todo_list.add_task(TaskWithoutId::new("Buy groceries at the store".to_string()));
+        todo_list.add_task(TaskWithoutId::new("Read a book".to_string()));
+        todo_list.add_task(TaskWithoutId::new("Buy concert tickets".to_string()));
         
         let results = todo_list.search_tasks("buy");
         assert_eq!(results.len(), 2);
@@ -776,9 +799,9 @@ mod tests {
     #[test]
     fn test_search_tasks_partial_match() {
         let mut todo_list = TodoList::new();
-        todo_list.add_task("Programming homework".to_string());
-        todo_list.add_task("Program the microwave".to_string());
-        todo_list.add_task("Write documentation".to_string());
+        todo_list.add_task(TaskWithoutId::new("Programming homework".to_string()));
+        todo_list.add_task(TaskWithoutId::new("Program the microwave".to_string()));
+        todo_list.add_task(TaskWithoutId::new("Write documentation".to_string()));
         
         let results = todo_list.search_tasks("program");
         assert_eq!(results.len(), 2);
@@ -787,8 +810,8 @@ mod tests {
     #[test]
     fn test_search_tasks_no_results() {
         let mut todo_list = TodoList::new();
-        todo_list.add_task("Task one".to_string());
-        todo_list.add_task("Task two".to_string());
+        todo_list.add_task(TaskWithoutId::new("Task one".to_string()));
+        todo_list.add_task(TaskWithoutId::new("Task two".to_string()));
         
         let results = todo_list.search_tasks("nonexistent");
         assert_eq!(results.len(), 0);
@@ -805,9 +828,9 @@ mod tests {
     #[test]
     fn test_search_tasks_with_completed_and_pending() {
         let mut todo_list = TodoList::new();
-        let task1_id = todo_list.add_task("Buy milk".to_string());
-        todo_list.add_task("Buy bread".to_string());
-        todo_list.add_task("Sell old laptop".to_string());
+        let task1_id = todo_list.add_task(TaskWithoutId::new("Buy milk".to_string()));
+        todo_list.add_task(TaskWithoutId::new("Buy bread".to_string()));
+        todo_list.add_task(TaskWithoutId::new("Sell old laptop".to_string()));
         
         todo_list.complete_task(task1_id);
         

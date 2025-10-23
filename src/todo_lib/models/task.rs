@@ -1,6 +1,90 @@
 use super::priority::Priority;
 use chrono::NaiveDate;
 
+/// Represents task data without an ID.
+///
+/// This is used for creating new tasks before they are assigned an ID by the TodoList.
+///
+/// # Examples
+///
+/// ```
+/// use todo_manager::models::task::TaskWithoutId;
+/// use todo_manager::models::priority::Priority;
+///
+/// let task = TaskWithoutId::new("Write documentation".to_string());
+/// assert_eq!(task.description, "Write documentation");
+/// assert_eq!(task.completed, false);
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+pub struct TaskWithoutId {
+    /// A textual description of the task
+    pub description: String,
+    /// Whether the task has been completed
+    pub completed: bool,
+    /// The priority level of the task
+    pub priority: Priority,
+    /// The optional due date for the task
+    pub due_date: Option<NaiveDate>,
+    /// The optional category/tag for the task
+    pub category: Option<String>,
+}
+
+impl TaskWithoutId {
+    /// Creates a new task data with the given description.
+    ///
+    /// The task is initialized with `completed` set to `false` and priority set to `Medium`.
+    ///
+    /// # Arguments
+    ///
+    /// * `description` - A description of what needs to be done
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let task = TaskWithoutId::new("Buy milk".to_string());
+    /// assert_eq!(task.description, "Buy milk");
+    /// assert!(!task.completed);
+    /// ```
+    pub fn new(description: String) -> Self {
+        TaskWithoutId {
+            description,
+            completed: false,
+            priority: Priority::default(),
+            due_date: None,
+            category: None,
+        }
+    }
+
+    /// Converts this TaskWithoutId into a Task with the given ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The unique identifier to assign to the task
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let task_without_id = TaskWithoutId::new("Buy milk".to_string());
+    /// let task = task_without_id.to_task(1);
+    /// assert_eq!(task.id, 1);
+    /// assert_eq!(task.description, "Buy milk");
+    /// ```
+    pub fn to_task(self, id: usize) -> Task {
+        Task {
+            id,
+            description: self.description,
+            completed: self.completed,
+            priority: self.priority,
+            due_date: self.due_date,
+            category: self.category,
+        }
+    }
+}
+
 /// Represents a single task in the todo list.
 ///
 /// A task contains a unique identifier, a description of what needs to be done,

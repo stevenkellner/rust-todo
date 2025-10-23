@@ -1,6 +1,7 @@
 //! Additional integration tests for combined filtering feature
 
 use todo_manager::models::todo_list::TodoList;
+use todo_manager::models::task::TaskWithoutId;
 use todo_manager::models::priority::Priority;
 use todo_manager::models::task_filter::TaskFilter;
 use todo_manager::models::task_status::TaskStatus;
@@ -11,11 +12,11 @@ fn test_combined_filtering() {
     let mut todo_list = TodoList::new();
     
     // Create tasks with different priorities and statuses
-    let id1 = todo_list.add_task("High priority urgent".to_string());
-    let id2 = todo_list.add_task("High priority regular".to_string());
-    let id3 = todo_list.add_task("Medium priority task".to_string());
-    let id4 = todo_list.add_task("Low priority task".to_string());
-    let id5 = todo_list.add_task("Another high priority".to_string());
+    let id1 = todo_list.add_task(TaskWithoutId::new("High priority urgent".to_string()));
+    let id2 = todo_list.add_task(TaskWithoutId::new("High priority regular".to_string()));
+    let id3 = todo_list.add_task(TaskWithoutId::new("Medium priority task".to_string()));
+    let id4 = todo_list.add_task(TaskWithoutId::new("Low priority task".to_string()));
+    let id5 = todo_list.add_task(TaskWithoutId::new("Another high priority".to_string()));
     
     // Set priorities
     todo_list.set_task_priority(id1, Priority::High);
@@ -72,9 +73,9 @@ fn test_filter_builder_methods() {
     let mut todo_list = TodoList::new();
     
     // Create test tasks
-    let id1 = todo_list.add_task("Task 1".to_string());
-    let id2 = todo_list.add_task("Task 2".to_string());
-    let id3 = todo_list.add_task("Task 3".to_string());
+    let id1 = todo_list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    let id2 = todo_list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    let id3 = todo_list.add_task(TaskWithoutId::new("Task 3".to_string()));
     
     todo_list.set_task_priority(id1, Priority::High);
     todo_list.set_task_priority(id2, Priority::High);
@@ -109,8 +110,8 @@ fn test_empty_filter_results() {
     let mut todo_list = TodoList::new();
     
     // Create only high priority tasks
-    let id1 = todo_list.add_task("High 1".to_string());
-    let id2 = todo_list.add_task("High 2".to_string());
+    let id1 = todo_list.add_task(TaskWithoutId::new("High 1".to_string()));
+    let id2 = todo_list.add_task(TaskWithoutId::new("High 2".to_string()));
     
     todo_list.set_task_priority(id1, Priority::High);
     todo_list.set_task_priority(id2, Priority::High);
@@ -137,9 +138,9 @@ fn test_filter_all_matching() {
     let mut todo_list = TodoList::new();
     
     // Create all high priority pending tasks
-    let id1 = todo_list.add_task("Task 1".to_string());
-    let id2 = todo_list.add_task("Task 2".to_string());
-    let id3 = todo_list.add_task("Task 3".to_string());
+    let id1 = todo_list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    let id2 = todo_list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    let id3 = todo_list.add_task(TaskWithoutId::new("Task 3".to_string()));
     
     todo_list.set_task_priority(id1, Priority::High);
     todo_list.set_task_priority(id2, Priority::High);
@@ -162,10 +163,10 @@ fn test_priority_filter_mixed_states() {
     let mut todo_list = TodoList::new();
     
     // Create tasks with same priority but different completion states
-    let id1 = todo_list.add_task("Medium task 1".to_string());
-    let id2 = todo_list.add_task("Medium task 2".to_string());
-    let id3 = todo_list.add_task("Medium task 3".to_string());
-    let id4 = todo_list.add_task("Medium task 4".to_string());
+    let id1 = todo_list.add_task(TaskWithoutId::new("Medium task 1".to_string()));
+    let id2 = todo_list.add_task(TaskWithoutId::new("Medium task 2".to_string()));
+    let id3 = todo_list.add_task(TaskWithoutId::new("Medium task 3".to_string()));
+    let id4 = todo_list.add_task(TaskWithoutId::new("Medium task 4".to_string()));
     
     todo_list.set_task_priority(id1, Priority::Medium);
     todo_list.set_task_priority(id2, Priority::Medium);
@@ -197,8 +198,8 @@ fn test_priority_filter_mixed_states() {
 fn test_filter_dynamic_updates() {
     let mut todo_list = TodoList::new();
     
-    let id1 = todo_list.add_task("Task 1".to_string());
-    let id2 = todo_list.add_task("Task 2".to_string());
+    let id1 = todo_list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    let id2 = todo_list.add_task(TaskWithoutId::new("Task 2".to_string()));
     
     todo_list.set_task_priority(id1, Priority::High);
     todo_list.set_task_priority(id2, Priority::High);

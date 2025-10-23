@@ -3,7 +3,7 @@
 //! These tests verify that all components work together correctly
 //! and test the complete user workflows.
 
-use todo_manager::models::task::Task;
+use todo_manager::models::task::{TaskWithoutId, Task};
 use todo_manager::models::todo_list::TodoList;
 
 /// Test the complete workflow: add, list, complete, and remove tasks
@@ -12,9 +12,9 @@ fn test_complete_workflow() {
     let mut todo_list = TodoList::new();
     
     // Test adding tasks
-    let task1_id = todo_list.add_task("Buy groceries".to_string());
-    let task2_id = todo_list.add_task("Walk the dog".to_string());
-    let task3_id = todo_list.add_task("Finish homework".to_string());
+    let task1_id = todo_list.add_task(TaskWithoutId::new("Buy groceries".to_string()));
+    let task2_id = todo_list.add_task(TaskWithoutId::new("Walk the dog".to_string()));
+    let task3_id = todo_list.add_task(TaskWithoutId::new("Finish homework".to_string()));
     
     assert_eq!(task1_id, 1);
     assert_eq!(task2_id, 2);
@@ -60,15 +60,15 @@ fn test_task_id_persistence_after_removal() {
     let mut todo_list = TodoList::new();
     
     // Add multiple tasks
-    let _task1_id = todo_list.add_task("Task 1".to_string());
-    let task2_id = todo_list.add_task("Task 2".to_string());
-    let _task3_id = todo_list.add_task("Task 3".to_string());
+    let _task1_id = todo_list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    let task2_id = todo_list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    let _task3_id = todo_list.add_task(TaskWithoutId::new("Task 3".to_string()));
     
     // Remove middle task
     todo_list.remove_task(task2_id);
     
     // Add new task - should get next sequential ID
-    let task4_id = todo_list.add_task("Task 4".to_string());
+    let task4_id = todo_list.add_task(TaskWithoutId::new("Task 4".to_string()));
     assert_eq!(task4_id, 4);
     
     // Verify tasks have correct IDs
@@ -102,7 +102,7 @@ fn test_empty_todo_list_operations() {
 #[test]
 fn test_task_completion_edge_cases() {
     let mut todo_list = TodoList::new();
-    let task_id = todo_list.add_task("Test task".to_string());
+    let task_id = todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
     
     // Complete the task
     let task = todo_list.toggle_task(task_id).unwrap();
@@ -126,7 +126,7 @@ fn test_large_number_of_tasks() {
     
     // Add many tasks
     for i in 1..=num_tasks {
-        let task_id = todo_list.add_task(format!("Task {}", i));
+        let task_id = todo_list.add_task(TaskWithoutId::new(format!("Task {}", i)));
         assert_eq!(task_id, i);
     }
     
@@ -161,7 +161,7 @@ fn test_concurrent_operations() {
     
     // Add several tasks
     let task_ids: Vec<usize> = (1..=5)
-        .map(|i| todo_list.add_task(format!("Task {}", i)))
+        .map(|i| todo_list.add_task(TaskWithoutId::new(format!("Task {}", i))))
         .collect();
     
     // Complete some tasks
@@ -190,7 +190,7 @@ fn test_empty_task_description() {
     let mut todo_list = TodoList::new();
     
     // Add task with empty description (should still work at the data layer)
-    let task_id = todo_list.add_task("".to_string());
+    let task_id = todo_list.add_task(TaskWithoutId::new("".to_string()));
     assert_eq!(task_id, 1);
     
     let task = &todo_list.get_tasks()[0];

@@ -1,5 +1,6 @@
 use crate::models::todo_list::TodoList;
 use crate::models::task_command::TaskCommand;
+use crate::models::task::TaskWithoutId;
 use crate::models::priority::Priority;
 use crate::models::task_filter::TaskFilter;
 use crate::models::task_status::TaskStatus;
@@ -29,7 +30,8 @@ impl TaskCommandHandler {
     ) {
         match command {
             TaskCommand::Add(description) => {
-                let task_id = todo_list.add_task(description.clone());
+                let new_task = TaskWithoutId::new(description.clone());
+                let task_id = todo_list.add_task(new_task);
                 output.show_task_added(task_id, description);
             }
             TaskCommand::List(filter) => self.list_tasks(filter, todo_list, output),
@@ -234,7 +236,7 @@ mod tests {
     #[test]
     fn test_remove_task_existing() {
         let (mut todo_list, mut output) = create_test_handler();
-        let id = todo_list.add_task("Test task".to_string());
+        let id = todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
         
         let handler = TaskCommandHandler::new();
         handler.remove_task(id, &mut todo_list, &mut output);
@@ -245,7 +247,7 @@ mod tests {
     #[test]
     fn test_complete_task() {
         let (mut todo_list, mut output) = create_test_handler();
-        let id = todo_list.add_task("Test task".to_string());
+        let id = todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
         
         let handler = TaskCommandHandler::new();
         handler.complete_task(id, &mut todo_list, &mut output);
@@ -256,7 +258,7 @@ mod tests {
     #[test]
     fn test_set_priority() {
         let (mut todo_list, mut output) = create_test_handler();
-        let id = todo_list.add_task("Test task".to_string());
+        let id = todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
         
         let handler = TaskCommandHandler::new();
         handler.set_priority(id, Priority::High, &mut todo_list, &mut output);
@@ -267,7 +269,7 @@ mod tests {
     #[test]
     fn test_edit_task() {
         let (mut todo_list, mut output) = create_test_handler();
-        let id = todo_list.add_task("Old description".to_string());
+        let id = todo_list.add_task(TaskWithoutId::new("Old description".to_string()));
         
         let handler = TaskCommandHandler::new();
         handler.edit_task(id, "New description", &mut todo_list, &mut output);
