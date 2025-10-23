@@ -1,0 +1,11 @@
+[package]
+name = "rust-project-1"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "todo_manager"
+path = "src/todo_lib/lib.rs"
+
+[dependencies]
+colored = "3.0.0"

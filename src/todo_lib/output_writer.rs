@@ -1,0 +1,651 @@
+use std::io::{self, Write};
+use super::task::Task;
+use colored::*;
+
+/// Handles output operations for the command-line interface.
+///
+/// `OutputWriter` is responsible for displaying messages to the user.
+/// It provides semantic methods for different types of output.
+///
+/// # Examples
+///
+/// ```
+/// use todo_manager::output_writer::OutputWriter;
+///
+/// let mut output = OutputWriter::new();
+/// output.print_line("Hello, World!");
+/// ```
+pub struct OutputWriter<W: Write = io::Stdout> {
+    writer: W,
+}
+
+impl OutputWriter<io::Stdout> {
+    /// Creates a new output writer that writes to stdout.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::output_writer::OutputWriter;
+    ///
+    /// let output = OutputWriter::new();
+    /// ```
+    pub fn new() -> Self {
+        OutputWriter {
+            writer: io::stdout(),
+        }
+    }
+}
+
+impl<W: Write> OutputWriter<W> {
+    /// Creates a new output writer with a custom writer (for testing).
+    pub fn with_writer(writer: W) -> Self {
+        OutputWriter { writer }
+    }
+
+    /// Displays the welcome message.
+    pub fn show_welcome(&mut self) {
+        self.print_line("");
+        self.print_line(&"═════════════════════════════════════════════════════".bright_cyan().bold().to_string());
+        self.print_line(&"       ████████╗  ██████╗  ██████╗   ██████╗       ".bright_cyan().bold().to_string());
+        self.print_line(&"       ╚══██╔══╝ ██╔═══██╗ ██╔══██╗ ██╔═══██╗      ".bright_cyan().bold().to_string());
+        self.print_line(&"          ██║    ██║   ██║ ██║  ██║ ██║   ██║      ".bright_cyan().bold().to_string());
+        self.print_line(&"          ██║    ██║   ██║ ██║  ██║ ██║   ██║      ".bright_cyan().bold().to_string());
+        self.print_line(&"          ██║    ╚██████╔╝ ██████╔╝ ╚██████╔╝      ".bright_cyan().bold().to_string());
+        self.print_line(&"          ╚═╝     ╚═════╝  ╚═════╝   ╚═════╝       ".bright_cyan().bold().to_string());
+        self.print_line(&"                 📝 LIST MANAGER 📝                 ".bright_green().bold().to_string());
+        self.print_line(&"═════════════════════════════════════════════════════".bright_cyan().bold().to_string());
+        self.print_line("");
+        self.print_line(&"    Welcome to your personal task management system!".white().to_string());
+        self.print_line("");
+        self.print_line(&format!("    Type {} to see available commands.", "help".bright_yellow().bold()));
+        self.print_line("");
+        self.print_line(&"─────────────────────────────────────────────────────".bright_black().to_string());
+        self.print_line("");
+    }
+
+    /// Displays the help message.
+    pub fn show_help(&mut self) {
+        self.print_line(&format!("\n{}", "=== To-Do List Manager Commands ===".bright_cyan().bold()));
+        self.print_line("");
+        self.print_line(&format!("{:<25} - Add a new task", "add <description>".bright_green()));
+        self.print_line("");
+        self.print_line(&format!("{:<25} - List tasks (all/completed/pending)", "list [filter]".bright_green()));
+        self.print_line("");
+        self.print_line(&format!("{:<25} - Remove a task by ID", "remove <id>".bright_green()));
+        self.print_line(&format!("    {} {}", "↳ Aliases:".bright_black().italic(), "rm, delete".bright_yellow()));
+        self.print_line("");
+        self.print_line(&format!("{:<25} - Mark task as completed", "complete <id>".bright_green()));
+        self.print_line(&format!("    {} {}", "↳ Alias:".bright_black().italic(), "done".bright_yellow()));
+        self.print_line("");
+        self.print_line(&format!("{:<25} - Mark task as pending", "uncomplete <id>".bright_green()));
+        self.print_line(&format!("    {} {}", "↳ Alias:".bright_black().italic(), "undo".bright_yellow()));
+        self.print_line("");
+        self.print_line(&format!("{:<25} - Toggle task completion status", "toggle <id>".bright_green()));
+        self.print_line("");
+        self.print_line(&format!("{:<25} - Show this help message", "help".bright_green()));
+        self.print_line(&format!("    {} {}", "↳ Alias:".bright_black().italic(), "h".bright_yellow()));
+        self.print_line("");
+        self.print_line(&format!("{:<25} - Exit the program", "quit".bright_green()));
+        self.print_line(&format!("    {} {}", "↳ Aliases:".bright_black().italic(), "q, exit".bright_yellow()));
+        self.print_line("");
+        self.print_line(&format!("{}\n", "====================================".bright_cyan().bold()));
+    }
+
+    /// Displays a list of all tasks.
+    pub fn show_all_tasks(&mut self, tasks: &[Task]) {
+        if tasks.is_empty() {
+            self.print_line(&"No tasks found. Use 'add <description>' to create a task.".yellow().to_string());
+            return;
+        }
+
+        self.show_task_list("All Tasks", tasks.iter().collect());
+    }
+
+    /// Displays a list of completed tasks.
+    pub fn show_completed_tasks(&mut self, tasks: &[&Task]) {
+        if tasks.is_empty() {
+            self.print_line(&"No completed tasks found.".yellow().to_string());
+            return;
+        }
+
+        self.show_task_list("Completed Tasks", tasks.to_vec());
+    }
+
+    /// Displays a list of pending tasks.
+    pub fn show_pending_tasks(&mut self, tasks: &[&Task]) {
+        if tasks.is_empty() {
+            self.print_line(&"No pending tasks found.".yellow().to_string());
+            return;
+        }
+
+        self.show_task_list("Pending Tasks", tasks.to_vec());
+    }
+
+    /// Helper method to display a list of tasks with a given title.
+    ///
+    /// # Arguments
+    ///
+    /// * `title` - The title to display above the task list
+    /// * `tasks` - A vector of task references to display
+    fn show_task_list(&mut self, title: &str, tasks: Vec<&Task>) {
+        let separator = "-".repeat(title.len() + 8);
+        
+        self.print_line(&format!("\n{}", format!("--- {} ---", title).bright_cyan().bold()));
+        for task in tasks {
+            let status_symbol = if task.is_completed() {
+                format!("[{}]", "✓".bright_green().bold())
+            } else {
+                format!("[{}]", " ".white())
+            };
+            
+            let task_text = if task.is_completed() {
+                format!("{}. {} {}", task.id.to_string().bright_blue(), status_symbol, task.description.bright_black())
+            } else {
+                format!("{}. {} {}", task.id.to_string().bright_blue(), status_symbol, task.description.white())
+            };
+            
+            self.print_line(&task_text);
+        }
+        self.print_line(&format!("{}\n", separator.bright_cyan()));
+    }
+
+    /// Displays a message when a task is successfully added.
+    ///
+    /// # Arguments
+    ///
+    /// * `task_id` - The ID of the newly added task
+    /// * `description` - The description of the task
+    pub fn show_task_added(&mut self, task_id: usize, description: &str) {
+        self.print_line(&format!("{} Task added with ID {}: '{}'", "✓".bright_green().bold(), task_id.to_string().bright_blue(), description));
+    }
+
+    /// Displays a message when a task is successfully removed.
+    ///
+    /// # Arguments
+    ///
+    /// * `description` - The description of the removed task
+    pub fn show_task_removed(&mut self, description: &str) {
+        self.print_line(&format!("{} Task removed: '{}'", "✓".bright_green().bold(), description));
+    }
+
+    /// Displays an error message when a task is not found.
+    ///
+    /// # Arguments
+    ///
+    /// * `task_id` - The ID of the task that was not found
+    pub fn show_task_not_found(&mut self, task_id: usize) {
+        self.print_line(&format!("{} Task with ID {} not found.", "✗".bright_red().bold(), task_id.to_string().bright_blue()));
+    }
+
+    /// Displays a message when a task is marked as completed.
+    ///
+    /// # Arguments
+    ///
+    /// * `description` - The description of the completed task
+    pub fn show_task_completed(&mut self, description: &str) {
+        self.print_line(&format!("{} Task '{}' marked as completed.", "✓".bright_green().bold(), description));
+    }
+
+    /// Displays a message when a task is marked as pending.
+    ///
+    /// # Arguments
+    ///
+    /// * `description` - The description of the task
+    pub fn show_task_uncompleted(&mut self, description: &str) {
+        self.print_line(&format!("{} Task '{}' marked as pending.", "↻".bright_yellow().bold(), description));
+    }
+
+    /// Displays a message when a task status is toggled.
+    ///
+    /// # Arguments
+    ///
+    /// * `description` - The description of the task
+    /// * `is_completed` - Whether the task is now completed
+    pub fn show_task_toggled(&mut self, description: &str, is_completed: bool) {
+        let (icon, status) = if is_completed {
+            ("✓".bright_green().bold(), "completed".bright_green())
+        } else {
+            ("↻".bright_yellow().bold(), "pending".bright_yellow())
+        };
+        self.print_line(&format!("{} Task '{}' marked as {}.", icon, description, status));
+    }
+
+    /// Displays a goodbye message.
+    pub fn show_goodbye(&mut self) {
+        self.print_line("");
+        self.print_line(&"─────────────────────────────────────────────────────".bright_black().to_string());
+        self.print_line("");
+        self.print_line(&"    ✨ Thank you for using To-Do List Manager! ✨    ".bright_cyan().bold().to_string());
+        self.print_line("");
+        self.print_line(&"           Stay organized and productive! 🚀          ".bright_green().to_string());
+        self.print_line("");
+        self.print_line(&"═════════════════════════════════════════════════════".bright_cyan().bold().to_string());
+        self.print_line("");
+    }
+
+    /// Displays an error message for unknown commands.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The unknown command entered
+    pub fn show_unknown_command(&mut self, command: &str) {
+        self.print_line(&format!("{} Unknown command '{}'. Type {} for available commands.", "✗".bright_red().bold(), command.bright_yellow(), "help".bright_yellow()));
+    }
+
+    /// Displays an error message for invalid input.
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - The error message to display
+    pub fn show_error(&mut self, message: &str) {
+        self.print_line(&format!("{} {}", "✗".bright_red().bold(), message.red()));
+    }
+
+    /// Prints a line of text to the output.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - The text to print
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::output_writer::OutputWriter;
+    ///
+    /// let mut output = OutputWriter::new();
+    /// output.print_line("Task added successfully!");
+    /// ```
+    pub fn print_line(&mut self, text: &str) {
+        writeln!(self.writer, "{}", text).unwrap();
+    }
+
+    /// Displays the command prompt without a newline.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use todo_manager::output_writer::OutputWriter;
+    ///
+    /// let mut output = OutputWriter::new();
+    /// output.print_prompt();
+    /// ```
+    pub fn print_prompt(&mut self) {
+        write!(self.writer, "{}", "> ".bright_green().bold()).unwrap();
+        self.writer.flush().unwrap();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Disable colors for all tests
+    fn setup() {
+        colored::control::set_override(false);
+    }
+
+    #[test]
+    fn test_new_output_writer() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.print_line("Test message");
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "Test message\n");
+    }
+
+    #[test]
+    fn test_show_task_added() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_task_added(1, "Buy groceries");
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "✓ Task added with ID 1: 'Buy groceries'\n");
+    }
+
+    #[test]
+    fn test_show_task_added_large_id() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_task_added(42, "Complete project");
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "✓ Task added with ID 42: 'Complete project'\n");
+    }
+
+    #[test]
+    fn test_show_task_removed() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_task_removed("Buy groceries");
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "✓ Task removed: 'Buy groceries'\n");
+    }
+
+    #[test]
+    fn test_show_task_removed_special_chars() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_task_removed("Task with special chars: !@#$%");
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "✓ Task removed: 'Task with special chars: !@#$%'\n");
+    }
+
+    #[test]
+    fn test_show_task_not_found() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_task_not_found(1);
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "✗ Task with ID 1 not found.\n");
+    }
+
+    #[test]
+    fn test_show_task_not_found_large_id() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_task_not_found(999);
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "✗ Task with ID 999 not found.\n");
+    }
+
+    #[test]
+    fn test_show_task_completed() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_task_completed("Finish homework");
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "✓ Task 'Finish homework' marked as completed.\n");
+    }
+
+    #[test]
+    fn test_show_task_uncompleted() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_task_uncompleted("Review code");
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "↻ Task 'Review code' marked as pending.\n");
+    }
+
+    #[test]
+    fn test_show_task_toggled_completed() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_task_toggled("Write tests", true);
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "✓ Task 'Write tests' marked as completed.\n");
+    }
+
+    #[test]
+    fn test_show_task_toggled_pending() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_task_toggled("Fix bug", false);
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "↻ Task 'Fix bug' marked as pending.\n");
+    }
+
+    #[test]
+    fn test_show_goodbye() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_goodbye();
+        let result = String::from_utf8(buffer).unwrap();
+        assert!(result.contains("Thank you for using To-Do List Manager"));
+        assert!(result.contains("Stay organized and productive"));
+    }
+
+    #[test]
+    fn test_show_welcome() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_welcome();
+        let result = String::from_utf8(buffer).unwrap();
+        assert!(result.contains("LIST MANAGER"));
+        assert!(result.contains("Welcome to your personal task management system"));
+        assert!(result.contains("Type help to see available commands"));
+    }
+
+    #[test]
+    fn test_show_help() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_help();
+        let result = String::from_utf8(buffer).unwrap();
+        assert!(result.contains("=== To-Do List Manager Commands ==="));
+        assert!(result.contains("add <description>"));
+        assert!(result.contains("list [filter]"));
+        assert!(result.contains("remove <id>"));
+        assert!(result.contains("complete <id>"));
+        assert!(result.contains("uncomplete <id>"));
+        assert!(result.contains("toggle <id>"));
+        assert!(result.contains("help"));
+        assert!(result.contains("quit"));
+        assert!(result.contains("Alias:") || result.contains("Aliases:"));
+        assert!(result.contains("rm, delete"));
+        assert!(result.contains("done"));
+        assert!(result.contains("undo"));
+    }
+
+    #[test]
+    fn test_show_unknown_command() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_unknown_command("foo");
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "✗ Unknown command 'foo'. Type help for available commands.\n");
+    }
+
+    #[test]
+    fn test_show_unknown_command_different() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_unknown_command("bar123");
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "✗ Unknown command 'bar123'. Type help for available commands.\n");
+    }
+
+    #[test]
+    fn test_show_error() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_error("Invalid input");
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "✗ Invalid input\n");
+    }
+
+    #[test]
+    fn test_show_error_different_message() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_error("Task ID must be a number");
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "✗ Task ID must be a number\n");
+    }
+
+    #[test]
+    fn test_show_all_tasks_empty() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        let tasks: Vec<Task> = vec![];
+        output.show_all_tasks(&tasks);
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "No tasks found. Use 'add <description>' to create a task.\n");
+    }
+
+    #[test]
+    fn test_show_all_tasks_with_tasks() {
+        setup();
+        use crate::task::Task;
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        let tasks = vec![
+            Task { id: 1, description: "Task 1".to_string(), completed: false },
+            Task { id: 2, description: "Task 2".to_string(), completed: true },
+        ];
+        output.show_all_tasks(&tasks);
+        let result = String::from_utf8(buffer).unwrap();
+        assert!(result.contains("All Tasks"));
+        assert!(result.contains("1. [ ] Task 1"));
+        assert!(result.contains("2. [✓] Task 2"));
+    }
+
+    #[test]
+    fn test_show_completed_tasks_empty() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        let tasks: Vec<&Task> = vec![];
+        output.show_completed_tasks(&tasks);
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "No completed tasks found.\n");
+    }
+
+    #[test]
+    fn test_show_completed_tasks_with_tasks() {
+        setup();
+        use crate::task::Task;
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        let task1 = Task { id: 1, description: "Completed task".to_string(), completed: true };
+        let task2 = Task { id: 2, description: "Another completed".to_string(), completed: true };
+        let tasks = vec![&task1, &task2];
+        output.show_completed_tasks(&tasks);
+        let result = String::from_utf8(buffer).unwrap();
+        assert!(result.contains("Completed Tasks"));
+        assert!(result.contains("1. [✓] Completed task"));
+        assert!(result.contains("2. [✓] Another completed"));
+    }
+
+    #[test]
+    fn test_show_pending_tasks_empty() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        let tasks: Vec<&Task> = vec![];
+        output.show_pending_tasks(&tasks);
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "No pending tasks found.\n");
+    }
+
+    #[test]
+    fn test_show_pending_tasks_with_tasks() {
+        setup();
+        use crate::task::Task;
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        let task1 = Task { id: 1, description: "Pending task".to_string(), completed: false };
+        let task2 = Task { id: 2, description: "Another pending".to_string(), completed: false };
+        let tasks = vec![&task1, &task2];
+        output.show_pending_tasks(&tasks);
+        let result = String::from_utf8(buffer).unwrap();
+        assert!(result.contains("Pending Tasks"));
+        assert!(result.contains("1. [ ] Pending task"));
+        assert!(result.contains("2. [ ] Another pending"));
+    }
+
+    #[test]
+    fn test_show_tasks_with_special_characters() {
+        setup();
+        use crate::task::Task;
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        let tasks = vec![
+            Task { id: 1, description: "Task with émojis 🎉".to_string(), completed: false },
+            Task { id: 2, description: "Special chars: <>&\"'".to_string(), completed: true },
+        ];
+        output.show_all_tasks(&tasks);
+        let result = String::from_utf8(buffer).unwrap();
+        assert!(result.contains("Task with émojis 🎉"));
+        assert!(result.contains("Special chars: <>&\"'"));
+    }
+
+    #[test]
+    fn test_show_tasks_with_long_description() {
+        use crate::task::Task;
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        let long_desc = "A".repeat(200);
+        let tasks = vec![
+            Task { id: 1, description: long_desc.clone(), completed: false },
+        ];
+        output.show_all_tasks(&tasks);
+        let result = String::from_utf8(buffer).unwrap();
+        assert!(result.contains(&long_desc));
+    }
+
+    #[test]
+    fn test_print_line_empty_string() {
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.print_line("");
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "\n");
+    }
+
+    #[test]
+    fn test_print_line_multiline_string() {
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.print_line("Line 1\nLine 2\nLine 3");
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "Line 1\nLine 2\nLine 3\n");
+    }
+
+    #[test]
+    fn test_print_prompt() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.print_prompt();
+        let result = String::from_utf8(buffer).unwrap();
+        assert_eq!(result, "> ");
+    }
+
+    #[test]
+    fn test_task_list_separator_length() {
+        setup();
+        use crate::task::Task;
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        let tasks = vec![
+            Task { id: 1, description: "Test".to_string(), completed: false },
+        ];
+        output.show_all_tasks(&tasks);
+        let result = String::from_utf8(buffer).unwrap();
+        // Separator should be "--- All Tasks ---" length + 8 dashes
+        let separator = "-".repeat("All Tasks".len() + 8);
+        assert!(result.contains(&separator));
+    }
+
+    #[test]
+    fn test_multiple_operations() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut output = OutputWriter::with_writer(&mut buffer);
+        output.show_task_added(1, "First task");
+        output.show_task_added(2, "Second task");
+        output.show_task_completed("First task");
+        let result = String::from_utf8(buffer).unwrap();
+        assert!(result.contains("✓ Task added with ID 1: 'First task'"));
+        assert!(result.contains("✓ Task added with ID 2: 'Second task'"));
+        assert!(result.contains("✓ Task 'First task' marked as completed"));
+    }
+}
