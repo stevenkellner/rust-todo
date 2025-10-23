@@ -3,6 +3,25 @@ use super::priority::Priority;
 use super::task_filter::TaskFilter;
 use super::task_status::TaskStatus;
 
+/// Statistics about the tasks in a todo list.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TaskStatistics {
+    /// Total number of tasks
+    pub total: usize,
+    /// Number of completed tasks
+    pub completed: usize,
+    /// Number of pending tasks
+    pub pending: usize,
+    /// Completion percentage (0.0 to 100.0)
+    pub completion_percentage: f64,
+    /// Number of high priority tasks
+    pub high_priority: usize,
+    /// Number of medium priority tasks
+    pub medium_priority: usize,
+    /// Number of low priority tasks
+    pub low_priority: usize,
+}
+
 /// A collection of tasks with methods to manage them.
 ///
 /// `TodoList` maintains a vector of tasks and automatically assigns unique IDs
@@ -428,6 +447,65 @@ impl TodoList {
             Some(task)
         } else {
             None
+        }
+    }
+
+    /// Gets statistics about the tasks in the todo list.
+    ///
+    /// Returns a `TaskStatistics` struct containing:
+    /// - Total number of tasks
+    /// - Number of completed and pending tasks
+    /// - Completion percentage
+    /// - Task counts by priority level
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::priority::Priority;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id1 = list.add_task("Task 1".to_string());
+    /// let id2 = list.add_task("Task 2".to_string());
+    /// list.set_task_priority(id1, Priority::High);
+    /// list.complete_task(id1);
+    ///
+    /// let stats = list.get_statistics();
+    /// assert_eq!(stats.total, 2);
+    /// assert_eq!(stats.completed, 1);
+    /// assert_eq!(stats.pending, 1);
+    /// assert_eq!(stats.completion_percentage, 50.0);
+    /// assert_eq!(stats.high_priority, 1);
+    /// ```
+    pub fn get_statistics(&self) -> TaskStatistics {
+        let total = self.tasks.len();
+        let completed = self.tasks.iter().filter(|t| t.is_completed()).count();
+        let pending = total - completed;
+        
+        let completion_percentage = if total > 0 {
+            (completed as f64 / total as f64) * 100.0
+        } else {
+            0.0
+        };
+        
+        let high_priority = self.tasks.iter()
+            .filter(|t| t.get_priority() == Priority::High)
+            .count();
+        let medium_priority = self.tasks.iter()
+            .filter(|t| t.get_priority() == Priority::Medium)
+            .count();
+        let low_priority = self.tasks.iter()
+            .filter(|t| t.get_priority() == Priority::Low)
+            .count();
+        
+        TaskStatistics {
+            total,
+            completed,
+            pending,
+            completion_percentage,
+            high_priority,
+            medium_priority,
+            low_priority,
         }
     }
 }

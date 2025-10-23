@@ -17,5 +17,5 @@ pub use priority::Priority;
 pub use task::Task;
 pub use task_filter::TaskFilter;
 pub use task_status::TaskStatus;
-pub use todo_list::TodoList;
+pub use todo_list::{TodoList, TaskStatistics};
 pub use ui_event::UiEvent;

@@ -93,6 +93,7 @@ impl TodoController {
             UiEvent::ToggleTask(id) => self.handle_toggle_task(*id),
             UiEvent::SetPriority(id, priority) => self.handle_set_priority(*id, *priority),
             UiEvent::SearchTasks(keyword) => self.handle_search_tasks(keyword),
+            UiEvent::ShowStatistics => self.handle_show_statistics(),
             UiEvent::ShowHelp => self.handle_show_help(),
             UiEvent::Quit => return self.handle_quit(),
             UiEvent::DebugGenerateTasks(count) => self.handle_debug_generate_tasks(*count),
@@ -202,6 +203,12 @@ impl TodoController {
     fn handle_search_tasks(&mut self, keyword: &str) {
         let results = self.todo_list.search_tasks(keyword);
         self.output.show_search_results(&results, keyword);
+    }
+
+    /// Handles the ShowStatistics event.
+    fn handle_show_statistics(&mut self) {
+        let stats = self.todo_list.get_statistics();
+        self.output.show_statistics(&stats);
     }
 
     /// Handles the ShowHelp event.

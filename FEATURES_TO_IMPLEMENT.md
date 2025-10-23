@@ -75,7 +75,7 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 ### 3. Task Statistics Display
 
-**Status:** Pending  
+**Status:** ✅ Complete  
 **Complexity:** Easy  
 **Description:**
 
@@ -95,6 +95,22 @@ This document tracks the 19 features selected for implementation in the TODO man
   - Completion percentage
   - Tasks by priority breakdown
   - Tasks by category breakdown
+
+**Implementation Notes:**
+
+- Added `ShowStatistics` event variant to UiEvent enum
+- Created `TaskStatistics` struct in `models/todo_list.rs` with fields:
+  - `total`, `completed`, `pending`
+  - `completion_percentage` (f64, 0.0-100.0)
+  - `high_priority`, `medium_priority`, `low_priority` counts
+- Implemented `get_statistics()` method in TodoList
+- Added `show_statistics()` in OutputWriter with colored, formatted display:
+  - Overall statistics section (total, completed, pending, completion %)
+  - Priority breakdown section (high/medium/low counts with colored symbols)
+- Added `handle_show_statistics()` in TodoController
+- Commands: `statistics` (primary), `stats` (alias)
+- Added to help output with proper formatting
+- All tests passing (201 total tests)
 
 ---
 

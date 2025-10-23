@@ -96,6 +96,9 @@ impl<W: Write> OutputWriter<W> {
         self.print_line(&MessageFormatter::command("search <keyword>", "Search tasks by keyword"));
         self.print_line(&MessageFormatter::label("Alias:", "find"));
         self.print_line("");
+        self.print_line(&MessageFormatter::command("statistics", "Display task statistics"));
+        self.print_line(&MessageFormatter::label("Alias:", "stats"));
+        self.print_line("");
         self.print_line(&MessageFormatter::command("help", "Show this help message"));
         self.print_line(&MessageFormatter::label("Alias:", "h"));
         self.print_line("");
@@ -220,6 +223,56 @@ impl<W: Write> OutputWriter<W> {
 
         let title = format!("Search Results for '{}'", keyword);
         self.show_task_list(&title, tasks.to_vec());
+    }
+
+    /// Displays task statistics.
+    ///
+    /// Shows comprehensive statistics including:
+    /// - Total task count
+    /// - Completed and pending counts
+    /// - Completion percentage
+    /// - Task breakdown by priority
+    ///
+    /// # Arguments
+    ///
+    /// * `stats` - The TaskStatistics struct containing all statistics
+    pub fn show_statistics(&mut self, stats: &crate::models::TaskStatistics) {
+        use colored::Colorize;
+        
+        self.print_line("");
+        self.print_line(&MessageFormatter::section_title("Task Statistics"));
+        self.print_line("");
+        
+        // Overall statistics
+        self.print_line(&format!("  {}: {}", 
+            "Total Tasks".bright_white().bold(), 
+            stats.total));
+        self.print_line(&format!("  {}: {}", 
+            "Completed".bright_white().bold(), 
+            stats.completed.to_string().green()));
+        self.print_line(&format!("  {}: {}", 
+            "Pending".bright_white().bold(), 
+            stats.pending.to_string().yellow()));
+        self.print_line(&format!("  {}: {:.1}%", 
+            "Completion".bright_white().bold(), 
+            stats.completion_percentage));
+        
+        // Priority breakdown
+        if stats.total > 0 {
+            self.print_line("");
+            self.print_line(&format!("  {}", "By Priority:".bright_cyan()));
+            self.print_line(&format!("    {} {}", 
+                "▲ High:  ".red(), 
+                stats.high_priority));
+            self.print_line(&format!("    {} {}", 
+                "■ Medium:".yellow(), 
+                stats.medium_priority));
+            self.print_line(&format!("    {} {}", 
+                "▼ Low:   ".blue(), 
+                stats.low_priority));
+        }
+        
+        self.print_line("");
     }
 
     /// Helper method to display a list of tasks with a given title.

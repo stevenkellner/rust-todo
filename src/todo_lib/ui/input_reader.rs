@@ -89,6 +89,7 @@ impl<R: Read> InputReader<R> {
             "toggle" => self.parse_toggle_command(&args),
             "priority" | "pri" => self.parse_priority_command(&args),
             "search" | "find" => self.parse_search_command(&args),
+            "statistics" | "stats" => UiEvent::ShowStatistics,
             "debug" => self.parse_debug_command(&args),
             "debug:gen" => self.parse_debug_generate_command(&args),
             "debug:clear" => UiEvent::DebugClearAll,
