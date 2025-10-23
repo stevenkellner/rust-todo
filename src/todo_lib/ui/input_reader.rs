@@ -2,6 +2,8 @@ use std::io::{self, BufRead, BufReader, Read};
 use crate::models::ui_event::UiEvent;
 use crate::models::filter_builder::FilterBuilder;
 use crate::models::priority::Priority;
+use crate::models::task_command::TaskCommand;
+use crate::models::debug_command::DebugCommand;
 
 /// Handles input operations for the command-line interface.
 ///
@@ -89,13 +91,13 @@ impl<R: Read> InputReader<R> {
             "priority" | "pri" => self.parse_priority_command(&args),
             "set-due" | "due" => self.parse_set_due_command(&args),
             "set-category" | "category" | "cat" => self.parse_set_category_command(&args),
-            "categories" | "list-categories" => UiEvent::ListCategories,
+            "categories" | "list-categories" => UiEvent::Task(TaskCommand::ListCategories),
             "edit" => self.parse_edit_command(&args),
             "search" | "find" => self.parse_search_command(&args),
-            "statistics" | "stats" => UiEvent::ShowStatistics,
+            "statistics" | "stats" => UiEvent::Task(TaskCommand::ShowStatistics),
             "debug" => self.parse_debug_command(&args),
             "debug:gen" => self.parse_debug_generate_command(&args),
-            "debug:clear" => UiEvent::DebugClearAll,
+            "debug:clear" => UiEvent::Debug(DebugCommand::ClearAll),
             "help" | "h" => UiEvent::ShowHelp,
             "quit" | "exit" | "q" => UiEvent::Quit,
             _ => UiEvent::UnknownCommand(command),
@@ -111,7 +113,7 @@ impl<R: Read> InputReader<R> {
             if description.trim().is_empty() {
                 UiEvent::InvalidInput("Task description cannot be empty.".to_string())
             } else {
-                UiEvent::AddTask(description)
+                UiEvent::Task(TaskCommand::Add(description))
             }
         }
     }
@@ -129,26 +131,27 @@ impl<R: Read> InputReader<R> {
         }
         
         // If no filter was specified, return None to show all tasks
-        UiEvent::ListTasks(builder.build())
+        UiEvent::Task(TaskCommand::List(builder.build()))
     }
+
     /// Parses the 'remove' command and validates the task ID.
     fn parse_remove_command(&self, args: &[&str]) -> UiEvent {
-        self.parse_id_command(args, "remove", UiEvent::RemoveTask)
+        self.parse_id_command(args, "remove", |id| UiEvent::Task(TaskCommand::Remove(id)))
     }
 
     /// Parses the 'complete' command and validates the task ID.
     fn parse_complete_command(&self, args: &[&str]) -> UiEvent {
-        self.parse_id_command(args, "complete", UiEvent::CompleteTask)
+        self.parse_id_command(args, "complete", |id| UiEvent::Task(TaskCommand::Complete(id)))
     }
 
     /// Parses the 'uncomplete' command and validates the task ID.
     fn parse_uncomplete_command(&self, args: &[&str]) -> UiEvent {
-        self.parse_id_command(args, "uncomplete", UiEvent::UncompleteTask)
+        self.parse_id_command(args, "uncomplete", |id| UiEvent::Task(TaskCommand::Uncomplete(id)))
     }
 
     /// Parses the 'toggle' command and validates the task ID.
     fn parse_toggle_command(&self, args: &[&str]) -> UiEvent {
-        self.parse_id_command(args, "toggle", UiEvent::ToggleTask)
+        self.parse_id_command(args, "toggle", |id| UiEvent::Task(TaskCommand::Toggle(id)))
     }
 
     /// Parses the 'priority' command to set task priority.
@@ -160,7 +163,7 @@ impl<R: Read> InputReader<R> {
         match args[0].parse::<usize>() {
             Ok(id) => {
                 match Priority::from_str(args[1]) {
-                    Some(priority) => UiEvent::SetPriority(id, priority),
+                    Some(priority) => UiEvent::Task(TaskCommand::SetPriority(id, priority)),
                     None => UiEvent::InvalidInput(
                         "Invalid priority level. Use: high, medium, or low".to_string()
                     ),
@@ -180,12 +183,12 @@ impl<R: Read> InputReader<R> {
             Ok(id) => {
                 // Check if user wants to clear the due date
                 if args[1].to_lowercase() == "none" || args[1].to_lowercase() == "clear" {
-                    return UiEvent::SetDueDate(id, None);
+                    return UiEvent::Task(TaskCommand::SetDueDate(id, None));
                 }
                 
                 // Try to parse the date in DD.MM.YYYY format
                 match chrono::NaiveDate::parse_from_str(args[1], "%d.%m.%Y") {
-                    Ok(date) => UiEvent::SetDueDate(id, Some(date)),
+                    Ok(date) => UiEvent::Task(TaskCommand::SetDueDate(id, Some(date))),
                     Err(_) => UiEvent::InvalidInput(
                         "Invalid date format. Use DD.MM.YYYY (e.g., 31.12.2025) or 'none' to clear.".to_string()
                     ),
@@ -205,21 +208,21 @@ impl<R: Read> InputReader<R> {
             Ok(id) => {
                 if args.len() < 2 {
                     // No category specified, clear it
-                    return UiEvent::SetCategory(id, None);
+                    return UiEvent::Task(TaskCommand::SetCategory(id, None));
                 }
                 
                 let category = args[1..].join(" ");
                 
                 // Check if user wants to clear the category
                 if category.to_lowercase() == "none" || category.to_lowercase() == "clear" {
-                    return UiEvent::SetCategory(id, None);
+                    return UiEvent::Task(TaskCommand::SetCategory(id, None));
                 }
                 
                 // Set the category
                 if category.trim().is_empty() {
                     UiEvent::InvalidInput("Category name cannot be empty.".to_string())
                 } else {
-                    UiEvent::SetCategory(id, Some(category))
+                    UiEvent::Task(TaskCommand::SetCategory(id, Some(category)))
                 }
             }
             Err(_) => UiEvent::InvalidInput("Please enter a valid task ID (number).".to_string()),
@@ -235,7 +238,7 @@ impl<R: Read> InputReader<R> {
             if keyword.trim().is_empty() {
                 UiEvent::InvalidInput("Search keyword cannot be empty.".to_string())
             } else {
-                UiEvent::SearchTasks(keyword)
+                UiEvent::Task(TaskCommand::Search(keyword))
             }
         }
     }
@@ -252,7 +255,7 @@ impl<R: Read> InputReader<R> {
                 if new_description.trim().is_empty() {
                     UiEvent::InvalidInput("Task description cannot be empty.".to_string())
                 } else {
-                    UiEvent::EditTask(id, new_description)
+                    UiEvent::Task(TaskCommand::Edit(id, new_description))
                 }
             }
             Err(_) => UiEvent::InvalidInput(format!("Invalid task ID: '{}'", args[0])),
@@ -264,7 +267,7 @@ impl<R: Read> InputReader<R> {
         if !args.is_empty() {
             UiEvent::InvalidInput("Usage: debug (no arguments needed)".to_string())
         } else {
-            UiEvent::DebugToggle
+            UiEvent::Debug(DebugCommand::Toggle)
         }
     }
 
@@ -274,7 +277,7 @@ impl<R: Read> InputReader<R> {
             UiEvent::InvalidInput("Usage: debug:gen <count>".to_string())
         } else {
             match args[0].parse::<usize>() {
-                Ok(count) if count > 0 && count <= 100 => UiEvent::DebugGenerateTasks(count),
+                Ok(count) if count > 0 && count <= 100 => UiEvent::Debug(DebugCommand::GenerateTasks(count)),
                 Ok(_) => UiEvent::InvalidInput("Count must be between 1 and 100".to_string()),
                 Err(_) => UiEvent::InvalidInput("Please enter a valid number.".to_string()),
             }
@@ -340,7 +343,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("add Buy groceries");
         match event {
-            UiEvent::AddTask(desc) => assert_eq!(desc, "Buy groceries"),
+            UiEvent::Task(TaskCommand::Add(desc)) => assert_eq!(desc, "Buy groceries"),
             _ => panic!("Expected AddTask event"),
         }
     }
@@ -350,7 +353,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("add This is a longer task description");
         match event {
-            UiEvent::AddTask(desc) => assert_eq!(desc, "This is a longer task description"),
+            UiEvent::Task(TaskCommand::Add(desc)) => assert_eq!(desc, "This is a longer task description"),
             _ => panic!("Expected AddTask event"),
         }
     }
@@ -382,7 +385,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("list");
         match event {
-            UiEvent::ListTasks(None) => {},
+            UiEvent::Task(TaskCommand::List(None)) => {},
             _ => panic!("Expected ListTasks with no filter"),
         }
     }
@@ -392,7 +395,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("list completed");
         match event {
-            UiEvent::ListTasks(Some(filter)) if filter.status == Some(TaskStatus::Completed) && filter.priority.is_none() => {},
+            UiEvent::Task(TaskCommand::List(Some(filter))) if filter.status == Some(TaskStatus::Completed) && filter.priority.is_none() => {},
             _ => panic!("Expected ListTasks with Completed filter"),
         }
     }
@@ -402,7 +405,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("list done");
         match event {
-            UiEvent::ListTasks(Some(filter)) if filter.status == Some(TaskStatus::Completed) && filter.priority.is_none() => {},
+            UiEvent::Task(TaskCommand::List(Some(filter))) if filter.status == Some(TaskStatus::Completed) && filter.priority.is_none() => {},
             _ => panic!("Expected ListTasks with Completed filter"),
         }
     }
@@ -412,7 +415,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("list pending");
         match event {
-            UiEvent::ListTasks(Some(filter)) if filter.status == Some(TaskStatus::Pending) && filter.priority.is_none() => {},
+            UiEvent::Task(TaskCommand::List(Some(filter))) if filter.status == Some(TaskStatus::Pending) && filter.priority.is_none() => {},
             _ => panic!("Expected ListTasks with Pending filter"),
         }
     }
@@ -422,7 +425,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("list todo");
         match event {
-            UiEvent::ListTasks(Some(filter)) if filter.status == Some(TaskStatus::Pending) && filter.priority.is_none() => {},
+            UiEvent::Task(TaskCommand::List(Some(filter))) if filter.status == Some(TaskStatus::Pending) && filter.priority.is_none() => {},
             _ => panic!("Expected ListTasks with Pending filter"),
         }
     }
@@ -432,7 +435,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("remove 42");
         match event {
-            UiEvent::RemoveTask(id) => assert_eq!(id, 42),
+            UiEvent::Task(TaskCommand::Remove(id)) => assert_eq!(id, 42),
             _ => panic!("Expected RemoveTask event"),
         }
     }
@@ -442,7 +445,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("delete 5");
         match event {
-            UiEvent::RemoveTask(id) => assert_eq!(id, 5),
+            UiEvent::Task(TaskCommand::Remove(id)) => assert_eq!(id, 5),
             _ => panic!("Expected RemoveTask event"),
         }
     }
@@ -452,7 +455,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("rm 10");
         match event {
-            UiEvent::RemoveTask(id) => assert_eq!(id, 10),
+            UiEvent::Task(TaskCommand::Remove(id)) => assert_eq!(id, 10),
             _ => panic!("Expected RemoveTask event"),
         }
     }
@@ -482,7 +485,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("complete 3");
         match event {
-            UiEvent::CompleteTask(id) => assert_eq!(id, 3),
+            UiEvent::Task(TaskCommand::Complete(id)) => assert_eq!(id, 3),
             _ => panic!("Expected CompleteTask event"),
         }
     }
@@ -492,7 +495,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("done 7");
         match event {
-            UiEvent::CompleteTask(id) => assert_eq!(id, 7),
+            UiEvent::Task(TaskCommand::Complete(id)) => assert_eq!(id, 7),
             _ => panic!("Expected CompleteTask event"),
         }
     }
@@ -512,7 +515,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("uncomplete 8");
         match event {
-            UiEvent::UncompleteTask(id) => assert_eq!(id, 8),
+            UiEvent::Task(TaskCommand::Uncomplete(id)) => assert_eq!(id, 8),
             _ => panic!("Expected UncompleteTask event"),
         }
     }
@@ -522,7 +525,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("undo 12");
         match event {
-            UiEvent::UncompleteTask(id) => assert_eq!(id, 12),
+            UiEvent::Task(TaskCommand::Uncomplete(id)) => assert_eq!(id, 12),
             _ => panic!("Expected UncompleteTask event"),
         }
     }
@@ -532,7 +535,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("toggle 15");
         match event {
-            UiEvent::ToggleTask(id) => assert_eq!(id, 15),
+            UiEvent::Task(TaskCommand::Toggle(id)) => assert_eq!(id, 15),
             _ => panic!("Expected ToggleTask event"),
         }
     }
@@ -633,13 +636,13 @@ mod tests {
         
         let event1 = input.parse_command("LIST");
         match event1 {
-            UiEvent::ListTasks(_) => {},
+            UiEvent::Task(TaskCommand::List(_)) => {},
             _ => panic!("Expected ListTasks for uppercase"),
         }
         
         let event2 = input.parse_command("LiSt");
         match event2 {
-            UiEvent::ListTasks(_) => {},
+            UiEvent::Task(TaskCommand::List(_)) => {},
             _ => panic!("Expected ListTasks for mixed case"),
         }
     }
@@ -649,7 +652,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("  add    Task with   spaces  ");
         match event {
-            UiEvent::AddTask(desc) => assert_eq!(desc, "Task with spaces"),
+            UiEvent::Task(TaskCommand::Add(desc)) => assert_eq!(desc, "Task with spaces"),
             _ => panic!("Expected AddTask event"),
         }
     }
@@ -659,7 +662,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("remove 0");
         match event {
-            UiEvent::RemoveTask(id) => assert_eq!(id, 0),
+            UiEvent::Task(TaskCommand::Remove(id)) => assert_eq!(id, 0),
             _ => panic!("Expected RemoveTask event"),
         }
     }
@@ -669,7 +672,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("complete 999999");
         match event {
-            UiEvent::CompleteTask(id) => assert_eq!(id, 999999),
+            UiEvent::Task(TaskCommand::Complete(id)) => assert_eq!(id, 999999),
             _ => panic!("Expected CompleteTask event"),
         }
     }
@@ -689,7 +692,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("add Task with !@#$%^&*()");
         match event {
-            UiEvent::AddTask(desc) => assert_eq!(desc, "Task with !@#$%^&*()"),
+            UiEvent::Task(TaskCommand::Add(desc)) => assert_eq!(desc, "Task with !@#$%^&*()"),
             _ => panic!("Expected AddTask event"),
         }
     }
@@ -699,7 +702,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("add Task with émojis 🎉 and ñ");
         match event {
-            UiEvent::AddTask(desc) => assert_eq!(desc, "Task with émojis 🎉 and ñ"),
+            UiEvent::Task(TaskCommand::Add(desc)) => assert_eq!(desc, "Task with émojis 🎉 and ñ"),
             _ => panic!("Expected AddTask event"),
         }
     }
@@ -709,7 +712,7 @@ mod tests {
         let input = InputReader::new();
         let event = input.parse_command("add\tTask\twith\ttabs");
         match event {
-            UiEvent::AddTask(desc) => assert_eq!(desc, "Task with tabs"),
+            UiEvent::Task(TaskCommand::Add(desc)) => assert_eq!(desc, "Task with tabs"),
             _ => panic!("Expected AddTask event"),
         }
     }
@@ -722,7 +725,7 @@ mod tests {
         for alias in aliases {
             let event = input.parse_command(&format!("{} 1", alias));
             match event {
-                UiEvent::RemoveTask(1) => {},
+                UiEvent::Task(TaskCommand::Remove(1)) => {},
                 _ => panic!("Expected RemoveTask for alias: {}", alias),
             }
         }
@@ -736,7 +739,7 @@ mod tests {
         for alias in aliases {
             let event = input.parse_command(&format!("{} 1", alias));
             match event {
-                UiEvent::CompleteTask(1) => {},
+                UiEvent::Task(TaskCommand::Complete(1)) => {},
                 _ => panic!("Expected CompleteTask for alias: {}", alias),
             }
         }
@@ -750,7 +753,7 @@ mod tests {
         for alias in aliases {
             let event = input.parse_command(&format!("{} 1", alias));
             match event {
-                UiEvent::UncompleteTask(1) => {},
+                UiEvent::Task(TaskCommand::Uncomplete(1)) => {},
                 _ => panic!("Expected UncompleteTask for alias: {}", alias),
             }
         }
@@ -799,7 +802,7 @@ mod tests {
         let mut reader = InputReader::with_reader(&input_data[..]);
         let event = reader.read_event();
         match event {
-            UiEvent::AddTask(desc) => assert_eq!(desc, "Buy milk"),
+            UiEvent::Task(TaskCommand::Add(desc)) => assert_eq!(desc, "Buy milk"),
             _ => panic!("Expected AddTask event"),
         }
     }
@@ -810,7 +813,7 @@ mod tests {
         let mut reader = InputReader::with_reader(&input_data[..]);
         let event = reader.read_event();
         match event {
-            UiEvent::ListTasks(Some(filter)) if filter.status == Some(TaskStatus::Completed) => {},
+            UiEvent::Task(TaskCommand::List(Some(filter))) if filter.status == Some(TaskStatus::Completed) => {},
             _ => panic!("Expected ListTasks(Completed) event"),
         }
     }
@@ -821,7 +824,7 @@ mod tests {
         let mut reader = InputReader::with_reader(&input_data[..]);
         let event = reader.read_event();
         match event {
-            UiEvent::RemoveTask(id) => assert_eq!(id, 5),
+            UiEvent::Task(TaskCommand::Remove(id)) => assert_eq!(id, 5),
             _ => panic!("Expected RemoveTask event"),
         }
     }
@@ -832,7 +835,7 @@ mod tests {
         let mut reader = InputReader::with_reader(&input_data[..]);
         let event = reader.read_event();
         match event {
-            UiEvent::CompleteTask(id) => assert_eq!(id, 3),
+            UiEvent::Task(TaskCommand::Complete(id)) => assert_eq!(id, 3),
             _ => panic!("Expected CompleteTask event"),
         }
     }
@@ -843,7 +846,7 @@ mod tests {
         let mut reader = InputReader::with_reader(&input_data[..]);
         let event = reader.read_event();
         match event {
-            UiEvent::ToggleTask(id) => assert_eq!(id, 7),
+            UiEvent::Task(TaskCommand::Toggle(id)) => assert_eq!(id, 7),
             _ => panic!("Expected ToggleTask event"),
         }
     }
@@ -914,7 +917,7 @@ mod tests {
         let mut reader = InputReader::with_reader(&input_data[..]);
         let event = reader.read_event();
         match event {
-            UiEvent::AddTask(desc) => assert_eq!(desc, "This is a complex task with many words"),
+            UiEvent::Task(TaskCommand::Add(desc)) => assert_eq!(desc, "This is a complex task with many words"),
             _ => panic!("Expected AddTask event"),
         }
     }
@@ -925,7 +928,7 @@ mod tests {
         let mut reader = InputReader::with_reader(&input_data[..]);
         let event = reader.read_event();
         match event {
-            UiEvent::ListTasks(_) => {},
+            UiEvent::Task(TaskCommand::List(_)) => {},
             _ => panic!("Expected ListTasks event"),
         }
     }
@@ -936,7 +939,7 @@ mod tests {
         let mut reader = InputReader::with_reader(&input_data[..]);
         let event = reader.read_event();
         match event {
-            UiEvent::RemoveTask(id) => assert_eq!(id, 10),
+            UiEvent::Task(TaskCommand::Remove(id)) => assert_eq!(id, 10),
             _ => panic!("Expected RemoveTask event"),
         }
     }
@@ -947,7 +950,7 @@ mod tests {
         let mut reader = InputReader::with_reader(&input_data[..]);
         let event = reader.read_event();
         match event {
-            UiEvent::SearchTasks(keyword) => assert_eq!(keyword, "meeting"),
+            UiEvent::Task(TaskCommand::Search(keyword)) => assert_eq!(keyword, "meeting"),
             _ => panic!("Expected SearchTasks event"),
         }
     }
@@ -958,7 +961,7 @@ mod tests {
         let mut reader = InputReader::with_reader(&input_data[..]);
         let event = reader.read_event();
         match event {
-            UiEvent::SearchTasks(keyword) => assert_eq!(keyword, "buy groceries"),
+            UiEvent::Task(TaskCommand::Search(keyword)) => assert_eq!(keyword, "buy groceries"),
             _ => panic!("Expected SearchTasks event"),
         }
     }
@@ -969,7 +972,7 @@ mod tests {
         let mut reader = InputReader::with_reader(&input_data[..]);
         let event = reader.read_event();
         match event {
-            UiEvent::SearchTasks(keyword) => assert_eq!(keyword, "important"),
+            UiEvent::Task(TaskCommand::Search(keyword)) => assert_eq!(keyword, "important"),
             _ => panic!("Expected SearchTasks event"),
         }
     }
@@ -1002,9 +1005,10 @@ mod tests {
         let mut reader = InputReader::with_reader(&input_data[..]);
         let event = reader.read_event();
         match event {
-            UiEvent::SearchTasks(keyword) => assert_eq!(keyword, "test"),
+            UiEvent::Task(TaskCommand::Search(keyword)) => assert_eq!(keyword, "test"),
             _ => panic!("Expected SearchTasks event"),
         }
     }
 }
+
 

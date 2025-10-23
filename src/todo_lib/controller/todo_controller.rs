@@ -3,11 +3,9 @@ use crate::ui::input_reader::InputReader;
 use crate::ui::interactive_prompt::InteractivePrompt;
 use crate::ui::output_writer::OutputWriter;
 use crate::models::ui_event::UiEvent;
-use crate::models::task_filter::TaskFilter;
-use crate::models::task_status::TaskStatus;
+use crate::models::task_command::TaskCommand;
 use crate::models::loop_control::LoopControl;
-use crate::models::priority::Priority;
-use crate::controller::debug_controller::DebugController;
+use crate::controller::debug_command_handler::DebugCommandHandler;
 use crate::controller::task_command_handler::TaskCommandHandler;
 
 /// Controls the todo list application by reacting to UI events.
@@ -28,8 +26,8 @@ pub struct TodoController {
     todo_list: TodoList,
     input: InputReader,
     output: OutputWriter,
-    debug_controller: DebugController,
     task_handler: TaskCommandHandler,
+    debug_handler: DebugCommandHandler,
     #[cfg(test)]
     test_mode: bool,
 }
@@ -49,8 +47,8 @@ impl TodoController {
             todo_list: TodoList::new(),
             input: InputReader::new(),
             output: OutputWriter::new(),
-            debug_controller: DebugController::new(),
             task_handler: TaskCommandHandler::new(),
+            debug_handler: DebugCommandHandler::new(),
             #[cfg(test)]
             test_mode: true,
         }
@@ -93,46 +91,39 @@ impl TodoController {
     /// `LoopControl::Continue` to continue the event loop, `LoopControl::Exit` to quit
     fn handle_event(&mut self, event: &UiEvent) -> LoopControl {
         match event {
-            UiEvent::AddTask(description) => {
-                #[cfg(test)]
-                let interactive = !self.test_mode;
-                #[cfg(not(test))]
-                let interactive = true;
-                self.handle_add_task(description, interactive)
+            UiEvent::Task(task_command) => {
+                // Handle interactive add separately
+                if let TaskCommand::Add(description) = task_command {
+                    #[cfg(test)]
+                    let interactive = !self.test_mode;
+                    #[cfg(not(test))]
+                    let interactive = true;
+                    
+                    if interactive {
+                        self.handle_add_task_interactive(description);
+                    } else {
+                        self.task_handler.handle(task_command, &mut self.todo_list, &mut self.output);
+                    }
+                } else {
+                    self.task_handler.handle(task_command, &mut self.todo_list, &mut self.output);
+                }
             }
-            UiEvent::ListTasks(filter) => self.handle_list_tasks(filter),
-            UiEvent::RemoveTask(id) => self.handle_remove_task(*id),
-            UiEvent::CompleteTask(id) => self.handle_complete_task(*id),
-            UiEvent::UncompleteTask(id) => self.handle_uncomplete_task(*id),
-            UiEvent::ToggleTask(id) => self.handle_toggle_task(*id),
-            UiEvent::SetPriority(id, priority) => self.handle_set_priority(*id, *priority),
-            UiEvent::SetDueDate(id, due_date) => self.handle_set_due_date(*id, *due_date),
-            UiEvent::SetCategory(id, category) => self.handle_set_category(*id, category.clone()),
-            UiEvent::ListCategories => self.handle_list_categories(),
-            UiEvent::EditTask(id, new_description) => self.handle_edit_task(*id, new_description),
-            UiEvent::SearchTasks(keyword) => self.handle_search_tasks(keyword),
-            UiEvent::ShowStatistics => self.handle_show_statistics(),
-            UiEvent::ShowHelp => self.handle_show_help(),
+            UiEvent::Debug(debug_command) => {
+                self.debug_handler.handle(debug_command, &mut self.todo_list, &mut self.output);
+            }
+            UiEvent::ShowHelp => self.output.show_help(),
             UiEvent::Quit => return self.handle_quit(),
-            UiEvent::DebugGenerateTasks(count) => self.handle_debug_generate_tasks(*count),
-            UiEvent::DebugClearAll => self.handle_debug_clear_all(),
-            UiEvent::DebugToggle => self.handle_debug_toggle(),
-            UiEvent::UnknownCommand(command) => self.handle_unknown_command(command),
-            UiEvent::InvalidInput(message) => self.handle_invalid_input(message),
+            UiEvent::UnknownCommand(command) => self.output.show_unknown_command(command),
+            UiEvent::InvalidInput(message) => self.output.show_error(message),
         }
         
         LoopControl::Continue
     }
 
     /// Handles the AddTask event with interactive prompts.
-    fn handle_add_task(&mut self, description: &str, interactive: bool) {
+    fn handle_add_task_interactive(&mut self, description: &str) {
         let task_id = self.todo_list.add_task(description.to_string());
         self.output.show_task_added(task_id, description);
-        
-        // Only prompt interactively when requested
-        if !interactive {
-            return;
-        }
         
         // Use InteractivePrompt to gather additional properties
         let mut prompt = InteractivePrompt::new(&mut self.input, &mut self.output);
@@ -152,136 +143,19 @@ impl TodoController {
         }
     }
 
-    /// Handles the ListTasks event with optional filter.
-    fn handle_list_tasks(&mut self, filter: &Option<TaskFilter>) {
-        let tasks = match filter {
-            Some(filter) => self.todo_list.get_filtered_tasks(filter),
-            None => self.todo_list.get_tasks().iter().collect(),
-        };
-        
-        // Determine the appropriate display method based on filter
-        match filter {
-            Some(f) if f.status == Some(TaskStatus::Completed) && f.priority.is_none() => {
-                self.output.show_completed_tasks(&tasks);
-            }
-            Some(f) if f.status == Some(TaskStatus::Pending) && f.priority.is_none() => {
-                self.output.show_pending_tasks(&tasks);
-            }
-            Some(f) if f.status.is_none() && f.priority.is_some() => {
-                self.output.show_tasks_by_priority(&tasks, f.priority.unwrap());
-            }
-            Some(f) => {
-                // Combined filters
-                self.output.show_filtered_tasks(&tasks, f);
-            }
-            None => {
-                let all_tasks = self.todo_list.get_tasks();
-                self.output.show_all_tasks(all_tasks);
-            }
-        }
-    }
-
-    /// Handles the RemoveTask event.
-    fn handle_remove_task(&mut self, id: usize) {
-        self.task_handler.remove_task(id, &mut self.todo_list, &mut self.output);
-    }
-
-    /// Handles the CompleteTask event.
-    fn handle_complete_task(&mut self, id: usize) {
-        self.task_handler.complete_task(id, &mut self.todo_list, &mut self.output);
-    }
-
-    /// Handles the UncompleteTask event.
-    fn handle_uncomplete_task(&mut self, id: usize) {
-        self.task_handler.uncomplete_task(id, &mut self.todo_list, &mut self.output);
-    }
-
-    /// Handles the ToggleTask event.
-    fn handle_toggle_task(&mut self, id: usize) {
-        self.task_handler.toggle_task(id, &mut self.todo_list, &mut self.output);
-    }
-
-    /// Handles the SetPriority event.
-    fn handle_set_priority(&mut self, id: usize, priority: Priority) {
-        self.task_handler.set_priority(id, priority, &mut self.todo_list, &mut self.output);
-    }
-
-    /// Handles the SetDueDate event.
-    fn handle_set_due_date(&mut self, id: usize, due_date: Option<chrono::NaiveDate>) {
-        self.task_handler.set_due_date(id, due_date, &mut self.todo_list, &mut self.output);
-    }
-
-    /// Handles the SetCategory event.
-    fn handle_set_category(&mut self, id: usize, category: Option<String>) {
-        self.task_handler.set_category(id, category, &mut self.todo_list, &mut self.output);
-    }
-
-    /// Handles the ListCategories event.
-    fn handle_list_categories(&mut self) {
-        let categories = self.todo_list.get_all_categories();
-        self.output.show_categories(&categories);
-    }
-
-    /// Handles the EditTask event.
-    fn handle_edit_task(&mut self, id: usize, new_description: &str) {
-        self.task_handler.edit_task(id, new_description, &mut self.todo_list, &mut self.output);
-    }
-
-    /// Handles the SearchTasks event.
-    fn handle_search_tasks(&mut self, keyword: &str) {
-        let results = self.todo_list.search_tasks(keyword);
-        self.output.show_search_results(&results, keyword);
-    }
-
-    /// Handles the ShowStatistics event.
-    fn handle_show_statistics(&mut self) {
-        let stats = self.todo_list.get_statistics();
-        self.output.show_statistics(&stats);
-    }
-
-    /// Handles the ShowHelp event.
-    fn handle_show_help(&mut self) {
-        self.output.show_help();
-    }
-
     /// Handles the Quit event.
     fn handle_quit(&mut self) -> LoopControl {
         self.output.show_goodbye();
         LoopControl::Exit
-    }
-
-    /// Handles the DebugGenerateTasks event.
-    fn handle_debug_generate_tasks(&mut self, count: usize) {
-        self.debug_controller.generate_random_tasks(count, &mut self.todo_list, &mut self.output);
-    }
-
-    /// Handles the DebugClearAll event.
-    fn handle_debug_clear_all(&mut self) {
-        self.debug_controller.clear_all_tasks(&mut self.todo_list, &mut self.output);
-    }
-
-    /// Handles the DebugToggle event.
-    fn handle_debug_toggle(&mut self) {
-        self.debug_controller.toggle_debug_mode(&mut self.output);
-        if self.debug_controller.is_debug_mode() {
-            self.output.show_debug_help();
-        }
-    }
-
-    /// Handles the UnknownCommand event.
-    fn handle_unknown_command(&mut self, command: &str) {
-        self.output.show_unknown_command(command);
-    }
-
-    /// Handles the InvalidInput event.
-    fn handle_invalid_input(&mut self, message: &str) {
-        self.output.show_error(message);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::task_filter::TaskFilter;
+    use crate::models::task_status::TaskStatus;
+    use crate::models::task_command::TaskCommand;
 
     #[test]
     fn test_new_controller() {
@@ -293,7 +167,7 @@ mod tests {
     fn test_handle_add_task() {
         let mut controller = TodoController::new();
         
-        controller.handle_add_task("Test task", false);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Test task".to_string())));
         
         assert_eq!(controller.todo_list.get_tasks().len(), 1);
         assert_eq!(controller.todo_list.get_tasks()[0].description, "Test task");
@@ -303,9 +177,9 @@ mod tests {
     fn test_handle_add_multiple_tasks() {
         let mut controller = TodoController::new();
         
-        controller.handle_add_task("Task 1", false);
-        controller.handle_add_task("Task 2", false);
-        controller.handle_add_task("Task 3", false);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task 1".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task 2".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task 3".to_string())));
         
         assert_eq!(controller.todo_list.get_tasks().len(), 3);
     }
@@ -314,10 +188,10 @@ mod tests {
     fn test_handle_remove_task() {
         let mut controller = TodoController::new();
         
-        controller.handle_add_task("Task to remove", false);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task to remove".to_string())));
         let task_id = controller.todo_list.get_tasks()[0].id;
         
-        controller.handle_remove_task(task_id);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Remove(task_id)));
         
         assert!(controller.todo_list.is_empty());
     }
@@ -326,8 +200,8 @@ mod tests {
     fn test_handle_remove_nonexistent_task() {
         let mut controller = TodoController::new();
         
-        controller.handle_add_task("Test task", false);
-        controller.handle_remove_task(999);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Test task".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Remove(999)));
         
         assert_eq!(controller.todo_list.get_tasks().len(), 1);
     }
@@ -336,10 +210,10 @@ mod tests {
     fn test_handle_complete_task() {
         let mut controller = TodoController::new();
         
-        controller.handle_add_task("Task to complete", false);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task to complete".to_string())));
         let task_id = controller.todo_list.get_tasks()[0].id;
         
-        controller.handle_complete_task(task_id);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Complete(task_id)));
         
         assert!(controller.todo_list.get_tasks()[0].is_completed());
         assert_eq!(controller.todo_list.get_completed_tasks().len(), 1);
@@ -349,8 +223,8 @@ mod tests {
     fn test_handle_complete_nonexistent_task() {
         let mut controller = TodoController::new();
         
-        controller.handle_add_task("Test task", false);
-        controller.handle_complete_task(999);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Test task".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Complete(999)));
         
         assert!(!controller.todo_list.get_tasks()[0].is_completed());
     }
@@ -359,13 +233,13 @@ mod tests {
     fn test_handle_uncomplete_task() {
         let mut controller = TodoController::new();
         
-        controller.handle_add_task("Task to uncomplete", false);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task to uncomplete".to_string())));
         let task_id = controller.todo_list.get_tasks()[0].id;
         
-        controller.handle_complete_task(task_id);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Complete(task_id)));
         assert!(controller.todo_list.get_tasks()[0].is_completed());
         
-        controller.handle_uncomplete_task(task_id);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Uncomplete(task_id)));
         assert!(!controller.todo_list.get_tasks()[0].is_completed());
         assert_eq!(controller.todo_list.get_pending_tasks().len(), 1);
     }
@@ -374,8 +248,8 @@ mod tests {
     fn test_handle_uncomplete_nonexistent_task() {
         let mut controller = TodoController::new();
         
-        controller.handle_add_task("Test task", false);
-        controller.handle_uncomplete_task(999);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Test task".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Uncomplete(999)));
         
         assert!(!controller.todo_list.get_tasks()[0].is_completed());
     }
@@ -384,15 +258,15 @@ mod tests {
     fn test_handle_toggle_task() {
         let mut controller = TodoController::new();
         
-        controller.handle_add_task("Task to toggle", false);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task to toggle".to_string())));
         let task_id = controller.todo_list.get_tasks()[0].id;
         
         assert!(!controller.todo_list.get_tasks()[0].is_completed());
         
-        controller.handle_toggle_task(task_id);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Toggle(task_id)));
         assert!(controller.todo_list.get_tasks()[0].is_completed());
         
-        controller.handle_toggle_task(task_id);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Toggle(task_id)));
         assert!(!controller.todo_list.get_tasks()[0].is_completed());
     }
 
@@ -400,10 +274,10 @@ mod tests {
     fn test_handle_toggle_nonexistent_task() {
         let mut controller = TodoController::new();
         
-        controller.handle_add_task("Test task", false);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Test task".to_string())));
         let initial_status = controller.todo_list.get_tasks()[0].is_completed();
         
-        controller.handle_toggle_task(999);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Toggle(999)));
         
         assert_eq!(controller.todo_list.get_tasks()[0].is_completed(), initial_status);
     }
@@ -412,11 +286,11 @@ mod tests {
     fn test_handle_list_tasks_all() {
         let mut controller = TodoController::new();
         
-        controller.handle_add_task("Task 1", false);
-        controller.handle_add_task("Task 2", false);
-        controller.handle_complete_task(1);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task 1".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task 2".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Complete(1)));
         
-        controller.handle_list_tasks(&None);
+        controller.handle_event(&UiEvent::Task(TaskCommand::List(None)));
         
         assert_eq!(controller.todo_list.get_tasks().len(), 2);
     }
@@ -425,11 +299,11 @@ mod tests {
     fn test_handle_list_tasks_completed() {
         let mut controller = TodoController::new();
         
-        controller.handle_add_task("Task 1", false);
-        controller.handle_add_task("Task 2", false);
-        controller.handle_complete_task(1);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task 1".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task 2".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Complete(1)));
         
-        controller.handle_list_tasks(&Some(TaskFilter::all().with_status(TaskStatus::Completed)));
+        controller.handle_event(&UiEvent::Task(TaskCommand::List(Some(TaskFilter::all().with_status(TaskStatus::Completed)))));
         
         assert_eq!(controller.todo_list.get_completed_tasks().len(), 1);
     }
@@ -438,11 +312,11 @@ mod tests {
     fn test_handle_list_tasks_pending() {
         let mut controller = TodoController::new();
         
-        controller.handle_add_task("Task 1", false);
-        controller.handle_add_task("Task 2", false);
-        controller.handle_complete_task(1);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task 1".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task 2".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Complete(1)));
         
-        controller.handle_list_tasks(&Some(TaskFilter::all().with_status(TaskStatus::Pending)));
+        controller.handle_event(&UiEvent::Task(TaskCommand::List(Some(TaskFilter::all().with_status(TaskStatus::Pending)))));
         
         assert_eq!(controller.todo_list.get_pending_tasks().len(), 1);
     }
@@ -469,7 +343,7 @@ mod tests {
     fn test_handle_event_add_task() {
         let mut controller = TodoController::new();
         
-        let control = controller.handle_event(&UiEvent::AddTask("New task".to_string()));
+        let control = controller.handle_event(&UiEvent::Task(TaskCommand::Add("New task".to_string())));
         
         assert_eq!(control, LoopControl::Continue);
         assert_eq!(controller.todo_list.get_tasks().len(), 1);
@@ -498,26 +372,26 @@ mod tests {
         let mut controller = TodoController::new();
         
         // Add multiple tasks
-        controller.handle_event(&UiEvent::AddTask("Task 1".to_string()));
-        controller.handle_event(&UiEvent::AddTask("Task 2".to_string()));
-        controller.handle_event(&UiEvent::AddTask("Task 3".to_string()));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task 1".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task 2".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task 3".to_string())));
         
         assert_eq!(controller.todo_list.get_tasks().len(), 3);
         
         // Complete some tasks
-        controller.handle_event(&UiEvent::CompleteTask(1));
-        controller.handle_event(&UiEvent::CompleteTask(2));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Complete(1)));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Complete(2)));
         
         assert_eq!(controller.todo_list.get_completed_tasks().len(), 2);
         assert_eq!(controller.todo_list.get_pending_tasks().len(), 1);
         
         // Remove a task
-        controller.handle_event(&UiEvent::RemoveTask(3));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Remove(3)));
         
         assert_eq!(controller.todo_list.get_tasks().len(), 2);
         
         // Toggle a task
-        controller.handle_event(&UiEvent::ToggleTask(1));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Toggle(1)));
         
         assert_eq!(controller.todo_list.get_completed_tasks().len(), 1);
         assert_eq!(controller.todo_list.get_pending_tasks().len(), 1);
@@ -527,11 +401,11 @@ mod tests {
     fn test_handle_search_tasks() {
         let mut controller = TodoController::new();
         
-        controller.handle_add_task("Buy groceries", false);
-        controller.handle_add_task("Read a book", false);
-        controller.handle_add_task("Buy concert tickets", false);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Buy groceries".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Read a book".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Buy concert tickets".to_string())));
         
-        controller.handle_search_tasks("buy");
+        controller.handle_event(&UiEvent::Task(TaskCommand::Search("buy".to_string())));
         
         // No panic means search executed successfully
         // The actual display is tested in OutputWriter tests
@@ -541,10 +415,10 @@ mod tests {
     fn test_handle_search_tasks_no_results() {
         let mut controller = TodoController::new();
         
-        controller.handle_add_task("Task one", false);
-        controller.handle_add_task("Task two", false);
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task one".to_string())));
+        controller.handle_event(&UiEvent::Task(TaskCommand::Add("Task two".to_string())));
         
-        controller.handle_search_tasks("nonexistent");
+        controller.handle_event(&UiEvent::Task(TaskCommand::Search("nonexistent".to_string())));
         
         // Should handle gracefully with no results
     }
@@ -553,7 +427,7 @@ mod tests {
     fn test_handle_search_tasks_empty_list() {
         let mut controller = TodoController::new();
         
-        controller.handle_search_tasks("anything");
+        controller.handle_event(&UiEvent::Task(TaskCommand::Search("anything".to_string())));
         
         // Should handle gracefully with empty list
     }

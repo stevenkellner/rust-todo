@@ -1,17 +1,18 @@
 use crate::models::todo_list::TodoList;
 use crate::models::priority::Priority;
+use crate::models::debug_command::DebugCommand;
 use crate::ui::output_writer::OutputWriter;
 use rand::Rng;
 use std::io::Write;
 
-/// Controller for debug commands and operations
-pub struct DebugController {
+/// Handler for debug commands and operations
+pub struct DebugCommandHandler {
     /// Flag to track if debug mode is enabled
     debug_mode: bool,
 }
 
-impl DebugController {
-    /// Creates a new DebugController
+impl DebugCommandHandler {
+    /// Creates a new DebugCommandHandler
     pub fn new() -> Self {
         Self {
             debug_mode: false,
@@ -23,8 +24,27 @@ impl DebugController {
         self.debug_mode
     }
     
+    /// Handles a debug command
+    pub fn handle<W: Write>(
+        &mut self,
+        command: &DebugCommand,
+        todo_list: &mut TodoList,
+        output: &mut OutputWriter<W>
+    ) {
+        match command {
+            DebugCommand::GenerateTasks(count) => self.generate_random_tasks(*count, todo_list, output),
+            DebugCommand::ClearAll => self.clear_all_tasks(todo_list, output),
+            DebugCommand::Toggle => {
+                self.toggle_debug_mode(output);
+                if self.debug_mode {
+                    output.show_debug_help();
+                }
+            }
+        }
+    }
+    
     /// Toggles debug mode on/off
-    pub fn toggle_debug_mode<W: Write>(&mut self, output: &mut OutputWriter<W>) {
+    fn toggle_debug_mode<W: Write>(&mut self, output: &mut OutputWriter<W>) {
         self.debug_mode = !self.debug_mode;
         if self.debug_mode {
             output.show_success("Debug mode enabled");
@@ -40,7 +60,7 @@ impl DebugController {
     /// * `count` - Number of random tasks to generate
     /// * `todo_list` - The todo list to add tasks to
     /// * `output` - Output writer for displaying results
-    pub fn generate_random_tasks<W: Write>(
+    fn generate_random_tasks<W: Write>(
         &self,
         count: usize,
         todo_list: &mut TodoList,
@@ -124,13 +144,13 @@ impl DebugController {
         output.show_success(&format!("Generated {} random tasks", count));
     }
     
-    /// Clears all tasks from the list
+    /// Clears all tasks from the todo list
     ///
     /// # Arguments
     ///
     /// * `todo_list` - The todo list to clear
     /// * `output` - Output writer for displaying results
-    pub fn clear_all_tasks<W: Write>(
+    fn clear_all_tasks<W: Write>(
         &self,
         todo_list: &mut TodoList,
         output: &mut OutputWriter<W>
@@ -146,7 +166,7 @@ impl DebugController {
     }
 }
 
-impl Default for DebugController {
+impl Default for DebugCommandHandler {
     fn default() -> Self {
         Self::new()
     }
@@ -158,13 +178,13 @@ mod tests {
     
     #[test]
     fn test_new_debug_controller() {
-        let controller = DebugController::new();
+        let controller = DebugCommandHandler::new();
         assert!(!controller.is_debug_mode());
     }
     
     #[test]
     fn test_toggle_debug_mode() {
-        let mut controller = DebugController::new();
+        let mut controller = DebugCommandHandler::new();
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         
@@ -179,7 +199,7 @@ mod tests {
     
     #[test]
     fn test_generate_random_tasks_without_debug_mode() {
-        let controller = DebugController::new();
+        let controller = DebugCommandHandler::new();
         let mut todo_list = TodoList::new();
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
@@ -193,7 +213,7 @@ mod tests {
     
     #[test]
     fn test_generate_random_tasks_with_debug_mode() {
-        let mut controller = DebugController::new();
+        let mut controller = DebugCommandHandler::new();
         let mut todo_list = TodoList::new();
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
@@ -206,7 +226,7 @@ mod tests {
     
     #[test]
     fn test_clear_all_tasks_without_debug_mode() {
-        let controller = DebugController::new();
+        let controller = DebugCommandHandler::new();
         let mut todo_list = TodoList::new();
         todo_list.add_task("Test task".to_string());
         let mut buffer = Vec::new();
@@ -221,7 +241,7 @@ mod tests {
     
     #[test]
     fn test_clear_all_tasks_with_debug_mode() {
-        let mut controller = DebugController::new();
+        let mut controller = DebugCommandHandler::new();
         let mut todo_list = TodoList::new();
         todo_list.add_task("Test task 1".to_string());
         todo_list.add_task("Test task 2".to_string());

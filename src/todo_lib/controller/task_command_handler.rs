@@ -1,5 +1,8 @@
 use crate::models::todo_list::TodoList;
+use crate::models::task_command::TaskCommand;
 use crate::models::priority::Priority;
+use crate::models::task_filter::TaskFilter;
+use crate::models::task_status::TaskStatus;
 use crate::ui::output_writer::OutputWriter;
 use chrono::NaiveDate;
 use std::io::Write;
@@ -17,8 +20,69 @@ impl TaskCommandHandler {
         TaskCommandHandler {}
     }
 
+    /// Handles a task command
+    pub fn handle<W: Write>(
+        &self,
+        command: &TaskCommand,
+        todo_list: &mut TodoList,
+        output: &mut OutputWriter<W>
+    ) {
+        match command {
+            TaskCommand::Add(description) => {
+                let task_id = todo_list.add_task(description.clone());
+                output.show_task_added(task_id, description);
+            }
+            TaskCommand::List(filter) => self.list_tasks(filter, todo_list, output),
+            TaskCommand::Remove(id) => self.remove_task(*id, todo_list, output),
+            TaskCommand::Complete(id) => self.complete_task(*id, todo_list, output),
+            TaskCommand::Uncomplete(id) => self.uncomplete_task(*id, todo_list, output),
+            TaskCommand::Toggle(id) => self.toggle_task(*id, todo_list, output),
+            TaskCommand::SetPriority(id, priority) => self.set_priority(*id, *priority, todo_list, output),
+            TaskCommand::SetDueDate(id, due_date) => self.set_due_date(*id, *due_date, todo_list, output),
+            TaskCommand::SetCategory(id, category) => self.set_category(*id, category.clone(), todo_list, output),
+            TaskCommand::ListCategories => {
+                let categories = todo_list.get_all_categories();
+                output.show_categories(&categories);
+            }
+            TaskCommand::Edit(id, new_description) => self.edit_task(*id, new_description, todo_list, output),
+            TaskCommand::Search(keyword) => {
+                let results = todo_list.search_tasks(keyword);
+                output.show_search_results(&results, keyword);
+            }
+            TaskCommand::ShowStatistics => {
+                let stats = todo_list.get_statistics();
+                output.show_statistics(&stats);
+            }
+        }
+    }
+
+    /// Lists tasks with optional filtering
+    fn list_tasks<W: Write>(
+        &self,
+        filter: &Option<TaskFilter>,
+        todo_list: &mut TodoList,
+        output: &mut OutputWriter<W>
+    ) {
+        match filter {
+            None => output.show_all_tasks(todo_list.get_tasks()),
+            Some(task_filter) => {
+                let filtered_tasks = todo_list.get_filtered_tasks(task_filter);
+                
+                if task_filter.status == Some(TaskStatus::Completed) && task_filter.priority.is_none() {
+                    output.show_completed_tasks(&filtered_tasks);
+                } else if task_filter.status == Some(TaskStatus::Pending) && task_filter.priority.is_none() {
+                    output.show_pending_tasks(&filtered_tasks);
+                } else if let Some(priority) = task_filter.priority {
+                    output.show_tasks_by_priority(&filtered_tasks, priority);
+                } else {
+                    output.show_filtered_tasks(&filtered_tasks, task_filter);
+                }
+            }
+        }
+    }
+
     /// Removes a task by ID.
-    pub fn remove_task<W: Write>(
+    fn remove_task<W: Write>(
         &self,
         id: usize,
         todo_list: &mut TodoList,
@@ -32,7 +96,7 @@ impl TaskCommandHandler {
     }
 
     /// Marks a task as completed.
-    pub fn complete_task<W: Write>(
+    fn complete_task<W: Write>(
         &self,
         id: usize,
         todo_list: &mut TodoList,
@@ -48,7 +112,7 @@ impl TaskCommandHandler {
     }
 
     /// Marks a task as not completed.
-    pub fn uncomplete_task<W: Write>(
+    fn uncomplete_task<W: Write>(
         &self,
         id: usize,
         todo_list: &mut TodoList,
@@ -64,7 +128,7 @@ impl TaskCommandHandler {
     }
 
     /// Toggles a task's completion status.
-    pub fn toggle_task<W: Write>(
+    fn toggle_task<W: Write>(
         &self,
         id: usize,
         todo_list: &mut TodoList,
@@ -78,7 +142,7 @@ impl TaskCommandHandler {
     }
 
     /// Sets the priority of a task.
-    pub fn set_priority<W: Write>(
+    fn set_priority<W: Write>(
         &self,
         id: usize,
         priority: Priority,
@@ -93,7 +157,7 @@ impl TaskCommandHandler {
     }
 
     /// Sets the due date of a task.
-    pub fn set_due_date<W: Write>(
+    fn set_due_date<W: Write>(
         &self,
         id: usize,
         due_date: Option<NaiveDate>,
@@ -108,7 +172,7 @@ impl TaskCommandHandler {
     }
 
     /// Sets the category of a task.
-    pub fn set_category<W: Write>(
+    fn set_category<W: Write>(
         &self,
         id: usize,
         category: Option<String>,
@@ -123,7 +187,7 @@ impl TaskCommandHandler {
     }
 
     /// Edits a task's description.
-    pub fn edit_task<W: Write>(
+    fn edit_task<W: Write>(
         &self,
         id: usize,
         new_description: &str,

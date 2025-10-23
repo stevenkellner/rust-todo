@@ -1,6 +1,5 @@
-use crate::models::task_filter::TaskFilter;
-use crate::models::priority::Priority;
-use chrono::NaiveDate;
+use crate::models::task_command::TaskCommand;
+use crate::models::debug_command::DebugCommand;
 
 /// Represents events that occur in the user interface.
 ///
@@ -8,59 +7,17 @@ use chrono::NaiveDate;
 /// are handled by the controller layer.
 #[derive(Debug, Clone, PartialEq)]
 pub enum UiEvent {
-    /// User wants to add a new task with the given description
-    AddTask(String),
+    /// Task-related command
+    Task(TaskCommand),
     
-    /// User wants to list tasks with an optional filter
-    ListTasks(Option<TaskFilter>),
-    
-    /// User wants to remove a task by ID
-    RemoveTask(usize),
-    
-    /// User wants to mark a task as completed
-    CompleteTask(usize),
-    
-    /// User wants to mark a task as pending (incomplete)
-    UncompleteTask(usize),
-    
-    /// User wants to toggle a task's completion status
-    ToggleTask(usize),
-    
-    /// User wants to set the priority of a task
-    SetPriority(usize, Priority),
-    
-    /// User wants to set the due date of a task
-    SetDueDate(usize, Option<NaiveDate>),
-    
-    /// User wants to edit a task's description
-    EditTask(usize, String),
-    
-    /// User wants to set the category of a task
-    SetCategory(usize, Option<String>),
-    
-    /// User wants to list all categories
-    ListCategories,
-    
-    /// User wants to search for tasks by keyword
-    SearchTasks(String),
-    
-    /// User wants to see task statistics
-    ShowStatistics,
+    /// Debug-related command
+    Debug(DebugCommand),
     
     /// User wants to see help information
     ShowHelp,
     
     /// User wants to quit the application
     Quit,
-    
-    /// Debug command: Generate random tasks
-    DebugGenerateTasks(usize),
-    
-    /// Debug command: Clear all tasks
-    DebugClearAll,
-    
-    /// Debug command: Toggle debug mode
-    DebugToggle,
     
     /// Unknown command entered
     UnknownCommand(String),
