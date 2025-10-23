@@ -4,6 +4,7 @@
 //! related to tasks, priorities, filtering, and control flow.
 
 pub mod loop_control;
+pub mod overdue_filter;
 pub mod priority;
 pub mod task;
 pub mod task_filter;

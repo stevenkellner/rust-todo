@@ -74,7 +74,7 @@ impl<W: Write> OutputWriter<W> {
         self.print_line(&MessageFormatter::command("add <description>", "Add a new task"));
         self.print_line("");
         self.print_line(&MessageFormatter::command("list [status] [priority]", "List tasks (filters can be combined)"));
-        self.print_line(&MessageFormatter::subinfo("Status:", "completed/done, pending/todo"));
+        self.print_line(&MessageFormatter::subinfo("Status:", "completed/done, pending/todo, overdue"));
         self.print_line(&MessageFormatter::subinfo("Priority:", "high/h, medium/med/m, low/l"));
         self.print_line(&MessageFormatter::subinfo("Example:", "list pending high"));
         self.print_line("");
@@ -92,6 +92,10 @@ impl<W: Write> OutputWriter<W> {
         self.print_line(&MessageFormatter::command("priority <id> <level>", "Set task priority"));
         self.print_line(&MessageFormatter::subinfo("Levels:", "high/h, medium/med/m, low/l"));
         self.print_line(&MessageFormatter::label("Alias:", "pri"));
+        self.print_line("");
+        self.print_line(&MessageFormatter::command("set-due <id> <date>", "Set task due date"));
+        self.print_line(&MessageFormatter::subinfo("Format:", "DD.MM.YYYY or 'none' to clear"));
+        self.print_line(&MessageFormatter::label("Alias:", "due"));
         self.print_line("");
         self.print_line(&MessageFormatter::command("edit <id> <description>", "Edit task description"));
         self.print_line("");
@@ -384,6 +388,21 @@ impl<W: Write> OutputWriter<W> {
     pub fn show_priority_set(&mut self, description: &str, priority: Priority) {
         let colored_priority = TaskFormatter::format_priority_with_name(priority);
         let message = format!("Priority set to {} for task: '{}'", colored_priority, description);
+        self.print_line(&MessageFormatter::success(&message));
+    }
+
+    /// Displays a message indicating the due date has been set for a task.
+    ///
+    /// # Arguments
+    ///
+    /// * `description` - The description of the task
+    /// * `due_date` - The new due date (or None to clear)
+    pub fn show_due_date_set(&mut self, description: &str, due_date: Option<chrono::NaiveDate>) {
+        let message = if let Some(date) = due_date {
+            format!("Due date set to {} for task: '{}'", date.format("%d.%m.%Y"), description)
+        } else {
+            format!("Due date cleared for task: '{}'", description)
+        };
         self.print_line(&MessageFormatter::success(&message));
     }
 
@@ -685,8 +704,8 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         let tasks = vec![
-            Task { id: 1, description: "Task 1".to_string(), completed: false, priority: Priority::Medium },
-            Task { id: 2, description: "Task 2".to_string(), completed: true, priority: Priority::Medium },
+            Task { id: 1, description: "Task 1".to_string(), completed: false, priority: Priority::Medium, due_date: None },
+            Task { id: 2, description: "Task 2".to_string(), completed: true, priority: Priority::Medium, due_date: None },
         ];
         output.show_all_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
@@ -712,8 +731,8 @@ mod tests {
         use crate::models::task::Task;
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
-        let task1 = Task { id: 1, description: "Completed task".to_string(), completed: true, priority: Priority::Medium };
-        let task2 = Task { id: 2, description: "Another completed".to_string(), completed: true, priority: Priority::Medium };
+        let task1 = Task { id: 1, description: "Completed task".to_string(), completed: true, priority: Priority::Medium, due_date: None };
+        let task2 = Task { id: 2, description: "Another completed".to_string(), completed: true, priority: Priority::Medium, due_date: None };
         let tasks = vec![&task1, &task2];
         output.show_completed_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
@@ -739,8 +758,8 @@ mod tests {
         use crate::models::task::Task;
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
-        let task1 = Task { id: 1, description: "Pending task".to_string(), completed: false, priority: Priority::Medium };
-        let task2 = Task { id: 2, description: "Another pending".to_string(), completed: false, priority: Priority::Medium };
+        let task1 = Task { id: 1, description: "Pending task".to_string(), completed: false, priority: Priority::Medium, due_date: None };
+        let task2 = Task { id: 2, description: "Another pending".to_string(), completed: false, priority: Priority::Medium, due_date: None };
         let tasks = vec![&task1, &task2];
         output.show_pending_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
@@ -756,8 +775,8 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         let tasks = vec![
-            Task { id: 1, description: "Task with émojis 🎉".to_string(), completed: false, priority: Priority::Medium },
-            Task { id: 2, description: "Special chars: <>&\"'".to_string(), completed: true, priority: Priority::Medium },
+            Task { id: 1, description: "Task with émojis 🎉".to_string(), completed: false, priority: Priority::Medium, due_date: None },
+            Task { id: 2, description: "Special chars: <>&\"'".to_string(), completed: true, priority: Priority::Medium, due_date: None },
         ];
         output.show_all_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
@@ -772,7 +791,7 @@ mod tests {
         let mut output = OutputWriter::with_writer(&mut buffer);
         let long_desc = "A".repeat(200);
         let tasks = vec![
-            Task { id: 1, description: long_desc.clone(), completed: false, priority: Priority::Medium },
+            Task { id: 1, description: long_desc.clone(), completed: false, priority: Priority::Medium, due_date: None },
         ];
         output.show_all_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();
@@ -814,7 +833,7 @@ mod tests {
         let mut buffer = Vec::new();
         let mut output = OutputWriter::with_writer(&mut buffer);
         let tasks = vec![
-            Task { id: 1, description: "Test".to_string(), completed: false, priority: Priority::Medium },
+            Task { id: 1, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None },
         ];
         output.show_all_tasks(&tasks);
         let result = String::from_utf8(buffer).unwrap();

@@ -1,6 +1,7 @@
 use crate::models::task::Task;
 use crate::models::priority::Priority;
 use colored::*;
+use chrono::NaiveDate;
 
 /// Handles formatting of tasks for display
 pub struct TaskFormatter;
@@ -27,11 +28,40 @@ impl TaskFormatter {
             task.description.white()
         };
         
-        format!("{}. {} {} {}", 
+        let due_date_str = if let Some(due_date) = task.due_date {
+            format!(" {}", Self::format_due_date(due_date))
+        } else {
+            String::new()
+        };
+        
+        format!("{}. {} {} {}{}", 
             task_id_formatted.bright_blue(), 
             status_symbol, 
             colored_priority,
-            description_color)
+            description_color,
+            due_date_str)
+    }
+    
+    /// Formats a due date with color coding based on how soon it's due
+    fn format_due_date(due_date: NaiveDate) -> ColoredString {
+        let today = chrono::Local::now().date_naive();
+        let days_until_due = (due_date - today).num_days();
+        
+        let date_str = format!("(due: {})", due_date.format("%d.%m.%Y"));
+        
+        if days_until_due < 0 {
+            // Overdue - red
+            date_str.bright_red().bold()
+        } else if days_until_due == 0 {
+            // Due today - yellow
+            date_str.bright_yellow().bold()
+        } else if days_until_due <= 3 {
+            // Due soon (within 3 days) - orange/yellow
+            date_str.yellow()
+        } else {
+            // Future due date - cyan
+            date_str.cyan()
+        }
     }
     
     /// Formats the status symbol for a task
@@ -96,8 +126,8 @@ mod tests {
     
     #[test]
     fn test_calculate_max_id_width_single_digit() {
-        let task1 = Task { id: 1, description: "Test".to_string(), completed: false, priority: Priority::Medium };
-        let task2 = Task { id: 5, description: "Test".to_string(), completed: false, priority: Priority::Medium };
+        let task1 = Task { id: 1, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None };
+        let task2 = Task { id: 5, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None };
         let tasks = vec![&task1, &task2];
         
         assert_eq!(TaskFormatter::calculate_max_id_width(&tasks), 1);
@@ -105,9 +135,9 @@ mod tests {
     
     #[test]
     fn test_calculate_max_id_width_mixed() {
-        let task1 = Task { id: 9, description: "Test".to_string(), completed: false, priority: Priority::Medium };
-        let task2 = Task { id: 10, description: "Test".to_string(), completed: false, priority: Priority::Medium };
-        let task3 = Task { id: 100, description: "Test".to_string(), completed: false, priority: Priority::Medium };
+        let task1 = Task { id: 9, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None };
+        let task2 = Task { id: 10, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None };
+        let task3 = Task { id: 100, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None };
         let tasks = vec![&task1, &task2, &task3];
         
         assert_eq!(TaskFormatter::calculate_max_id_width(&tasks), 3);

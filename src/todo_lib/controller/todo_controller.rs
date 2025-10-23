@@ -92,6 +92,7 @@ impl TodoController {
             UiEvent::UncompleteTask(id) => self.handle_uncomplete_task(*id),
             UiEvent::ToggleTask(id) => self.handle_toggle_task(*id),
             UiEvent::SetPriority(id, priority) => self.handle_set_priority(*id, *priority),
+            UiEvent::SetDueDate(id, due_date) => self.handle_set_due_date(*id, *due_date),
             UiEvent::EditTask(id, new_description) => self.handle_edit_task(*id, new_description),
             UiEvent::SearchTasks(keyword) => self.handle_search_tasks(keyword),
             UiEvent::ShowStatistics => self.handle_show_statistics(),
@@ -193,6 +194,18 @@ impl TodoController {
         match self.todo_list.set_task_priority(id, priority) {
             Some(task) => {
                 self.output.show_priority_set(&task.description, priority);
+            }
+            None => {
+                self.output.show_task_not_found(id);
+            }
+        }
+    }
+
+    /// Handles the SetDueDate event.
+    fn handle_set_due_date(&mut self, id: usize, due_date: Option<chrono::NaiveDate>) {
+        match self.todo_list.set_due_date(id, due_date) {
+            Some(task) => {
+                self.output.show_due_date_set(&task.description, due_date);
             }
             None => {
                 self.output.show_task_not_found(id);
@@ -422,7 +435,7 @@ mod tests {
         controller.handle_add_task("Task 2");
         controller.handle_complete_task(1);
         
-        controller.handle_list_tasks(&Some(TaskFilter::completed()));
+        controller.handle_list_tasks(&Some(TaskFilter::all().with_status(TaskStatus::Completed)));
         
         assert_eq!(controller.todo_list.get_completed_tasks().len(), 1);
     }
@@ -435,7 +448,7 @@ mod tests {
         controller.handle_add_task("Task 2");
         controller.handle_complete_task(1);
         
-        controller.handle_list_tasks(&Some(TaskFilter::pending()));
+        controller.handle_list_tasks(&Some(TaskFilter::all().with_status(TaskStatus::Pending)));
         
         assert_eq!(controller.todo_list.get_pending_tasks().len(), 1);
     }

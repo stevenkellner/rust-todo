@@ -1,4 +1,5 @@
 use super::priority::Priority;
+use chrono::NaiveDate;
 
 /// Represents a single task in the todo list.
 ///
@@ -24,6 +25,8 @@ pub struct Task {
     pub completed: bool,
     /// The priority level of the task
     pub priority: Priority,
+    /// The optional due date for the task
+    pub due_date: Option<NaiveDate>,
 }
 
 impl Task {
@@ -52,6 +55,7 @@ impl Task {
             description,
             completed: false,
             priority: Priority::default(),
+            due_date: None,
         }
     }
 
@@ -142,6 +146,71 @@ impl Task {
     /// ```
     pub fn get_status_symbol(&self) -> &str {
         if self.completed { "✓" } else { " " }
+    }
+
+    /// Sets the due date for the task.
+    ///
+    /// # Arguments
+    ///
+    /// * `due_date` - An optional date when the task is due
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    /// use chrono::NaiveDate;
+    ///
+    /// let mut task = Task::new(1, "Submit report".to_string());
+    /// let due = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
+    /// task.set_due_date(Some(due));
+    /// assert_eq!(task.due_date, Some(due));
+    /// ```
+    pub fn set_due_date(&mut self, due_date: Option<NaiveDate>) {
+        self.due_date = due_date;
+    }
+
+    /// Returns the due date of the task.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    ///
+    /// let task = Task::new(1, "Write code".to_string());
+    /// assert_eq!(task.get_due_date(), None);
+    /// ```
+    pub fn get_due_date(&self) -> Option<NaiveDate> {
+        self.due_date
+    }
+
+    /// Checks if the task is overdue based on the current date.
+    ///
+    /// # Arguments
+    ///
+    /// * `today` - The current date to compare against
+    ///
+    /// # Returns
+    ///
+    /// `true` if the task has a due date and it's before today, `false` otherwise
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    /// use chrono::NaiveDate;
+    ///
+    /// let mut task = Task::new(1, "Old task".to_string());
+    /// let past = NaiveDate::from_ymd_opt(2020, 1, 1).unwrap();
+    /// let today = NaiveDate::from_ymd_opt(2025, 10, 23).unwrap();
+    /// task.set_due_date(Some(past));
+    /// assert!(task.is_overdue(today));
+    /// ```
+    pub fn is_overdue(&self, today: NaiveDate) -> bool {
+        if let Some(due) = self.due_date {
+            due < today
+        } else {
+            false
+        }
     }
 }
 

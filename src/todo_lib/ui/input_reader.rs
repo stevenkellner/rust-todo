@@ -2,6 +2,7 @@ use std::io::{self, BufRead, BufReader, Read};
 use crate::models::ui_event::UiEvent;
 use crate::models::task_filter::TaskFilter;
 use crate::models::task_status::TaskStatus;
+use crate::models::overdue_filter::OverdueFilter;
 use crate::models::priority::Priority;
 
 /// Handles input operations for the command-line interface.
@@ -88,6 +89,7 @@ impl<R: Read> InputReader<R> {
             "uncomplete" | "undo" => self.parse_uncomplete_command(&args),
             "toggle" => self.parse_toggle_command(&args),
             "priority" | "pri" => self.parse_priority_command(&args),
+            "set-due" | "due" => self.parse_set_due_command(&args),
             "edit" => self.parse_edit_command(&args),
             "search" | "find" => self.parse_search_command(&args),
             "statistics" | "stats" => UiEvent::ShowStatistics,
@@ -116,42 +118,76 @@ impl<R: Read> InputReader<R> {
 
     /// Parses the 'list' command and determines the filter.
     fn parse_list_command(&self, args: &[&str]) -> UiEvent {
-        // Parse first argument for status or priority
-        let first_filter = args.get(0).map(|s| s.to_lowercase());
-        let second_filter = args.get(1).map(|s| s.to_lowercase());
-        
         let mut filter = TaskFilter::all();
+        let mut status_set = false;
+        let mut priority_set = false;
         
-        // Parse both arguments to allow combinations like "list completed high"
-        for arg in [first_filter, second_filter].iter().flatten() {
+        // Parse all arguments to allow combinations like "list completed high overdue"
+        for arg in args.iter().map(|s| s.to_lowercase()) {
             match arg.as_str() {
                 "completed" | "done" => {
+                    if status_set {
+                        return UiEvent::InvalidInput(
+                            "Cannot specify multiple status filters (done/todo).".to_string()
+                        );
+                    }
                     filter = filter.with_status(TaskStatus::Completed);
+                    status_set = true;
                 }
                 "pending" | "todo" => {
+                    if status_set {
+                        return UiEvent::InvalidInput(
+                            "Cannot specify multiple status filters (done/todo).".to_string()
+                        );
+                    }
                     filter = filter.with_status(TaskStatus::Pending);
+                    status_set = true;
                 }
                 "high" | "h" => {
+                    if priority_set {
+                        return UiEvent::InvalidInput(
+                            "Cannot specify multiple priority filters (high/medium/low).".to_string()
+                        );
+                    }
                     filter = filter.with_priority(Priority::High);
+                    priority_set = true;
                 }
                 "medium" | "med" | "m" => {
+                    if priority_set {
+                        return UiEvent::InvalidInput(
+                            "Cannot specify multiple priority filters (high/medium/low).".to_string()
+                        );
+                    }
                     filter = filter.with_priority(Priority::Medium);
+                    priority_set = true;
                 }
                 "low" | "l" => {
+                    if priority_set {
+                        return UiEvent::InvalidInput(
+                            "Cannot specify multiple priority filters (high/medium/low).".to_string()
+                        );
+                    }
                     filter = filter.with_priority(Priority::Low);
+                    priority_set = true;
                 }
-                _ => {}
+                "overdue" => {
+                    filter = filter.with_overdue(OverdueFilter::OnlyOverdue);
+                }
+                _ => {
+                    return UiEvent::InvalidInput(
+                        format!("Unknown filter: '{}'. Valid filters: done, todo, high, medium, low, overdue", arg)
+                    );
+                }
             }
         }
         
         // If no filter was specified, return None to show all tasks
-        if filter.status.is_none() && filter.priority.is_none() {
+        if filter.status.is_none() && filter.priority.is_none() && filter.overdue == OverdueFilter::All {
             UiEvent::ListTasks(None)
         } else {
             UiEvent::ListTasks(Some(filter))
         }
     }
-
     /// Parses the 'remove' command and validates the task ID.
     fn parse_remove_command(&self, args: &[&str]) -> UiEvent {
         self.parse_id_command(args, "remove", UiEvent::RemoveTask)
@@ -184,6 +220,31 @@ impl<R: Read> InputReader<R> {
                     Some(priority) => UiEvent::SetPriority(id, priority),
                     None => UiEvent::InvalidInput(
                         "Invalid priority level. Use: high, medium, or low".to_string()
+                    ),
+                }
+            }
+            Err(_) => UiEvent::InvalidInput("Please enter a valid task ID (number).".to_string()),
+        }
+    }
+
+    /// Parses the 'set-due' command to set or clear a task's due date.
+    fn parse_set_due_command(&self, args: &[&str]) -> UiEvent {
+        if args.len() < 2 {
+            return UiEvent::InvalidInput("Usage: set-due <task_id> <DD.MM.YYYY|none>".to_string());
+        }
+        
+        match args[0].parse::<usize>() {
+            Ok(id) => {
+                // Check if user wants to clear the due date
+                if args[1].to_lowercase() == "none" || args[1].to_lowercase() == "clear" {
+                    return UiEvent::SetDueDate(id, None);
+                }
+                
+                // Try to parse the date in DD.MM.YYYY format
+                match chrono::NaiveDate::parse_from_str(args[1], "%d.%m.%Y") {
+                    Ok(date) => UiEvent::SetDueDate(id, Some(date)),
+                    Err(_) => UiEvent::InvalidInput(
+                        "Invalid date format. Use DD.MM.YYYY (e.g., 31.12.2025) or 'none' to clear.".to_string()
                     ),
                 }
             }

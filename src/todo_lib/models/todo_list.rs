@@ -2,6 +2,7 @@ use super::task::Task;
 use super::priority::Priority;
 use super::task_filter::TaskFilter;
 use super::task_status::TaskStatus;
+use super::overdue_filter::OverdueFilter;
 
 /// Statistics about the tasks in a todo list.
 #[derive(Debug, Clone, PartialEq)]
@@ -287,17 +288,20 @@ impl TodoList {
     /// ```
     /// use todo_manager::models::todo_list::TodoList;
     /// use todo_manager::models::task_filter::TaskFilter;
+    /// use todo_manager::models::task_status::TaskStatus;
     /// use todo_manager::models::priority::Priority;
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task("High priority task".to_string());
     /// list.set_task_priority(id, Priority::High);
     /// 
-    /// let filter = TaskFilter::pending_with_priority(Priority::High);
+    /// let filter = TaskFilter::all().with_status(TaskStatus::Pending).with_priority(Priority::High);
     /// let tasks = list.get_filtered_tasks(&filter);
     /// assert_eq!(tasks.len(), 1);
     /// ```
     pub fn get_filtered_tasks(&self, filter: &TaskFilter) -> Vec<&Task> {
+        let today = chrono::Local::now().date_naive();
+        
         self.tasks.iter().filter(|task| {
             let status_matches = match filter.status {
                 Some(TaskStatus::Completed) => task.is_completed(),
@@ -310,7 +314,13 @@ impl TodoList {
                 None => true,
             };
             
-            status_matches && priority_matches
+            let overdue_matches = match filter.overdue {
+                OverdueFilter::All => true,
+                OverdueFilter::OnlyOverdue => task.is_overdue(today),
+                OverdueFilter::OnlyNotOverdue => !task.is_overdue(today),
+            };
+            
+            status_matches && priority_matches && overdue_matches
         }).collect()
     }
 
@@ -406,6 +416,42 @@ impl TodoList {
     pub fn edit_task(&mut self, id: usize, new_description: String) -> Option<&Task> {
         if let Some(task) = self.tasks.iter_mut().find(|task| task.id == id) {
             task.description = new_description;
+            Some(task)
+        } else {
+            None
+        }
+    }
+
+    /// Sets the due date for a task by its ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The unique identifier of the task to update
+    /// * `due_date` - An optional date when the task is due. Pass `None` to clear the due date.
+    ///
+    /// # Returns
+    ///
+    /// `Some(&Task)` containing a reference to the updated task if found, or `None` if no task with the given ID exists.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use chrono::NaiveDate;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id = list.add_task("Submit report".to_string());
+    /// let due = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
+    /// 
+    /// list.set_due_date(id, Some(due));
+    /// assert_eq!(list.get_tasks()[0].due_date, Some(due));
+    /// 
+    /// list.set_due_date(id, None);
+    /// assert_eq!(list.get_tasks()[0].due_date, None);
+    /// ```
+    pub fn set_due_date(&mut self, id: usize, due_date: Option<chrono::NaiveDate>) -> Option<&Task> {
+        if let Some(task) = self.tasks.iter_mut().find(|task| task.id == id) {
+            task.set_due_date(due_date);
             Some(task)
         } else {
             None

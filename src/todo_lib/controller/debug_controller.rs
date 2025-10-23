@@ -90,6 +90,15 @@ impl DebugController {
             if rng.random_bool(0.3) {
                 let _ = todo_list.complete_task(task_id);
             }
+            
+            // Randomly add due dates (~60% chance)
+            if rng.random_bool(0.6) {
+                let today = chrono::Local::now().date_naive();
+                // Generate due dates from -7 days to +30 days
+                let days_offset = rng.random_range(-7..31);
+                let due_date = today + chrono::Duration::days(days_offset);
+                let _ = todo_list.set_due_date(task_id, Some(due_date));
+            }
         }
         
         output.show_success(&format!("Generated {} random tasks", count));

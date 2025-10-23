@@ -1,5 +1,6 @@
 use super::priority::Priority;
 use super::task_status::TaskStatus;
+use super::overdue_filter::OverdueFilter;
 
 /// Filter options for listing tasks.
 ///
@@ -11,55 +12,59 @@ pub struct TaskFilter {
     
     /// Filter by priority level (None means all priorities)
     pub priority: Option<Priority>,
+    
+    /// Filter by overdue status
+    pub overdue: OverdueFilter,
 }
 
 impl TaskFilter {
+    /// Creates a new task filter with the specified criteria.
+    ///
+    /// # Arguments
+    ///
+    /// * `status` - Filter by completion status (None means all statuses)
+    /// * `priority` - Filter by priority level (None means all priorities)
+    /// * `overdue` - Filter by overdue status (defaults to All if not specified)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task_filter::TaskFilter;
+    /// use todo_manager::models::task_status::TaskStatus;
+    /// use todo_manager::models::priority::Priority;
+    /// use todo_manager::models::overdue_filter::OverdueFilter;
+    ///
+    /// // All tasks
+    /// let filter = TaskFilter::new(None, None, OverdueFilter::All);
+    ///
+    /// // Only pending tasks
+    /// let filter = TaskFilter::new(Some(TaskStatus::Pending), None, OverdueFilter::All);
+    ///
+    /// // Only high priority tasks
+    /// let filter = TaskFilter::new(None, Some(Priority::High), OverdueFilter::All);
+    ///
+    /// // Pending high priority overdue tasks
+    /// let filter = TaskFilter::new(
+    ///     Some(TaskStatus::Pending),
+    ///     Some(Priority::High),
+    ///     OverdueFilter::OnlyOverdue
+    /// );
+    /// ```
+    pub fn new(
+        status: Option<TaskStatus>,
+        priority: Option<Priority>,
+        overdue: OverdueFilter,
+    ) -> Self {
+        TaskFilter {
+            status,
+            priority,
+            overdue,
+        }
+    }
+
     /// Creates a filter that shows all tasks.
     pub fn all() -> Self {
-        TaskFilter {
-            status: None,
-            priority: None,
-        }
-    }
-
-    /// Creates a filter for completed tasks.
-    pub fn completed() -> Self {
-        TaskFilter {
-            status: Some(TaskStatus::Completed),
-            priority: None,
-        }
-    }
-
-    /// Creates a filter for pending tasks.
-    pub fn pending() -> Self {
-        TaskFilter {
-            status: Some(TaskStatus::Pending),
-            priority: None,
-        }
-    }
-
-    /// Creates a filter for tasks with a specific priority.
-    pub fn by_priority(priority: Priority) -> Self {
-        TaskFilter {
-            status: None,
-            priority: Some(priority),
-        }
-    }
-
-    /// Creates a filter for completed tasks with a specific priority.
-    pub fn completed_with_priority(priority: Priority) -> Self {
-        TaskFilter {
-            status: Some(TaskStatus::Completed),
-            priority: Some(priority),
-        }
-    }
-
-    /// Creates a filter for pending tasks with a specific priority.
-    pub fn pending_with_priority(priority: Priority) -> Self {
-        TaskFilter {
-            status: Some(TaskStatus::Pending),
-            priority: Some(priority),
-        }
+        Self::new(None, None, OverdueFilter::All)
     }
 
     /// Sets the status filter.
@@ -71,6 +76,12 @@ impl TaskFilter {
     /// Sets the priority filter.
     pub fn with_priority(mut self, priority: Priority) -> Self {
         self.priority = Some(priority);
+        self
+    }
+
+    /// Sets the overdue filter.
+    pub fn with_overdue(mut self, overdue: OverdueFilter) -> Self {
+        self.overdue = overdue;
         self
     }
 }

@@ -157,7 +157,7 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 ### 6. Due Dates
 
-**Status:** Pending  
+**Status:** ✅ Complete  
 **Complexity:** Medium  
 **Description:**
 
@@ -175,6 +175,37 @@ This document tracks the 19 features selected for implementation in the TODO man
 - Add `overdue` filter to list command
 - Display days until due / days overdue
 - Color code: overdue (red), due today (yellow), due soon (orange)
+
+**Implementation Notes:**
+
+- Added `chrono = "0.4"` dependency to Cargo.toml
+- Added `due_date: Option<NaiveDate>` field to Task struct
+- Implemented due date helper methods in Task:
+  - `set_due_date(due_date)` - Sets or clears the due date
+  - `get_due_date()` - Returns the optional due date
+  - `is_overdue(today)` - Checks if task is overdue
+- Added `SetDueDate(usize, Option<NaiveDate>)` event variant to UiEvent
+- Implemented `set_due_date()` method in TodoList
+- Added `parse_set_due_command()` in InputReader:
+  - Parses YYYY-MM-DD format dates
+  - Accepts "none" or "clear" to remove due date
+  - Validates date format and task ID
+- Added `show_due_date_set()` in OutputWriter for confirmation messages
+- Updated `format_task()` in TaskFormatter to display due dates:
+  - Overdue tasks shown in bright red
+  - Due today shown in bright yellow
+  - Due within 3 days shown in yellow
+  - Future dates shown in cyan
+  - Format: "(due: YYYY-MM-DD)"
+- Added `handle_set_due_date()` in TodoController
+- Extended TaskFilter with `overdue: Option<bool>` field
+- Added `overdue()` constructor and `with_overdue()` method to TaskFilter
+- Updated `get_filtered_tasks()` in TodoList to filter by overdue status
+- Added "overdue" filter keyword to list command parser
+- Commands: `set-due <id> <YYYY-MM-DD|none>` (alias: `due`)
+- Filters: `list overdue` to show only overdue tasks
+- Updated help text with due date commands and filters
+- All tests passing (206 total: 150 unit + 6 filtering + 8 integration + 42 doc tests)
 
 ---
 

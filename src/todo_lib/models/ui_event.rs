@@ -1,5 +1,6 @@
 use crate::models::task_filter::TaskFilter;
 use crate::models::priority::Priority;
+use chrono::NaiveDate;
 
 /// Represents events that occur in the user interface.
 ///
@@ -27,6 +28,9 @@ pub enum UiEvent {
     
     /// User wants to set the priority of a task
     SetPriority(usize, Priority),
+    
+    /// User wants to set the due date of a task
+    SetDueDate(usize, Option<NaiveDate>),
     
     /// User wants to edit a task's description
     EditTask(usize, String),

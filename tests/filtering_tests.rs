@@ -30,38 +30,38 @@ fn test_combined_filtering() {
     todo_list.complete_task(id4);
     
     // Test filtering by priority only
-    let high_priority_filter = TaskFilter::by_priority(Priority::High);
+    let high_priority_filter = TaskFilter::all().with_priority(Priority::High);
     let high_priority_tasks = todo_list.get_filtered_tasks(&high_priority_filter);
     assert_eq!(high_priority_tasks.len(), 3, "Should have 3 high priority tasks");
     
     // Test filtering by status only
-    let completed_filter = TaskFilter::completed();
+    let completed_filter = TaskFilter::all().with_status(TaskStatus::Completed);
     let completed_tasks = todo_list.get_filtered_tasks(&completed_filter);
     assert_eq!(completed_tasks.len(), 3, "Should have 3 completed tasks");
     
-    let pending_filter = TaskFilter::pending();
+    let pending_filter = TaskFilter::all().with_status(TaskStatus::Pending);
     let pending_tasks = todo_list.get_filtered_tasks(&pending_filter);
     assert_eq!(pending_tasks.len(), 2, "Should have 2 pending tasks");
     
     // Test combined filtering: completed + high priority
-    let completed_high = TaskFilter::completed_with_priority(Priority::High);
+    let completed_high = TaskFilter::all().with_status(TaskStatus::Completed).with_priority(Priority::High);
     let completed_high_tasks = todo_list.get_filtered_tasks(&completed_high);
     assert_eq!(completed_high_tasks.len(), 1, "Should have 1 completed high priority task");
     assert_eq!(completed_high_tasks[0].id, id1);
     
     // Test combined filtering: pending + high priority
-    let pending_high = TaskFilter::pending_with_priority(Priority::High);
+    let pending_high = TaskFilter::all().with_status(TaskStatus::Pending).with_priority(Priority::High);
     let pending_high_tasks = todo_list.get_filtered_tasks(&pending_high);
     assert_eq!(pending_high_tasks.len(), 2, "Should have 2 pending high priority tasks");
     
     // Test combined filtering: completed + low priority
-    let completed_low = TaskFilter::completed_with_priority(Priority::Low);
+    let completed_low = TaskFilter::all().with_status(TaskStatus::Completed).with_priority(Priority::Low);
     let completed_low_tasks = todo_list.get_filtered_tasks(&completed_low);
     assert_eq!(completed_low_tasks.len(), 1, "Should have 1 completed low priority task");
     assert_eq!(completed_low_tasks[0].id, id4);
     
     // Test combined filtering: pending + medium priority
-    let pending_medium = TaskFilter::pending_with_priority(Priority::Medium);
+    let pending_medium = TaskFilter::all().with_status(TaskStatus::Pending).with_priority(Priority::Medium);
     let pending_medium_tasks = todo_list.get_filtered_tasks(&pending_medium);
     assert_eq!(pending_medium_tasks.len(), 0, "Should have 0 pending medium priority tasks");
 }
@@ -116,17 +116,17 @@ fn test_empty_filter_results() {
     todo_list.set_task_priority(id2, Priority::High);
     
     // Try to filter for low priority tasks (should be empty)
-    let low_filter = TaskFilter::by_priority(Priority::Low);
+    let low_filter = TaskFilter::all().with_priority(Priority::Low);
     let low_tasks = todo_list.get_filtered_tasks(&low_filter);
     assert_eq!(low_tasks.len(), 0, "Should have no low priority tasks");
     
     // Try to filter for completed tasks (should be empty)
-    let completed_filter = TaskFilter::completed();
+    let completed_filter = TaskFilter::all().with_status(TaskStatus::Completed);
     let completed_tasks = todo_list.get_filtered_tasks(&completed_filter);
     assert_eq!(completed_tasks.len(), 0, "Should have no completed tasks");
     
     // Try combined filter that doesn't match anything
-    let completed_low = TaskFilter::completed_with_priority(Priority::Low);
+    let completed_low = TaskFilter::all().with_status(TaskStatus::Completed).with_priority(Priority::Low);
     let tasks = todo_list.get_filtered_tasks(&completed_low);
     assert_eq!(tasks.len(), 0, "Should have no completed low priority tasks");
 }
@@ -146,7 +146,7 @@ fn test_filter_all_matching() {
     todo_list.set_task_priority(id3, Priority::High);
     
     // Filter for pending high priority tasks (should match all)
-    let filter = TaskFilter::pending_with_priority(Priority::High);
+    let filter = TaskFilter::all().with_status(TaskStatus::Pending).with_priority(Priority::High);
     let tasks = todo_list.get_filtered_tasks(&filter);
     assert_eq!(tasks.len(), 3, "All tasks should match the filter");
     
@@ -177,17 +177,17 @@ fn test_priority_filter_mixed_states() {
     todo_list.complete_task(id2);
     
     // Filter by priority only (should get all)
-    let medium_filter = TaskFilter::by_priority(Priority::Medium);
+    let medium_filter = TaskFilter::all().with_priority(Priority::Medium);
     let medium_tasks = todo_list.get_filtered_tasks(&medium_filter);
     assert_eq!(medium_tasks.len(), 4, "Should get all medium priority tasks");
     
     // Filter by priority + completed
-    let completed_medium = TaskFilter::completed_with_priority(Priority::Medium);
+    let completed_medium = TaskFilter::all().with_status(TaskStatus::Completed).with_priority(Priority::Medium);
     let completed_tasks = todo_list.get_filtered_tasks(&completed_medium);
     assert_eq!(completed_tasks.len(), 2, "Should get 2 completed medium tasks");
     
     // Filter by priority + pending
-    let pending_medium = TaskFilter::pending_with_priority(Priority::Medium);
+    let pending_medium = TaskFilter::all().with_status(TaskStatus::Pending).with_priority(Priority::Medium);
     let pending_tasks = todo_list.get_filtered_tasks(&pending_medium);
     assert_eq!(pending_tasks.len(), 2, "Should get 2 pending medium tasks");
 }
@@ -204,7 +204,7 @@ fn test_filter_dynamic_updates() {
     todo_list.set_task_priority(id2, Priority::High);
     
     // Initially both are pending high priority
-    let filter = TaskFilter::pending_with_priority(Priority::High);
+    let filter = TaskFilter::all().with_status(TaskStatus::Pending).with_priority(Priority::High);
     let tasks = todo_list.get_filtered_tasks(&filter);
     assert_eq!(tasks.len(), 2);
     
@@ -217,7 +217,7 @@ fn test_filter_dynamic_updates() {
     assert_eq!(tasks[0].id, id2);
     
     // Check completed high priority filter
-    let completed_filter = TaskFilter::completed_with_priority(Priority::High);
+    let completed_filter = TaskFilter::all().with_status(TaskStatus::Completed).with_priority(Priority::High);
     let completed_tasks = todo_list.get_filtered_tasks(&completed_filter);
     assert_eq!(completed_tasks.len(), 1);
     assert_eq!(completed_tasks[0].id, id1);
