@@ -1,8 +1,6 @@
 use std::io::{self, BufRead, BufReader, Read};
 use crate::models::ui_event::UiEvent;
-use crate::models::task_filter::TaskFilter;
-use crate::models::task_status::TaskStatus;
-use crate::models::overdue_filter::OverdueFilter;
+use crate::models::filter_builder::FilterBuilder;
 use crate::models::priority::Priority;
 
 /// Handles input operations for the command-line interface.
@@ -118,104 +116,20 @@ impl<R: Read> InputReader<R> {
         }
     }
 
-    /// Parses the 'list' command and determines the filter.
+    /// Parses the 'list' command and determines the filter using FilterBuilder.
     fn parse_list_command(&self, args: &[&str]) -> UiEvent {
-        let mut filter = TaskFilter::all();
-        let mut status_set = false;
-        let mut priority_set = false;
-        let mut category_set = false;
+        let mut builder = FilterBuilder::new();
         
         // Parse all arguments to allow combinations like "list completed high overdue"
-        for arg in args.iter().map(|s| s.to_string()) {
-            let arg_lower = arg.to_lowercase();
-            
-            // Check for category filter (format: category:name or cat:name)
-            if arg_lower.starts_with("category:") || arg_lower.starts_with("cat:") {
-                if category_set {
-                    return UiEvent::InvalidInput(
-                        "Cannot specify multiple category filters.".to_string()
-                    );
-                }
-                let category = if arg_lower.starts_with("category:") {
-                    arg[9..].to_string()
-                } else {
-                    arg[4..].to_string()
-                };
-                
-                if category.trim().is_empty() {
-                    return UiEvent::InvalidInput(
-                        "Category name cannot be empty. Use: list category:name".to_string()
-                    );
-                }
-                
-                filter = filter.with_category(category);
-                category_set = true;
-                continue;
-            }
-            
-            match arg_lower.as_str() {
-                "completed" | "done" => {
-                    if status_set {
-                        return UiEvent::InvalidInput(
-                            "Cannot specify multiple status filters (done/todo).".to_string()
-                        );
-                    }
-                    filter = filter.with_status(TaskStatus::Completed);
-                    status_set = true;
-                }
-                "pending" | "todo" => {
-                    if status_set {
-                        return UiEvent::InvalidInput(
-                            "Cannot specify multiple status filters (done/todo).".to_string()
-                        );
-                    }
-                    filter = filter.with_status(TaskStatus::Pending);
-                    status_set = true;
-                }
-                "high" | "h" => {
-                    if priority_set {
-                        return UiEvent::InvalidInput(
-                            "Cannot specify multiple priority filters (high/medium/low).".to_string()
-                        );
-                    }
-                    filter = filter.with_priority(Priority::High);
-                    priority_set = true;
-                }
-                "medium" | "med" | "m" => {
-                    if priority_set {
-                        return UiEvent::InvalidInput(
-                            "Cannot specify multiple priority filters (high/medium/low).".to_string()
-                        );
-                    }
-                    filter = filter.with_priority(Priority::Medium);
-                    priority_set = true;
-                }
-                "low" | "l" => {
-                    if priority_set {
-                        return UiEvent::InvalidInput(
-                            "Cannot specify multiple priority filters (high/medium/low).".to_string()
-                        );
-                    }
-                    filter = filter.with_priority(Priority::Low);
-                    priority_set = true;
-                }
-                "overdue" => {
-                    filter = filter.with_overdue(OverdueFilter::OnlyOverdue);
-                }
-                _ => {
-                    return UiEvent::InvalidInput(
-                        format!("Unknown filter: '{}'. Valid filters: done, todo, high, medium, low, overdue, category:name", arg)
-                    );
-                }
-            }
+        for arg in args.iter() {
+            builder = match builder.parse_argument(arg) {
+                Ok(b) => b,
+                Err(err) => return UiEvent::InvalidInput(err),
+            };
         }
         
         // If no filter was specified, return None to show all tasks
-        if filter.status.is_none() && filter.priority.is_none() && filter.overdue == OverdueFilter::All && filter.category.is_none() {
-            UiEvent::ListTasks(None)
-        } else {
-            UiEvent::ListTasks(Some(filter))
-        }
+        UiEvent::ListTasks(builder.build())
     }
     /// Parses the 'remove' command and validates the task ID.
     fn parse_remove_command(&self, args: &[&str]) -> UiEvent {
@@ -413,6 +327,7 @@ impl<R: Read> InputReader<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::task_status::TaskStatus;
 
     #[test]
     fn test_new_input_reader() {

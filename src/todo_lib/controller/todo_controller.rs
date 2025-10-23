@@ -1,5 +1,6 @@
 use crate::models::todo_list::TodoList;
 use crate::ui::input_reader::InputReader;
+use crate::ui::interactive_prompt::InteractivePrompt;
 use crate::ui::output_writer::OutputWriter;
 use crate::models::ui_event::UiEvent;
 use crate::models::task_filter::TaskFilter;
@@ -7,7 +8,7 @@ use crate::models::task_status::TaskStatus;
 use crate::models::loop_control::LoopControl;
 use crate::models::priority::Priority;
 use crate::controller::debug_controller::DebugController;
-use colored::Colorize;
+use crate::controller::task_command_handler::TaskCommandHandler;
 
 /// Controls the todo list application by reacting to UI events.
 ///
@@ -28,6 +29,7 @@ pub struct TodoController {
     input: InputReader,
     output: OutputWriter,
     debug_controller: DebugController,
+    task_handler: TaskCommandHandler,
     #[cfg(test)]
     test_mode: bool,
 }
@@ -48,6 +50,7 @@ impl TodoController {
             input: InputReader::new(),
             output: OutputWriter::new(),
             debug_controller: DebugController::new(),
+            task_handler: TaskCommandHandler::new(),
             #[cfg(test)]
             test_mode: true,
         }
@@ -131,49 +134,22 @@ impl TodoController {
             return;
         }
         
-        // Interactive prompts for priority, due date, and category
-        self.output.print_line("");
-        self.output.print_line(&"Set additional properties (press Enter to skip):".bright_cyan().bold().to_string());
+        // Use InteractivePrompt to gather additional properties
+        let mut prompt = InteractivePrompt::new(&mut self.input, &mut self.output);
+        let (priority, due_date, category) = prompt.prompt_task_properties();
         
-        // Prompt for priority
-        self.output.print_line("");
-        self.output.print_line(&format!("{} {}", "Priority".bright_yellow().bold(), "[high/medium/low]:".bright_black()));
-        let priority_input = self.input.read_input();
-        if !priority_input.is_empty() {
-            if let Some(priority) = Priority::from_str(&priority_input) {
-                self.todo_list.set_task_priority(task_id, priority);
-                self.output.show_success(&format!("Priority set to {}", priority.as_str()));
-            } else {
-                self.output.show_error("Invalid priority. Skipping.");
-            }
+        // Apply the properties to the task
+        if let Some(p) = priority {
+            self.todo_list.set_task_priority(task_id, p);
         }
         
-        // Prompt for due date
-        self.output.print_line("");
-        self.output.print_line(&format!("{} {}", "Due date".bright_yellow().bold(), "[DD.MM.YYYY]:".bright_black()));
-        let due_date_input = self.input.read_input();
-        if !due_date_input.is_empty() {
-            match chrono::NaiveDate::parse_from_str(&due_date_input, "%d.%m.%Y") {
-                Ok(date) => {
-                    self.todo_list.set_due_date(task_id, Some(date));
-                    self.output.show_success(&format!("Due date set to {}", date.format("%d.%m.%Y")));
-                }
-                Err(_) => {
-                    self.output.show_error("Invalid date format. Use DD.MM.YYYY");
-                }
-            }
+        if let Some(date) = due_date {
+            self.todo_list.set_due_date(task_id, Some(date));
         }
         
-        // Prompt for category
-        self.output.print_line("");
-        self.output.print_line(&format!("{}:", "Category".bright_yellow().bold()));
-        let category_input = self.input.read_input();
-        if !category_input.is_empty() {
-            self.todo_list.set_task_category(task_id, Some(category_input.clone()));
-            self.output.show_success(&format!("Category set to '{}'", category_input));
+        if let Some(cat) = category {
+            self.todo_list.set_task_category(task_id, Some(cat));
         }
-        
-        self.output.print_line("");
     }
 
     /// Handles the ListTasks event with optional filter.
@@ -207,84 +183,37 @@ impl TodoController {
 
     /// Handles the RemoveTask event.
     fn handle_remove_task(&mut self, id: usize) {
-        if let Some(removed_task) = self.todo_list.remove_task(id) {
-            self.output.show_task_removed(&removed_task.description);
-        } else {
-            self.output.show_task_not_found(id);
-        }
+        self.task_handler.remove_task(id, &mut self.todo_list, &mut self.output);
     }
 
     /// Handles the CompleteTask event.
     fn handle_complete_task(&mut self, id: usize) {
-        match self.todo_list.complete_task(id) {
-            Some(task) => {
-                if task.is_completed() {
-                    self.output.show_task_completed(&task.description);
-                }
-            }
-            None => {
-                self.output.show_task_not_found(id);
-            }
-        }
+        self.task_handler.complete_task(id, &mut self.todo_list, &mut self.output);
     }
 
     /// Handles the UncompleteTask event.
     fn handle_uncomplete_task(&mut self, id: usize) {
-        match self.todo_list.uncomplete_task(id) {
-            Some(task) => {
-                if !task.is_completed() {
-                    self.output.show_task_uncompleted(&task.description);
-                }
-            }
-            None => {
-                self.output.show_task_not_found(id);
-            }
-        }
+        self.task_handler.uncomplete_task(id, &mut self.todo_list, &mut self.output);
     }
 
     /// Handles the ToggleTask event.
     fn handle_toggle_task(&mut self, id: usize) {
-        if let Some(task) = self.todo_list.toggle_task(id) {
-            self.output.show_task_toggled(&task.description, task.is_completed());
-        } else {
-            self.output.show_task_not_found(id);
-        }
+        self.task_handler.toggle_task(id, &mut self.todo_list, &mut self.output);
     }
 
     /// Handles the SetPriority event.
     fn handle_set_priority(&mut self, id: usize, priority: Priority) {
-        match self.todo_list.set_task_priority(id, priority) {
-            Some(task) => {
-                self.output.show_priority_set(&task.description, priority);
-            }
-            None => {
-                self.output.show_task_not_found(id);
-            }
-        }
+        self.task_handler.set_priority(id, priority, &mut self.todo_list, &mut self.output);
     }
 
     /// Handles the SetDueDate event.
     fn handle_set_due_date(&mut self, id: usize, due_date: Option<chrono::NaiveDate>) {
-        match self.todo_list.set_due_date(id, due_date) {
-            Some(task) => {
-                self.output.show_due_date_set(&task.description, due_date);
-            }
-            None => {
-                self.output.show_task_not_found(id);
-            }
-        }
+        self.task_handler.set_due_date(id, due_date, &mut self.todo_list, &mut self.output);
     }
 
     /// Handles the SetCategory event.
     fn handle_set_category(&mut self, id: usize, category: Option<String>) {
-        match self.todo_list.set_task_category(id, category.clone()) {
-            Some(task) => {
-                self.output.show_category_set(&task.description, category);
-            }
-            None => {
-                self.output.show_task_not_found(id);
-            }
-        }
+        self.task_handler.set_category(id, category, &mut self.todo_list, &mut self.output);
     }
 
     /// Handles the ListCategories event.
@@ -295,22 +224,7 @@ impl TodoController {
 
     /// Handles the EditTask event.
     fn handle_edit_task(&mut self, id: usize, new_description: &str) {
-        // Get the old description before editing
-        let old_description = self.todo_list.get_tasks()
-            .iter()
-            .find(|task| task.id == id)
-            .map(|task| task.description.clone());
-        
-        match self.todo_list.edit_task(id, new_description.to_string()) {
-            Some(_task) => {
-                if let Some(old_desc) = old_description {
-                    self.output.show_task_edited(&old_desc, new_description);
-                }
-            }
-            None => {
-                self.output.show_task_not_found(id);
-            }
-        }
+        self.task_handler.edit_task(id, new_description, &mut self.todo_list, &mut self.output);
     }
 
     /// Handles the SearchTasks event.

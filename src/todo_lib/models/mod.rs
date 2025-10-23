@@ -3,6 +3,7 @@
 //! This module contains all data structures, events, and business logic
 //! related to tasks, priorities, filtering, and control flow.
 
+pub mod filter_builder;
 pub mod loop_control;
 pub mod overdue_filter;
 pub mod priority;
@@ -13,6 +14,7 @@ pub mod todo_list;
 pub mod ui_event;
 
 // Re-export commonly used types
+pub use filter_builder::FilterBuilder;
 pub use loop_control::LoopControl;
 pub use priority::Priority;
 pub use task::Task;
