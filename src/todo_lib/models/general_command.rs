@@ -11,7 +11,4 @@ pub enum GeneralCommand {
     
     /// Unknown command entered
     Unknown(String),
-    
-    /// Invalid input (e.g., missing arguments)
-    InvalidInput(String),
 }

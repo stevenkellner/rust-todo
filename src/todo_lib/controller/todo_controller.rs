@@ -70,10 +70,15 @@ impl TodoController {
 
         loop {
             self.general_output.print_prompt();
-            let event = self.parser.read_event();
-            
-            if self.handle_event(&event) == LoopControl::Exit {
-                break;
+            match self.parser.read_event() {
+                Ok(event) => {
+                    if self.handle_event(&event) == LoopControl::Exit {
+                        break;
+                    }
+                }
+                Err(err) => {
+                    self.general_output.show_error(&err.message());
+                }
             }
         }
     }
@@ -115,10 +120,6 @@ impl TodoController {
             GeneralCommand::Quit => self.handle_quit(),
             GeneralCommand::Unknown(cmd) => {
                 self.general_output.show_unknown_command(cmd);
-                LoopControl::Continue
-            }
-            GeneralCommand::InvalidInput(msg) => {
-                self.general_output.show_error(msg);
                 LoopControl::Continue
             }
         }
@@ -328,15 +329,6 @@ mod tests {
         
         assert_eq!(control, LoopControl::Continue);
         assert_eq!(controller.todo_list.get_tasks().len(), 1);
-    }
-
-    #[test]
-    fn test_handle_event_invalid_input() {
-        let mut controller = TodoController::new();
-        
-        let control = controller.handle_event(&UiEvent::General(crate::models::general_command::GeneralCommand::InvalidInput("Error".to_string())));
-        
-        assert_eq!(control, LoopControl::Continue);
     }
 
     #[test]
