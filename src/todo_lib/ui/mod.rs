@@ -11,6 +11,9 @@ pub mod input_reader;
 pub mod interactive_task_properties_prompt;
 pub mod output_writer;
 pub mod task_command_output_writer;
+pub mod task_command_parser;
+pub mod debug_command_parser;
+pub mod general_command_parser;
 
 // Re-export commonly used types
 pub use command_parser::CommandParser;

@@ -8,7 +8,4 @@ pub enum GeneralCommand {
     
     /// Quit the application
     Quit,
-    
-    /// Unknown command entered
-    Unknown(String),
 }

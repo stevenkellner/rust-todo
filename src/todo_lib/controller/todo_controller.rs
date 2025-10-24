@@ -304,14 +304,8 @@ mod tests {
         assert_eq!(controller.todo_list.get_tasks().len(), 1);
     }
 
-    #[test]
-    fn test_handle_event_unknown_command() {
-        let mut controller = TodoController::new();
-        
-        let control = controller.handle_event(&UiEvent::General(crate::models::general_command::GeneralCommand::Unknown("invalid".to_string())));
-        
-        assert_eq!(control, LoopControl::Continue);
-    }
+    // Test removed: UnknownCommand is now handled as ParseError in the parser,
+    // not as a GeneralCommand variant
 
     #[test]
     fn test_complex_workflow() {

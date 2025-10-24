@@ -44,7 +44,6 @@ impl<W: Write> GeneralCommandHandler<W> {
         match command {
             GeneralCommand::ShowHelp => self.show_help(),
             GeneralCommand::Quit => self.handle_quit(),
-            GeneralCommand::Unknown(cmd) => self.handle_unknown_command(cmd),
         }
     }
 
@@ -70,23 +69,6 @@ impl<W: Write> GeneralCommandHandler<W> {
     ) -> LoopControl {
         self.output.show_goodbye();
         LoopControl::Exit
-    }
-
-    /// Handles an unknown command.
-    ///
-    /// # Arguments
-    ///
-    /// * `cmd` - The unknown command string
-    ///
-    /// # Returns
-    ///
-    /// * `LoopControl::Continue` - Always continues after unknown command
-    fn handle_unknown_command(
-        &mut self,
-        cmd: &str,
-    ) -> LoopControl {
-        self.output.show_unknown_command(cmd);
-        LoopControl::Continue
     }
 
     /// Displays the welcome message.
@@ -138,13 +120,6 @@ mod tests {
         let mut handler = create_test_handler();
         let result = handler.handle(&GeneralCommand::Quit);
         assert_eq!(result, LoopControl::Exit);
-    }
-
-    #[test]
-    fn test_unknown_command_returns_continue() {
-        let mut handler = create_test_handler();
-        let result = handler.handle(&GeneralCommand::Unknown("invalid".to_string()));
-        assert_eq!(result, LoopControl::Continue);
     }
 
     #[test]

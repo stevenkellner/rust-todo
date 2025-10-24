@@ -1,0 +1,82 @@
+use crate::models::debug_command::DebugCommand;
+use crate::models::parse_error::ParseError;
+
+/// Parser for debug-related commands.
+pub struct DebugCommandParser;
+
+impl DebugCommandParser {
+    /// Creates a new debug command parser.
+    pub fn new() -> Self {
+        DebugCommandParser
+    }
+
+    /// Tries to parse a debug command from the given command string and arguments.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The command string (already lowercased)
+    /// * `args` - The command arguments
+    ///
+    /// # Returns
+    ///
+    /// * `Some(Ok(DebugCommand))` - Successfully parsed debug command
+    /// * `Some(Err(ParseError))` - Recognized as debug command but has errors
+    /// * `None` - Not a debug command
+    pub fn try_parse_command(&self, command: &str, args: &[&str]) -> Option<Result<DebugCommand, ParseError>> {
+        match command {
+            "debug" => Some(self.parse_debug_command(args)),
+            "debug:gen" => Some(self.parse_debug_generate_command(args)),
+            "debug:clear" => Some(Ok(DebugCommand::ClearAll)),
+            _ => None,
+        }
+    }
+
+    /// Parses the 'debug' command.
+    fn parse_debug_command(&self, args: &[&str]) -> Result<DebugCommand, ParseError> {
+        if args.is_empty() || args[0].to_lowercase() == "on" {
+            Ok(DebugCommand::Toggle)
+        } else if args[0].to_lowercase() == "off" {
+            Ok(DebugCommand::Toggle)
+        } else {
+            Err(ParseError::InvalidValue { 
+                field: "debug mode".to_string(), 
+                value: args[0].to_string(), 
+                allowed: "on or off".to_string() 
+            })
+        }
+    }
+
+    /// Parses the 'debug:gen' command to generate random tasks.
+    fn parse_debug_generate_command(&self, args: &[&str]) -> Result<DebugCommand, ParseError> {
+        if args.is_empty() {
+            Err(ParseError::MissingArguments { 
+                command: "debug:gen".to_string(), 
+                usage: "debug:gen <count>".to_string() 
+            })
+        } else if let Ok(count) = args[0].parse::<usize>() {
+            if count == 0 {
+                Err(ParseError::OutOfRange { 
+                    field: "count".to_string(), 
+                    value: count.to_string(), 
+                    range: "Must be greater than 0".to_string() 
+                })
+            } else if count > 1000 {
+                Err(ParseError::OutOfRange { 
+                    field: "count".to_string(), 
+                    value: count.to_string(), 
+                    range: "Cannot exceed 1000".to_string() 
+                })
+            } else {
+                Ok(DebugCommand::GenerateTasks(count))
+            }
+        } else {
+            Err(ParseError::InvalidId("Invalid count. Please provide a number.".to_string()))
+        }
+    }
+}
+
+impl Default for DebugCommandParser {
+    fn default() -> Self {
+        Self::new()
+    }
+}

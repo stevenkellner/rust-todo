@@ -19,6 +19,8 @@ pub enum ParseError {
     InvalidDate(String),
     /// No command was entered
     EmptyCommand(String),
+    /// Command is not recognized
+    UnknownCommand(String),
 }
 
 impl ParseError {
@@ -38,6 +40,8 @@ impl ParseError {
                 format!("{} '{}' is out of range. {}", field, value, range),
             ParseError::InvalidDate(msg) => msg.clone(),
             ParseError::EmptyCommand(msg) => msg.clone(),
+            ParseError::UnknownCommand(cmd) => 
+                format!("Unknown command '{}'. Type 'help' for available commands.", cmd),
         }
     }
 }
