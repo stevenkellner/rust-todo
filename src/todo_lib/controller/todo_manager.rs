@@ -11,33 +11,33 @@ use std::collections::HashMap;
 
 /// Controls the todo list application by coordinating specialized controllers.
 ///
-/// `TodoController` acts as the main controller layer, managing the todo list state
+/// `TodoManager` acts as the main application orchestrator, managing the todo list state
 /// and delegating command processing to specialized controllers that can be added or removed dynamically.
 ///
 /// # Examples
 ///
 /// ```no_run
-/// use todo_manager::controller::todo_controller::TodoController;
+/// use todo_manager::controller::todo_controller::TodoManager;
 ///
-/// let mut controller = TodoController::new();
-/// controller.run();
+/// let mut manager = TodoManager::new();
+/// manager.run();
 /// ```
-pub struct TodoController {
+pub struct TodoManager {
     todo_list: TodoList,
     input_reader: InputReader,
     ui_manager: UIManager<std::io::Stdout>,
     command_controllers: HashMap<CommandControllerType, Box<dyn CommandController>>,
 }
 
-impl TodoController {
-    /// Creates a new controller with an empty todo list and new UI components.
+impl TodoManager {
+    /// Creates a new manager with an empty todo list and new UI components.
     ///
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::controller::todo_controller::TodoController;
+    /// use todo_manager::controller::todo_controller::TodoManager;
     ///
-    /// let controller = TodoController::new();
+    /// let manager = TodoManager::new();
     /// ```
     pub fn new() -> Self {
         let command_controllers = HashMap::from([
@@ -45,7 +45,7 @@ impl TodoController {
             (CommandControllerType::General, Box::new(GeneralCommandController::new()) as Box<dyn CommandController>),
         ]);
         
-        TodoController {
+        TodoManager {
             todo_list: TodoList::new(),
             input_reader: InputReader::new(),
             ui_manager: UIManager::new(),
@@ -61,10 +61,10 @@ impl TodoController {
     /// # Examples
     ///
     /// ```no_run
-    /// use todo_manager::controller::todo_controller::TodoController;
+    /// use todo_manager::controller::todo_controller::TodoManager;
     ///
-    /// let mut controller = TodoController::new();
-    /// controller.run();
+    /// let mut manager = TodoManager::new();
+    /// manager.run();
     /// ```
     pub fn run(&mut self) {
         self.ui_manager.show_welcome();
@@ -130,23 +130,23 @@ mod tests {
 
     #[test]
     fn test_new_controller() {
-        let controller = TodoController::new();
-        assert!(controller.todo_list.is_empty());
+        let manager = TodoManager::new();
+        assert!(manager.todo_list.is_empty());
     }
 
     #[test]
     fn test_handle_add_task() {
-        let mut controller = TodoController::new();
+        let mut manager = TodoManager::new();
         
-        controller.handle_input("add Test task");
+        manager.handle_input("add Test task");
         
-        assert_eq!(controller.todo_list.get_tasks().len(), 1);
-        assert_eq!(controller.todo_list.get_tasks()[0].description, "Test task");
+        assert_eq!(manager.todo_list.get_tasks().len(), 1);
+        assert_eq!(manager.todo_list.get_tasks()[0].description, "Test task");
     }
 
     #[test]
     fn test_handle_add_multiple_tasks() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         controller.handle_input("add Task 1");
         controller.handle_input("add Task 2");
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn test_handle_remove_task() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         controller.handle_input("add Task to remove");
         let task_id = controller.todo_list.get_tasks()[0].id;
@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     fn test_handle_remove_nonexistent_task() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         controller.handle_input("add Test task");
         controller.handle_input("remove 999");
@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn test_handle_complete_task() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         controller.handle_input("add Task to complete");
         let task_id = controller.todo_list.get_tasks()[0].id;
@@ -192,7 +192,7 @@ mod tests {
 
     #[test]
     fn test_handle_complete_nonexistent_task() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         controller.handle_input("add Test task");
         controller.handle_input("complete 999");
@@ -202,7 +202,7 @@ mod tests {
 
     #[test]
     fn test_handle_uncomplete_task() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         controller.handle_input("add Task to uncomplete");
         let task_id = controller.todo_list.get_tasks()[0].id;
@@ -217,7 +217,7 @@ mod tests {
 
     #[test]
     fn test_handle_uncomplete_nonexistent_task() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         controller.handle_input("add Test task");
         controller.handle_input("uncomplete 999");
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn test_handle_toggle_task() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         controller.handle_input("add Task to toggle");
         let task_id = controller.todo_list.get_tasks()[0].id;
@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     fn test_handle_toggle_nonexistent_task() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         controller.handle_input("add Test task");
         let initial_status = controller.todo_list.get_tasks()[0].is_completed();
@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn test_handle_list_tasks_all() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         controller.handle_input("add Task 1");
         controller.handle_input("add Task 2");
@@ -268,7 +268,7 @@ mod tests {
 
     #[test]
     fn test_handle_list_tasks_completed() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         controller.handle_input("add Task 1");
         controller.handle_input("add Task 2");
@@ -281,7 +281,7 @@ mod tests {
 
     #[test]
     fn test_handle_list_tasks_pending() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         controller.handle_input("add Task 1");
         controller.handle_input("add Task 2");
@@ -294,7 +294,7 @@ mod tests {
 
     #[test]
     fn test_handle_quit_command() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         let control = controller.handle_input("quit");
         
@@ -303,7 +303,7 @@ mod tests {
 
     #[test]
     fn test_handle_help_command() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         let control = controller.handle_input("help");
         
@@ -312,7 +312,7 @@ mod tests {
 
     #[test]
     fn test_handle_add_command_returns_continue() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         let control = controller.handle_input("add New task");
         
@@ -322,7 +322,7 @@ mod tests {
 
     #[test]
     fn test_handle_empty_input() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         let control = controller.handle_input("");
         
@@ -331,7 +331,7 @@ mod tests {
 
     #[test]
     fn test_handle_unknown_command() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         let control = controller.handle_input("invalidcommand");
         
@@ -340,7 +340,7 @@ mod tests {
 
     #[test]
     fn test_complex_workflow() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         // Add multiple tasks
         controller.handle_input("add Task 1");
@@ -370,7 +370,7 @@ mod tests {
 
     #[test]
     fn test_handle_search_tasks() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         controller.handle_input("add Buy groceries");
         controller.handle_input("add Read a book");
@@ -384,7 +384,7 @@ mod tests {
 
     #[test]
     fn test_handle_search_tasks_no_results() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         controller.handle_input("add Task one");
         controller.handle_input("add Task two");
@@ -396,7 +396,7 @@ mod tests {
 
     #[test]
     fn test_handle_search_tasks_empty_list() {
-        let mut controller = TodoController::new();
+        let mut controller = TodoManager::new();
         
         controller.handle_input("search anything");
         

@@ -35,10 +35,10 @@
 //! ## Examples
 //!
 //! ```no_run
-//! use todo_manager::controller::TodoController;
+//! use todo_manager::controller::TodoManager;
 //!
-//! let mut controller = TodoController::new();
-//! controller.run();  // Starts the interactive application
+//! let mut manager = TodoManager::new();
+//! manager.run();  // Starts the interactive application
 //! ```
 
 // Module declarations
@@ -47,6 +47,6 @@ pub mod models;
 pub mod ui;
 
 // Re-export commonly used types for convenience
-pub use controller::TodoController;
+pub use controller::TodoManager;
 pub use models::{LoopControl, Priority, Task, TaskFilter, TaskStatus, TodoList, UiEvent};
 pub use ui::{InputReader, OutputWriter};
