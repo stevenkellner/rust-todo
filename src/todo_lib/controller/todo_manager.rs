@@ -1,9 +1,11 @@
 use crate::controller::CommandControllerRegistry;
 use crate::models::todo_list::TodoList;
 use crate::models::command_controller_result::CommandControllerResult;
-use crate::models::command_controller_type::CommandControllerType;
 use crate::models::loop_control::LoopControl;
-use crate::ui::{InputReader, UIManager};
+use crate::ui::{InputStream, OutputManager};
+use crate::OutputWriter;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 /// Controls the todo list application by coordinating specialized controllers.
 ///
@@ -13,18 +15,20 @@ use crate::ui::{InputReader, UIManager};
 ///
 /// ```no_run
 /// use todo_manager::controller::todo_manager::TodoManager;
+/// use todo_manager::ui::input::FileInputStream;
 ///
-/// let mut manager = TodoManager::new();
+/// let input_stream = FileInputStream::new(std::io::stdin());
+/// let mut manager = TodoManager::new(&mut input_stream);
 /// manager.run();
 /// ```
-pub struct TodoManager {
+pub struct TodoManager<I: InputStream, O: OutputWriter> {
     todo_list: TodoList,
-    input_reader: InputReader,
-    ui_manager: UIManager<std::io::Stdout>,
-    command_controller_registry: CommandControllerRegistry,
+    input_stream: Rc<RefCell<I>>,
+    output_manager: OutputManager<O>,
+    command_controller_registry: CommandControllerRegistry<O>,
 }
 
-impl TodoManager {
+impl<I: InputStream, O: OutputWriter> TodoManager<I, O> {
 
     /// Creates a new manager with an empty todo list and new UI components.
     ///
@@ -32,15 +36,17 @@ impl TodoManager {
     ///
     /// ```
     /// use todo_manager::controller::todo_manager::TodoManager;
+    /// use todo_manager::ui::input::FileInputStream;
     ///
-    /// let manager = TodoManager::new();
+    /// let input_stream = FileInputStream::new(std::io::stdin());
+    /// let manager = TodoManager::new(&mut input_stream);
     /// ```
-    pub fn new() -> Self {
-        TodoManager {
+    pub fn new(input_stream: Rc<RefCell<I>>, output_writer: Rc<RefCell<O>>) -> Self {
+        Self {
             todo_list: TodoList::new(),
-            input_reader: InputReader::new(),
-            ui_manager: UIManager::new(),
-            command_controller_registry: CommandControllerRegistry::new(),
+            input_stream,
+            output_manager: OutputManager::new(Rc::clone(&output_writer)),
+            command_controller_registry: CommandControllerRegistry::new(output_writer),
         }
     }
 
@@ -53,16 +59,18 @@ impl TodoManager {
     ///
     /// ```no_run
     /// use todo_manager::controller::todo_manager::TodoManager;
+    /// use todo_manager::ui::input::FileInputStream;
     ///
-    /// let mut manager = TodoManager::new();
+    /// let input_stream = FileInputStream::new(std::io::stdin());
+    /// let mut manager = TodoManager::new(&mut input_stream);
     /// manager.run();
     /// ```
     pub fn run(&mut self) {
-        self.ui_manager.show_welcome();
+        self.output_manager.show_welcome();
 
         loop {
-            self.ui_manager.print_prompt();
-            let input = self.input_reader.read_input();
+            self.output_manager.print_prompt();
+            let input = self.input_stream.borrow_mut().get_next_input();
             
             if self.handle_input(&input) == LoopControl::Exit {
                 break;
@@ -92,22 +100,22 @@ impl TodoManager {
                 Ok(CommandControllerResult::Continue) => return LoopControl::Continue,
                 Ok(CommandControllerResult::ExitMainLoop) => return LoopControl::Exit,
                 Ok(CommandControllerResult::EnableDebugMode) => {
-                    self.command_controller_registry.enable(CommandControllerType::Debug);
+                    self.command_controller_registry.enable_debug();
                     return LoopControl::Continue;
                 }
                 Ok(CommandControllerResult::DisableDebugMode) => {
-                    self.command_controller_registry.disable(CommandControllerType::Debug);
+                    self.command_controller_registry.disable_debug();
                     return LoopControl::Continue;
                 }
                 Err(err) => {
-                    self.ui_manager.show_error(&err.message());
+                    self.output_manager.show_error(&err.message());
                     return LoopControl::Continue;
                 }
             }
         }
 
         // Unknown command
-        self.ui_manager.handle_unknown_command(trimmed);
+        self.output_manager.handle_unknown_command(trimmed);
         LoopControl::Continue
     }
 }
@@ -115,17 +123,22 @@ impl TodoManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ui::input::FileInputStream;
+    use crate::ui::output::FileOutputWriter;
 
     #[test]
     fn test_new_controller() {
-        let manager = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+        let manager = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         assert!(manager.todo_list.is_empty());
     }
 
     #[test]
     fn test_handle_add_task() {
-        let mut manager = TodoManager::new();
-        
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+        let mut manager = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         manager.handle_input("add Test task");
         
         assert_eq!(manager.todo_list.get_tasks().len(), 1);
@@ -134,7 +147,9 @@ mod tests {
 
     #[test]
     fn test_handle_add_multiple_tasks() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+         let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Task 1");
         controller.handle_input("add Task 2");
@@ -145,7 +160,9 @@ mod tests {
 
     #[test]
     fn test_handle_remove_task() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+         let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Task to remove");
         let task_id = controller.todo_list.get_tasks()[0].id;
@@ -157,7 +174,9 @@ mod tests {
 
     #[test]
     fn test_handle_remove_nonexistent_task() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+         let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Test task");
         controller.handle_input("remove 999");
@@ -167,7 +186,9 @@ mod tests {
 
     #[test]
     fn test_handle_complete_task() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+         let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Task to complete");
         let task_id = controller.todo_list.get_tasks()[0].id;
@@ -180,7 +201,9 @@ mod tests {
 
     #[test]
     fn test_handle_complete_nonexistent_task() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+         let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Test task");
         controller.handle_input("complete 999");
@@ -190,7 +213,9 @@ mod tests {
 
     #[test]
     fn test_handle_uncomplete_task() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+         let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Task to uncomplete");
         let task_id = controller.todo_list.get_tasks()[0].id;
@@ -205,7 +230,9 @@ mod tests {
 
     #[test]
     fn test_handle_uncomplete_nonexistent_task() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+         let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Test task");
         controller.handle_input("uncomplete 999");
@@ -215,7 +242,9 @@ mod tests {
 
     #[test]
     fn test_handle_toggle_task() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+         let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Task to toggle");
         let task_id = controller.todo_list.get_tasks()[0].id;
@@ -231,7 +260,9 @@ mod tests {
 
     #[test]
     fn test_handle_toggle_nonexistent_task() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+        let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Test task");
         let initial_status = controller.todo_list.get_tasks()[0].is_completed();
@@ -243,7 +274,9 @@ mod tests {
 
     #[test]
     fn test_handle_list_tasks_all() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+         let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Task 1");
         controller.handle_input("add Task 2");
@@ -256,7 +289,9 @@ mod tests {
 
     #[test]
     fn test_handle_list_tasks_completed() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+         let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Task 1");
         controller.handle_input("add Task 2");
@@ -269,7 +304,9 @@ mod tests {
 
     #[test]
     fn test_handle_list_tasks_pending() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+         let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Task 1");
         controller.handle_input("add Task 2");
@@ -282,7 +319,9 @@ mod tests {
 
     #[test]
     fn test_handle_quit_command() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+        let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         let control = controller.handle_input("quit");
         
@@ -291,7 +330,9 @@ mod tests {
 
     #[test]
     fn test_handle_help_command() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+        let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         let control = controller.handle_input("help");
         
@@ -300,7 +341,9 @@ mod tests {
 
     #[test]
     fn test_handle_add_command_returns_continue() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+        let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         let control = controller.handle_input("add New task");
         
@@ -310,7 +353,9 @@ mod tests {
 
     #[test]
     fn test_handle_empty_input() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+        let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         let control = controller.handle_input("");
         
@@ -319,7 +364,9 @@ mod tests {
 
     #[test]
     fn test_handle_unknown_command() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+        let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         let control = controller.handle_input("invalidcommand");
         
@@ -328,7 +375,9 @@ mod tests {
 
     #[test]
     fn test_complex_workflow() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+        let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         // Add multiple tasks
         controller.handle_input("add Task 1");
@@ -358,7 +407,9 @@ mod tests {
 
     #[test]
     fn test_handle_search_tasks() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+        let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Buy groceries");
         controller.handle_input("add Read a book");
@@ -372,7 +423,9 @@ mod tests {
 
     #[test]
     fn test_handle_search_tasks_no_results() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+        let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Task one");
         controller.handle_input("add Task two");
@@ -384,7 +437,9 @@ mod tests {
 
     #[test]
     fn test_handle_search_tasks_empty_list() {
-        let mut controller = TodoManager::new();
+        let input_stream = FileInputStream::new(std::io::stdin());
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+        let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("search anything");
         

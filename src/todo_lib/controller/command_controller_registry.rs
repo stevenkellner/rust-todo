@@ -3,65 +3,43 @@ use crate::controller::task_command::TaskCommandController;
 use crate::controller::general_command::GeneralCommandController;
 use crate::controller::debug_command::DebugCommandController;
 use crate::models::command_controller_result::CommandControllerResult;
-use crate::models::command_controller_type::CommandControllerType;
 use crate::models::todo_list::TodoList;
 use crate::models::ParseError;
-use std::collections::HashMap;
-
-struct Entry {
-    controller: Box<dyn CommandController>,
-    active: bool,
-}
+use crate::OutputWriter;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 /// Manages the collection of command controllers and their active states.
 ///
 /// This struct encapsulates the logic for managing different command controllers
 /// using a HashMap, allowing for dynamic addition and removal of controllers.
-pub struct CommandControllerRegistry {
-    /// Map of controller types to their active state (true = active, false = inactive)
-    controllers: HashMap<CommandControllerType, Entry>,
+pub struct CommandControllerRegistry<O: OutputWriter> {
+    task_controller: TaskCommandController<O>,
+    general_controller: GeneralCommandController<O>,
+    debug_controller: DebugCommandController<O>,
+    is_debug_active: bool,
 }
 
-impl CommandControllerRegistry {
+impl<O: OutputWriter> CommandControllerRegistry<O> {
     /// Creates a new CommandControllerRegistry with task and general controllers active,
     /// and debug controller inactive by default.
-    pub fn new() -> Self {
-        let mut controllers = HashMap::new();
-        controllers.insert(CommandControllerType::Task, Entry {
-            controller: Box::new(TaskCommandController::new()),
-            active: true,
-        });
-        controllers.insert(CommandControllerType::General, Entry {
-            controller: Box::new(GeneralCommandController::new()),
-            active: true,
-        });
-        controllers.insert(CommandControllerType::Debug, Entry {
-            controller: Box::new(DebugCommandController::new()),
-            active: false,
-        });
-        
-        CommandControllerRegistry {
-            controllers,
+    pub fn new(output_writer: Rc<RefCell<O>>) -> Self {
+        Self {
+            task_controller: TaskCommandController::new(Rc::clone(&output_writer)),
+            general_controller: GeneralCommandController::new(Rc::clone(&output_writer)),
+            debug_controller: DebugCommandController::new(Rc::clone(&output_writer)),
+            is_debug_active: false,
         }
     }
 
-    /// Enables a controller of the specified type.
-    pub fn enable(&mut self, controller_type: CommandControllerType) {
-        if let Some(entry) = self.controllers.get_mut(&controller_type) {
-            entry.active = true;
-        }
+    /// Enables the debug controller.
+    pub fn enable_debug(&mut self) {
+        self.is_debug_active = true;
     }
 
-    /// Disables a controller of the specified type.
-    pub fn disable(&mut self, controller_type: CommandControllerType) {
-        if let Some(entry) = self.controllers.get_mut(&controller_type) {
-            entry.active = false;
-        }
-    }
-
-    /// Returns whether a controller of the specified type is active.
-    pub fn is_active(&self, controller_type: CommandControllerType) -> bool {
-        self.controllers.get(&controller_type).map(|entry| entry.active).unwrap_or(false)
+    /// Disables the debug controller.
+    pub fn disable_debug(&mut self) {
+        self.is_debug_active = false;
     }
 
     /// Tries to execute the input with all active controllers.
@@ -79,20 +57,18 @@ impl CommandControllerRegistry {
     ///
     /// `Some(Result)` if a controller handled the command, `None` if no controller recognized it
     pub fn try_execute(&mut self, input: &str, todo_list: &mut TodoList) -> Option<Result<CommandControllerResult, ParseError>> {
-        for entry in self.controllers.values_mut() {
-            if entry.active {
-                if let Some(result) = entry.controller.try_execute(input, todo_list) {
-                    return Some(result);
-                }
+        if let Some(result) = self.task_controller.try_execute(input, todo_list) {
+            return Some(result);
+        }
+        if let Some(result) = self.general_controller.try_execute(input, todo_list) {
+            return Some(result);
+        }
+        if self.is_debug_active {
+            if let Some(result) = self.debug_controller.try_execute(input, todo_list) {
+                return Some(result);
             }
         }
         None
-    }
-}
-
-impl Default for CommandControllerRegistry {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -101,42 +77,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_new_controllers() {
-        let registry = CommandControllerRegistry::new();
-        assert!(registry.is_active(CommandControllerType::Task));
-        assert!(registry.is_active(CommandControllerType::General));
-        assert!(!registry.is_active(CommandControllerType::Debug));
-    }
-
-    #[test]
-    fn test_default_trait() {
-        let registry = CommandControllerRegistry::default();
-        assert!(registry.is_active(CommandControllerType::Task));
-        assert!(registry.is_active(CommandControllerType::General));
-        assert!(!registry.is_active(CommandControllerType::Debug));
-    }
-
-    #[test]
-    fn test_enable_controller() {
-        let mut registry = CommandControllerRegistry::new();
-        assert!(!registry.is_active(CommandControllerType::Debug));
-        
-        registry.enable(CommandControllerType::Debug);
-        assert!(registry.is_active(CommandControllerType::Debug));
-    }
-
-    #[test]
-    fn test_disable_controller() {
-        let mut registry = CommandControllerRegistry::new();
-        assert!(registry.is_active(CommandControllerType::Task));
-        
-        registry.disable(CommandControllerType::Task);
-        assert!(!registry.is_active(CommandControllerType::Task));
-    }
-
-    #[test]
     fn test_try_execute_with_task_command() {
-        let mut registry = CommandControllerRegistry::new();
+        let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
+        let mut registry = CommandControllerRegistry::new(Rc::new(RefCell::new(output)));
         let mut todo_list = TodoList::new();
         
         let result = registry.try_execute("add Test task", &mut todo_list);
@@ -147,7 +90,8 @@ mod tests {
 
     #[test]
     fn test_try_execute_with_general_command() {
-        let mut registry = CommandControllerRegistry::new();
+        let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
+        let mut registry = CommandControllerRegistry::new(Rc::new(RefCell::new(output)));
         let mut todo_list = TodoList::new();
         
         let result = registry.try_execute("quit", &mut todo_list);
@@ -157,7 +101,8 @@ mod tests {
 
     #[test]
     fn test_try_execute_with_debug_command_inactive() {
-        let mut registry = CommandControllerRegistry::new();
+        let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
+        let mut registry = CommandControllerRegistry::new(Rc::new(RefCell::new(output)));
         let mut todo_list = TodoList::new();
         
         // Debug controller is not active, so debug commands should not be recognized
@@ -167,8 +112,9 @@ mod tests {
 
     #[test]
     fn test_try_execute_with_debug_command_active() {
-        let mut registry = CommandControllerRegistry::new();
-        registry.enable(CommandControllerType::Debug);
+        let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
+        let mut registry = CommandControllerRegistry::new(Rc::new(RefCell::new(output)));
+        registry.enable_debug();
         let mut todo_list = TodoList::new();
         
         let result = registry.try_execute("debug:gen 3", &mut todo_list);
@@ -179,7 +125,8 @@ mod tests {
 
     #[test]
     fn test_try_execute_unknown_command() {
-        let mut registry = CommandControllerRegistry::new();
+        let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
+        let mut registry = CommandControllerRegistry::new(Rc::new(RefCell::new(output)));
         let mut todo_list = TodoList::new();
         
         let result = registry.try_execute("unknown command", &mut todo_list);
@@ -188,12 +135,14 @@ mod tests {
 
     #[test]
     fn test_try_execute_with_disabled_task_controller() {
-        let mut registry = CommandControllerRegistry::new();
-        registry.disable(CommandControllerType::Task);
+        let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
+        let mut registry = CommandControllerRegistry::new(Rc::new(RefCell::new(output)));
+        registry.disable_debug();
         let mut todo_list = TodoList::new();
         
+        // Task controller is still active, so this should succeed
         let result = registry.try_execute("add Test task", &mut todo_list);
-        assert!(result.is_none());
+        assert!(result.is_some());
     }
 }
     

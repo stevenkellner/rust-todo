@@ -1,78 +1,65 @@
-use crate::ui::output_writer::OutputWriter;
-use std::io::Write;
+use crate::ui::output::OutputWriter;
 use colored::*;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 /// Manages all UI operations for the application.
 ///
-/// `UIManager` provides a centralized interface for displaying messages,
+/// `OutputManager` provides a centralized interface for displaying messages,
 /// prompts, and handling UI-related operations.
-pub struct UIManager<W: Write> {
-    writer: OutputWriter<W>,
+pub struct OutputManager<O: OutputWriter> {
+    output_writer: Rc<RefCell<O>>,
 }
 
-impl UIManager<std::io::Stdout> {
-    /// Creates a new UI manager with stdout.
-    pub fn new() -> Self {
-        UIManager {
-            writer: OutputWriter::new(),
-        }
-    }
-}
-
-impl<W: Write> UIManager<W> {
+impl<O: OutputWriter> OutputManager<O> {
     /// Creates a new UI manager with a custom output writer.
-    pub fn with_writer(writer: W) -> Self {
-        UIManager {
-            writer: OutputWriter::with_writer(writer),
+    pub fn new(output_writer: Rc<RefCell<O>>) -> Self {
+        Self {
+            output_writer
         }
     }
 
     /// Displays the welcome message.
     pub fn show_welcome(&mut self) {
-        self.writer.print_line("");
-        self.writer.print_line(&"═════════════════════════════════════════════════════".bright_cyan().bold().to_string());
-        self.writer.print_line(&"       ████████╗  ██████╗  ██████╗   ██████╗       ".bright_cyan().bold().to_string());
-        self.writer.print_line(&"       ╚══██╔══╝ ██╔═══██╗ ██╔══██╗ ██╔═══██╗      ".bright_cyan().bold().to_string());
-        self.writer.print_line(&"          ██║    ██║   ██║ ██║  ██║ ██║   ██║      ".bright_cyan().bold().to_string());
-        self.writer.print_line(&"          ██║    ██║   ██║ ██║  ██║ ██║   ██║      ".bright_cyan().bold().to_string());
-        self.writer.print_line(&"          ██║    ╚██████╔╝ ██████╔╝ ╚██████╔╝      ".bright_cyan().bold().to_string());
-        self.writer.print_line(&"          ╚═╝     ╚═════╝  ╚═════╝   ╚═════╝       ".bright_cyan().bold().to_string());
-        self.writer.print_line(&"                 📝 LIST MANAGER 📝                 ".bright_green().bold().to_string());
-        self.writer.print_line(&"═════════════════════════════════════════════════════".bright_cyan().bold().to_string());
-        self.writer.print_line("");
-        self.writer.print_line(&"    Welcome to your personal task management system!".white().to_string());
-        self.writer.print_line("");
-        self.writer.print_line(&format!("    Type {} to see available commands.", "help".bright_yellow().bold()));
-        self.writer.print_line("");
-        self.writer.print_line(&"─────────────────────────────────────────────────────".bright_black().to_string());
-        self.writer.print_line("");
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&"═════════════════════════════════════════════════════".bright_cyan().bold().to_string());
+        self.output_writer.borrow_mut().write_line(&"       ████████╗  ██████╗  ██████╗   ██████╗       ".bright_cyan().bold().to_string());
+        self.output_writer.borrow_mut().write_line(&"       ╚══██╔══╝ ██╔═══██╗ ██╔══██╗ ██╔═══██╗      ".bright_cyan().bold().to_string());
+        self.output_writer.borrow_mut().write_line(&"          ██║    ██║   ██║ ██║  ██║ ██║   ██║      ".bright_cyan().bold().to_string());
+        self.output_writer.borrow_mut().write_line(&"          ██║    ██║   ██║ ██║  ██║ ██║   ██║      ".bright_cyan().bold().to_string());
+        self.output_writer.borrow_mut().write_line(&"          ██║    ╚██████╔╝ ██████╔╝ ╚██████╔╝      ".bright_cyan().bold().to_string());
+        self.output_writer.borrow_mut().write_line(&"          ╚═╝     ╚═════╝  ╚═════╝   ╚═════╝       ".bright_cyan().bold().to_string());
+        self.output_writer.borrow_mut().write_line(&"                 📝 LIST MANAGER 📝                 ".bright_green().bold().to_string());
+        self.output_writer.borrow_mut().write_line(&"═════════════════════════════════════════════════════".bright_cyan().bold().to_string());
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&"    Welcome to your personal task management system!".white().to_string());
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&format!("    Type {} to see available commands.", "help".bright_yellow().bold()));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&"─────────────────────────────────────────────────────".bright_black().to_string());
+        self.output_writer.borrow_mut().write_line("");
     }
 
     /// Prints the command prompt.
     pub fn print_prompt(&mut self) {
-        self.writer.print_prompt();
+        self.output_writer.borrow_mut().write_prompt();
     }
 
     /// Shows an error message.
     pub fn show_error(&mut self, message: &str) {
-        self.writer.show_error(message);
+        self.output_writer.borrow_mut().show_error(message);
     }
 
     /// Handles an unknown command by displaying an error message.
     pub fn handle_unknown_command(&mut self, command: &str) {
-        self.writer.show_error(&format!("Unknown command '{}'. Type help for available commands.", command));
-    }
-}
-
-impl Default for UIManager<std::io::Stdout> {
-    fn default() -> Self {
-        Self::new()
+        self.output_writer.borrow_mut().show_error(&format!("Unknown command '{}'. Type help for available commands.", command));
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ui::output::FileOutputWriter;
 
     // Disable colors for all tests to make assertions easier
     fn setup() {
@@ -80,22 +67,18 @@ mod tests {
     }
 
     #[test]
-    fn test_new_ui_manager() {
-        let _manager = UIManager::new();
+    fn test_new_output_manager() {
+        let output_writer = FileOutputWriter::new(std::io::stdout());
+        let _manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
         // Just verify it compiles and constructs
     }
 
     #[test]
-    fn test_ui_manager_with_writer() {
+    fn test_output_manager_with_writer() {
         let mut output = Vec::new();
-        let _manager = UIManager::with_writer(&mut output);
+        let output_writer = FileOutputWriter::new(&mut output);
+        let _manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
         // Just verify it compiles and constructs
-    }
-
-    #[test]
-    fn test_default_trait() {
-        let _manager = UIManager::default();
-        // Verify default trait works
     }
 
     #[test]
@@ -103,7 +86,8 @@ mod tests {
         setup();
         let mut output = Vec::new();
         {
-            let mut manager = UIManager::with_writer(&mut output);
+            let output_writer = FileOutputWriter::new(&mut output);
+            let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.show_welcome();
         }
         
@@ -120,7 +104,8 @@ mod tests {
         setup();
         let mut output = Vec::new();
         {
-            let mut manager = UIManager::with_writer(&mut output);
+            let output_writer = FileOutputWriter::new(&mut output);
+            let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.show_error("Test error message");
         }
         
@@ -135,7 +120,8 @@ mod tests {
         setup();
         let mut output = Vec::new();
         {
-            let mut manager = UIManager::with_writer(&mut output);
+            let output_writer = FileOutputWriter::new(&mut output);
+            let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.show_error("Error: File 'test.txt' not found!");
         }
         
@@ -149,7 +135,8 @@ mod tests {
         setup();
         let mut output = Vec::new();
         {
-            let mut manager = UIManager::with_writer(&mut output);
+            let output_writer = FileOutputWriter::new(&mut output);
+            let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.handle_unknown_command("invalidcmd");
         }
         
@@ -165,7 +152,8 @@ mod tests {
         setup();
         let mut output = Vec::new();
         {
-            let mut manager = UIManager::with_writer(&mut output);
+            let output_writer = FileOutputWriter::new(&mut output);
+            let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.handle_unknown_command("badcommand arg1 arg2");
         }
         
@@ -179,7 +167,8 @@ mod tests {
         setup();
         let mut output = Vec::new();
         {
-            let mut manager = UIManager::with_writer(&mut output);
+            let output_writer = FileOutputWriter::new(&mut output);
+            let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             
             manager.show_error("First error");
             manager.show_error("Second error");
@@ -199,7 +188,8 @@ mod tests {
         setup();
         let mut output = Vec::new();
         {
-            let mut manager = UIManager::with_writer(&mut output);
+            let output_writer = FileOutputWriter::new(&mut output);
+            let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.show_error("");
         }
         
@@ -214,7 +204,8 @@ mod tests {
         setup();
         let mut output = Vec::new();
         {
-            let mut manager = UIManager::with_writer(&mut output);
+            let output_writer = FileOutputWriter::new(&mut output);
+            let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.handle_unknown_command("");
         }
         
@@ -224,11 +215,12 @@ mod tests {
     }
 
     #[test]
-    fn test_ui_manager_is_mutable() {
+    fn test_output_manager_is_mutable() {
         setup();
         let mut output = Vec::new();
         {
-            let mut manager = UIManager::with_writer(&mut output);
+            let output_writer = FileOutputWriter::new(&mut output);
+            let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             
             // Verify we can call multiple mutable methods
             manager.show_error("Error 1");
@@ -248,7 +240,8 @@ mod tests {
         setup();
         let mut output = Vec::new();
         {
-            let mut manager = UIManager::with_writer(&mut output);
+            let output_writer = FileOutputWriter::new(&mut output);
+            let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.show_welcome();
         }
         
@@ -265,12 +258,14 @@ mod tests {
         let mut output2 = Vec::new();
         
         {
-            let mut manager1 = UIManager::with_writer(&mut output1);
+            let output_writer = FileOutputWriter::new(&mut output1);
+            let mut manager1 = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager1.show_error("Specific error A");
         }
         
         {
-            let mut manager2 = UIManager::with_writer(&mut output2);
+            let output_writer = FileOutputWriter::new(&mut output2);
+            let mut manager2 = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager2.show_error("Specific error B");
         }
         

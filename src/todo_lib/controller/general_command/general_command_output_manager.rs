@@ -1,0 +1,182 @@
+use crate::ui::output::OutputWriter;
+use crate::ui::formatters::MessageFormatter;
+use colored::*;
+use std::rc::Rc;
+use std::cell::RefCell;
+
+/// Output writer for general application commands.
+///
+/// Handles all output operations for general commands
+/// like help, quit, welcome messages, etc.
+pub struct GeneralCommandOutputManager<O: OutputWriter> {
+    output_writer: Rc<RefCell<O>>,
+}
+
+impl<O: OutputWriter> GeneralCommandOutputManager<O> {
+    /// Creates a new GeneralCommandOutputManager with a custom writer.
+    pub fn new(output_writer: Rc<RefCell<O>>) -> Self {
+        GeneralCommandOutputManager {
+            output_writer,
+        }
+    }
+
+    /// Displays the goodbye message.
+    pub fn show_goodbye(&mut self) {
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&"─────────────────────────────────────────────────────".bright_black().to_string());
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&"    ✨ Thank you for using To-Do List Manager! ✨    ".bright_cyan().bold().to_string());
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&"           Stay organized and productive! 🚀          ".bright_green().to_string());
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&"═════════════════════════════════════════════════════".bright_cyan().bold().to_string());
+        self.output_writer.borrow_mut().write_line("");
+    }
+
+    /// Displays the help menu.
+    pub fn show_help(&mut self) {
+        self.output_writer.borrow_mut().write_line(&format!("\n{}", MessageFormatter::section_title("To-Do List Manager Commands")));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("add <description>", "Add a new task"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("list [status] [priority]", "List tasks (filters can be combined)"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Status:", "completed/done, pending/todo, overdue"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Priority:", "high/h, medium/med/m, low/l"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Category:", "category:name or cat:name"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Example:", "list pending high category:work"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("remove <id>", "Remove a task by ID"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Aliases:", "rm, delete"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("complete <id>", "Mark task as completed"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Alias:", "done"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("uncomplete <id>", "Mark task as pending"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Alias:", "undo"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("toggle <id>", "Toggle task completion status"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("priority <id> <level>", "Set task priority"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Levels:", "high/h, medium/med/m, low/l"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Alias:", "pri"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("set-due <id> <date>", "Set task due date"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Format:", "DD.MM.YYYY or 'none' to clear"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Alias:", "due"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("edit <id> <description>", "Edit task description"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("set-category <id> <name>", "Set task category"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Format:", "<name> or 'none' to clear"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Aliases:", "category, cat"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("categories", "List all categories"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Alias:", "list-categories"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("search <keyword>", "Search tasks by keyword"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Alias:", "find"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("statistics", "Display task statistics"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Alias:", "stats"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("help", "Show this help message"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Alias:", "h"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("quit", "Exit the program"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Aliases:", "q, exit"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&format!("{}\n", MessageFormatter::separator(40)));
+    }
+
+    /// Shows debug mode enabled message.
+    pub fn show_debug_enabled(&mut self) {
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&"Debug mode enabled.".green().to_string());
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&"Additional debug commands available:".bright_yellow().to_string());
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&format!("  {} <count>  - Generate random tasks", "debug:gen".bright_cyan()));
+        self.output_writer.borrow_mut().write_line(&format!("  {}          - Clear all tasks", "debug:clear".bright_cyan()));
+        self.output_writer.borrow_mut().write_line(&format!("  {}          - Disable debug mode", "debug".bright_cyan()));
+        self.output_writer.borrow_mut().write_line("");
+    }
+
+    /// Shows debug mode disabled message.
+    pub fn show_debug_disabled(&mut self) {
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&"Debug mode disabled.".yellow().to_string());
+        self.output_writer.borrow_mut().write_line("");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ui::output::FileOutputWriter;
+
+    // Disable colors for all tests
+    fn setup() {
+        colored::control::set_override(false);
+    }
+
+    #[test]
+    fn test_show_goodbye() {
+        setup();
+        let mut buffer = Vec::new();
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = GeneralCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
+        
+        writer.show_goodbye();
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Thank you for using To-Do List Manager"));
+        assert!(output.contains("Stay organized and productive"));
+    }
+
+    #[test]
+    fn test_show_help() {
+        setup();
+        let mut buffer = Vec::new();
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = GeneralCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
+        
+        writer.show_help();
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("--- To-Do List Manager Commands ---"));
+        assert!(output.contains("add <description>"));
+        assert!(output.contains("list [status] [priority]"));
+        assert!(output.contains("remove <id>"));
+        assert!(output.contains("help"));
+        assert!(output.contains("quit"));
+    }
+
+    #[test]
+    fn test_show_debug_enabled() {
+        setup();
+        let mut output = Vec::new();
+        let output_writer = FileOutputWriter::new(&mut output);
+        let mut manager = GeneralCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
+        
+        manager.show_debug_enabled();
+        
+        let output_str = String::from_utf8(output).unwrap();
+        assert!(output_str.contains("Debug mode enabled"));
+        assert!(output_str.contains("debug:gen"));
+        assert!(output_str.contains("debug:clear"));
+        assert!(output_str.contains("Additional debug commands"));
+    }
+
+    #[test]
+    fn test_show_debug_disabled() {
+        setup();
+        let mut output = Vec::new();
+        let output_writer = FileOutputWriter::new(&mut output);
+        let mut manager = GeneralCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
+        
+        manager.show_debug_disabled();
+        
+        let output_str = String::from_utf8(output).unwrap();
+        assert!(output_str.contains("Debug mode disabled"));
+    }
+}

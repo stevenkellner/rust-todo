@@ -2,12 +2,12 @@ use crate::controller::general_command::general_command::GeneralCommand;
 use crate::models::parse_error::ParseError;
 
 /// Parser for general application commands.
-pub struct GeneralCommandParser;
+pub struct GeneralCommandInputParser;
 
-impl GeneralCommandParser {
+impl GeneralCommandInputParser {
     /// Creates a new general command parser.
     pub fn new() -> Self {
-        GeneralCommandParser
+        GeneralCommandInputParser
     }
     
     /// Tries to parse a general command from the given command string.
@@ -30,7 +30,7 @@ impl GeneralCommandParser {
     }
 }
 
-impl Default for GeneralCommandParser {
+impl Default for GeneralCommandInputParser {
     fn default() -> Self {
         Self::new()
     }

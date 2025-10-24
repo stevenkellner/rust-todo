@@ -4,34 +4,27 @@ use crate::models::todo_list::TodoList;
 use crate::controller::debug_command::debug_command::DebugCommand;
 use crate::controller::debug_command::RandomTaskGenerator;
 use crate::models::ParseError;
-use crate::controller::debug_command::debug_command_parser::DebugCommandParser;
-use crate::controller::debug_command::DebugCommandOutputWriter;
-use std::io::Write;/// Handler for debug commands and operations
-pub struct DebugCommandController<W: Write> {
-    parser: DebugCommandParser,
+use crate::controller::debug_command::debug_command_input_parser::DebugCommandInputParser;
+use crate::controller::debug_command::DebugCommandOutputManager;
+use crate::OutputWriter;
+use std::rc::Rc;
+use std::cell::RefCell;
+
+/// Handler for debug commands and operations
+pub struct DebugCommandController<O: OutputWriter> {
+    input_parser: DebugCommandInputParser,
     /// Output writer for displaying results
-    output: DebugCommandOutputWriter<W>,
+    output_manager: DebugCommandOutputManager<O>,
     /// Task generator for creating random tasks
     task_generator: RandomTaskGenerator,
 }
 
-impl DebugCommandController<std::io::Stdout> {
-    /// Creates a new DebugCommandController with stdout
-    pub fn new() -> Self {
-        Self {
-            parser: DebugCommandParser::new(),
-            output: DebugCommandOutputWriter::new(), 
-            task_generator: RandomTaskGenerator::new(), 
-        }
-    }
-}
-
-impl<W: Write> DebugCommandController<W> {
+impl<O: OutputWriter> DebugCommandController<O> {
     /// Creates a new DebugCommandController with a custom output writer
-    pub fn with_writer(writer: W) -> Self {
+    pub fn new(output_writer: Rc<RefCell<O>>) -> Self {
         Self {
-            parser: DebugCommandParser::new(),
-            output: DebugCommandOutputWriter::with_writer(writer),
+            input_parser: DebugCommandInputParser::new(),
+            output_manager: DebugCommandOutputManager::new(output_writer),
             task_generator: RandomTaskGenerator::new(), 
         }
     }
@@ -64,7 +57,7 @@ impl<W: Write> DebugCommandController<W> {
             let _ = todo_list.add_task(new_task);
         }
         
-        self.output.show_success(&format!("Generated {} random tasks", count));
+        self.output_manager.show_success(&format!("Generated {} random tasks", count));
     }
     
     /// Clears all tasks from the todo list
@@ -78,11 +71,11 @@ impl<W: Write> DebugCommandController<W> {
     ) {
         let count = todo_list.get_tasks().len();
         todo_list.clear_all();
-        self.output.show_success(&format!("Cleared {} tasks", count));
+        self.output_manager.show_success(&format!("Cleared {} tasks", count));
     }
 }
 
-impl<W: Write> CommandController for DebugCommandController<W> {
+impl<O: OutputWriter> CommandController for DebugCommandController<O> {
     fn try_execute(&mut self, input: &str, todo_list: &mut TodoList) -> Option<Result<CommandControllerResult, ParseError>> {
         let parts: Vec<&str> = input.split_whitespace().collect();
         
@@ -93,7 +86,7 @@ impl<W: Write> CommandController for DebugCommandController<W> {
         let command = parts[0].to_lowercase();
         let args = &parts[1..];
 
-        match self.parser.try_parse(&command, args) {
+        match self.input_parser.try_parse(&command, args) {
             Some(Ok(cmd)) => {
                 let result = self.handle_command(&cmd, todo_list);
                 Some(Ok(result))
@@ -104,20 +97,17 @@ impl<W: Write> CommandController for DebugCommandController<W> {
     }
 }
 
-impl Default for DebugCommandController<std::io::Stdout> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::models::task::TaskWithoutId;
+    use crate::ui::output::FileOutputWriter;
     
     #[test]
     fn test_generate_random_tasks() {
-        let mut controller = DebugCommandController::with_writer(Vec::new());
+        let buffer = Vec::new();
+        let output_writer = FileOutputWriter::new(buffer);
+        let mut controller = DebugCommandController::new(Rc::new(RefCell::new(output_writer)));
         let mut todo_list = TodoList::new();
         
         controller.generate_random_tasks(10, &mut todo_list);
@@ -127,7 +117,9 @@ mod tests {
     
     #[test]
     fn test_clear_all_tasks() {
-        let mut controller = DebugCommandController::with_writer(Vec::new());
+        let buffer = Vec::new();
+        let output_writer = FileOutputWriter::new(buffer);
+        let mut controller = DebugCommandController::new(Rc::new(RefCell::new(output_writer)));
         let mut todo_list = TodoList::new();
         todo_list.add_task(TaskWithoutId::new("Test task 1".to_string()));
         todo_list.add_task(TaskWithoutId::new("Test task 2".to_string()));

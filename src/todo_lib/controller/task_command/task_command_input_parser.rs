@@ -5,12 +5,12 @@ use crate::models::parse_error::ParseError;
 use chrono::NaiveDate;
 
 /// Parser for task-related commands.
-pub struct TaskCommandParser;
+pub struct TaskCommandInputParser;
 
-impl TaskCommandParser {
+impl TaskCommandInputParser {
     /// Creates a new task command parser.
     pub fn new() -> Self {
-        TaskCommandParser
+        TaskCommandInputParser
     }
 
     /// Tries to parse a task command from the given command string and arguments.
@@ -261,7 +261,7 @@ impl TaskCommandParser {
     }
 }
 
-impl Default for TaskCommandParser {
+impl Default for TaskCommandInputParser {
     fn default() -> Self {
         Self::new()
     }

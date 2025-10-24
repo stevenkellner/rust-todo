@@ -4,7 +4,6 @@
 //! related to tasks, priorities, filtering, and control flow.
 
 pub mod command_controller_result;
-pub mod command_controller_type;
 pub mod filter_builder;
 pub mod loop_control;
 pub mod overdue_filter;
@@ -16,7 +15,6 @@ pub mod task_status;
 pub mod todo_list;
 
 // Re-export commonly used types
-pub use command_controller_type::CommandControllerType;
 pub use filter_builder::FilterBuilder;
 pub use loop_control::LoopControl;
 pub use parse_error::ParseError;

@@ -2,12 +2,12 @@ use crate::controller::debug_command::debug_command::DebugCommand;
 use crate::models::parse_error::ParseError;
 
 /// Parser for debug-related commands.
-pub struct DebugCommandParser;
+pub struct DebugCommandInputParser;
 
-impl DebugCommandParser {
+impl DebugCommandInputParser {
     /// Creates a new debug command parser.
     pub fn new() -> Self {
-        DebugCommandParser
+        DebugCommandInputParser
     }
 
     /// Tries to parse a debug command from the given command string and arguments.
@@ -59,7 +59,7 @@ impl DebugCommandParser {
     }
 }
 
-impl Default for DebugCommandParser {
+impl Default for DebugCommandInputParser {
     fn default() -> Self {
         Self::new()
     }

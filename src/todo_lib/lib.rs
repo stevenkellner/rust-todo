@@ -36,8 +36,10 @@
 //!
 //! ```no_run
 //! use todo_manager::controller::TodoManager;
+//! use todo_manager::ui::input::FileInputStream;
 //!
-//! let mut manager = TodoManager::new();
+//! let mut input_stream = FileInputStream::new(std::io::stdin());
+//! let mut manager = TodoManager::new(&mut input_stream);
 //! manager.run();  // Starts the interactive application
 //! ```
 
@@ -49,4 +51,4 @@ pub mod ui;
 // Re-export commonly used types for convenience
 pub use controller::TodoManager;
 pub use models::{LoopControl, Priority, Task, TaskFilter, TaskStatus, TodoList};
-pub use ui::{InputReader, OutputWriter};
+pub use ui::{InputStream, FileInputStream, OutputWriter, FileOutputWriter};

@@ -1,4 +1,4 @@
-use crate::ui::output_writer::OutputWriter;
+use crate::ui::output::OutputWriter;
 use crate::ui::formatters::{TaskFormatter, MessageFormatter};
 use crate::models::todo_list::TodoList;
 use crate::models::task::Task;
@@ -6,57 +6,47 @@ use crate::models::priority::Priority;
 use crate::models::task_filter::TaskFilter;
 use crate::models::task_status::TaskStatus;
 use chrono::NaiveDate;
-use std::io::Write;
 use colored::*;
+use std::rc::Rc;
+use std::cell::RefCell;
 
-/// Output writer specifically for task commands.
+/// Output manager specifically for task commands.
 ///
 /// Handles all output operations related to task management commands
 /// like add, remove, complete, edit, etc.
-pub struct TaskCommandOutputWriter<W: Write> {
-    writer: OutputWriter<W>,
+pub struct TaskCommandOutputManager<O: OutputWriter> {
+    output_writer: Rc<RefCell<O>>,
 }
 
-impl TaskCommandOutputWriter<std::io::Stdout> {
-    /// Creates a new TaskCommandOutputWriter with stdout.
-    pub fn new() -> Self {
-        TaskCommandOutputWriter {
-            writer: OutputWriter::new(),
-        }
-    }
-}
-
-impl<W: Write> TaskCommandOutputWriter<W> {
-    /// Creates a new TaskCommandOutputWriter with a custom writer.
-    pub fn with_writer(writer: W) -> Self {
-        TaskCommandOutputWriter {
-            writer: OutputWriter::with_writer(writer),
-        }
+impl<O: OutputWriter> TaskCommandOutputManager<O> {
+    /// Creates a new TaskCommandOutputManager with a custom writer.
+    pub fn new(output_writer: Rc<RefCell<O>>) -> Self {
+        TaskCommandOutputManager { output_writer }
     }
 
     /// Displays a success message after adding a task.
     pub fn show_task_added(&mut self, id: usize, description: &str) {
-        self.writer.show_success(&format!("Task added with ID {}: '{}'", id, description));
+        self.output_writer.borrow_mut().show_success(&format!("Task added with ID {}: '{}'", id, description));
     }
 
     /// Displays a success message after removing a task.
     pub fn show_task_removed(&mut self, description: &str) {
-        self.writer.show_success(&format!("Task removed: '{}'", description));
+        self.output_writer.borrow_mut().show_success(&format!("Task removed: '{}'", description));
     }
 
     /// Displays a success message after completing a task.
     pub fn show_task_completed(&mut self, description: &str) {
-        self.writer.show_success(&format!("Task '{}' marked as completed.", description));
+        self.output_writer.borrow_mut().show_success(&format!("Task '{}' marked as completed.", description));
     }
 
     /// Displays a success message after uncompleting a task.
     pub fn show_task_uncompleted(&mut self, description: &str) {
-        self.writer.show_success(&format!("Task '{}' marked as pending.", description));
+        self.output_writer.borrow_mut().show_success(&format!("Task '{}' marked as pending.", description));
     }
 
     /// Displays a success message after updating a task.
     pub fn show_task_updated(&mut self, old_desc: &str, new_desc: &str) {
-        self.writer.show_success(&format!("Task '{}' updated to '{}'.", old_desc, new_desc));
+        self.output_writer.borrow_mut().show_success(&format!("Task '{}' updated to '{}'.", old_desc, new_desc));
     }
 
     /// Displays a success message after updating a task description.
@@ -77,7 +67,7 @@ impl<W: Write> TaskCommandOutputWriter<W> {
     pub fn show_priority_set(&mut self, description: &str, priority: Priority) {
         use crate::ui::formatters::TaskFormatter;
         let colored_priority = TaskFormatter::format_priority_with_name(priority);
-        self.writer.show_success(&format!("Priority set to {} for task: '{}'", colored_priority, description));
+        self.output_writer.borrow_mut().show_success(&format!("Priority set to {} for task: '{}'", colored_priority, description));
     }
 
     /// Displays a success message after setting due date.
@@ -87,12 +77,12 @@ impl<W: Write> TaskCommandOutputWriter<W> {
         } else {
             format!("Due date cleared for task: '{}'", description)
         };
-        self.writer.show_success(&message);
+        self.output_writer.borrow_mut().show_success(&message);
     }
 
     /// Displays a success message after clearing due date.
     pub fn show_due_date_cleared(&mut self, description: &str) {
-        self.writer.show_success(&format!("Due date cleared for task: '{}'", description));
+        self.output_writer.borrow_mut().show_success(&format!("Due date cleared for task: '{}'", description));
     }
 
     /// Displays a success message after setting category.
@@ -102,7 +92,7 @@ impl<W: Write> TaskCommandOutputWriter<W> {
         } else {
             format!("Category cleared for task: '{}'", description)
         };
-        self.writer.show_success(&message);
+        self.output_writer.borrow_mut().show_success(&message);
     }
 
     /// Displays a success message after clearing category.
@@ -112,22 +102,22 @@ impl<W: Write> TaskCommandOutputWriter<W> {
 
     /// Displays an error when a task is not found.
     pub fn show_task_not_found(&mut self, id: usize) {
-        self.writer.show_error(&format!("Task with ID {} not found.", id));
+        self.output_writer.borrow_mut().show_error(&format!("Task with ID {} not found.", id));
     }
 
     /// Displays an error for invalid priority.
     pub fn show_invalid_priority(&mut self) {
-        self.writer.show_error("Invalid priority. Use: high, medium, or low");
+        self.output_writer.borrow_mut().show_error("Invalid priority. Use: high, medium, or low");
     }
 
     /// Displays an error for invalid date format.
     pub fn show_invalid_date_format(&mut self) {
-        self.writer.show_error("Invalid date format. Use DD.MM.YYYY");
+        self.output_writer.borrow_mut().show_error("Invalid date format. Use DD.MM.YYYY");
     }
 
     /// Displays a generic error message.
     pub fn show_error(&mut self, message: &str) {
-        self.writer.show_error(message);
+        self.output_writer.borrow_mut().show_error(message);
     }
 
     /// Displays a list of tasks.
@@ -159,20 +149,20 @@ impl<W: Write> TaskCommandOutputWriter<W> {
         let separator_length = title.len() + 8;
         let max_id_width = TaskFormatter::calculate_max_id_width(&tasks);
         
-        self.writer.print_line(&format!("\n{}", MessageFormatter::section_title(title)));
+        self.output_writer.borrow_mut().write_line(&format!("\n{}", MessageFormatter::section_title(title)));
         
         for task in &tasks {
             let formatted_task = TaskFormatter::format_task(task, max_id_width);
-            self.writer.print_line(&formatted_task);
+            self.output_writer.borrow_mut().write_line(&formatted_task);
         }
         
-        self.writer.print_line(&format!("{}\n", MessageFormatter::separator(separator_length)));
+        self.output_writer.borrow_mut().write_line(&format!("{}\n", MessageFormatter::separator(separator_length)));
     }
 
     /// Displays a list of all tasks.
     pub fn show_all_tasks(&mut self, tasks: &[Task]) {
         if tasks.is_empty() {
-            self.writer.print_line(&MessageFormatter::warning("No tasks found. Use 'add <description>' to create a task."));
+            self.output_writer.borrow_mut().write_line(&MessageFormatter::warning("No tasks found. Use 'add <description>' to create a task."));
             return;
         }
 
@@ -182,7 +172,7 @@ impl<W: Write> TaskCommandOutputWriter<W> {
     /// Displays a list of completed tasks.
     pub fn show_completed_tasks(&mut self, tasks: &[&Task]) {
         if tasks.is_empty() {
-            self.writer.print_line(&MessageFormatter::warning("No completed tasks found."));
+            self.output_writer.borrow_mut().write_line(&MessageFormatter::warning("No completed tasks found."));
             return;
         }
 
@@ -192,7 +182,7 @@ impl<W: Write> TaskCommandOutputWriter<W> {
     /// Displays a list of pending tasks.
     pub fn show_pending_tasks(&mut self, tasks: &[&Task]) {
         if tasks.is_empty() {
-            self.writer.print_line(&MessageFormatter::warning("No pending tasks found."));
+            self.output_writer.borrow_mut().write_line(&MessageFormatter::warning("No pending tasks found."));
             return;
         }
 
@@ -203,7 +193,7 @@ impl<W: Write> TaskCommandOutputWriter<W> {
     pub fn show_tasks_by_priority(&mut self, tasks: &[&Task], priority: Priority) {
         if tasks.is_empty() {
             let message = format!("No {} priority tasks found.", priority.as_str());
-            self.writer.print_line(&MessageFormatter::warning(&message));
+            self.output_writer.borrow_mut().write_line(&MessageFormatter::warning(&message));
             return;
         }
 
@@ -224,7 +214,7 @@ impl<W: Write> TaskCommandOutputWriter<W> {
                 None => String::new(),
             };
             let message = format!("No {}{}tasks found.", status_str, priority_str);
-            self.writer.print_line(&MessageFormatter::warning(&message));
+            self.output_writer.borrow_mut().write_line(&MessageFormatter::warning(&message));
             return;
         }
 
@@ -253,7 +243,7 @@ impl<W: Write> TaskCommandOutputWriter<W> {
     fn show_search_results_internal(&mut self, tasks: &[&Task], keyword: &str) {
         if tasks.is_empty() {
             let message = format!("No tasks found matching '{}'.", keyword);
-            self.writer.print_line(&MessageFormatter::warning(&message));
+            self.output_writer.borrow_mut().write_line(&MessageFormatter::warning(&message));
             return;
         }
 
@@ -263,63 +253,57 @@ impl<W: Write> TaskCommandOutputWriter<W> {
 
     /// Displays task statistics.
     fn show_statistics_internal(&mut self, stats: &crate::models::TaskStatistics) {
-        self.writer.print_line("");
-        self.writer.print_line(&MessageFormatter::section_title("Task Statistics"));
-        self.writer.print_line("");
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::section_title("Task Statistics"));
+        self.output_writer.borrow_mut().write_line("");
         
         // Overall statistics
-        self.writer.print_line(&format!("  {}: {}", 
+        self.output_writer.borrow_mut().write_line(&format!("  {}: {}", 
             "Total Tasks".bright_white().bold(), 
             stats.total));
-        self.writer.print_line(&format!("  {}: {}", 
+        self.output_writer.borrow_mut().write_line(&format!("  {}: {}", 
             "Completed".bright_white().bold(), 
             stats.completed.to_string().green()));
-        self.writer.print_line(&format!("  {}: {}", 
+        self.output_writer.borrow_mut().write_line(&format!("  {}: {}", 
             "Pending".bright_white().bold(), 
             stats.pending.to_string().yellow()));
-        self.writer.print_line(&format!("  {}: {:.1}%", 
+        self.output_writer.borrow_mut().write_line(&format!("  {}: {:.1}%", 
             "Completion".bright_white().bold(), 
             stats.completion_percentage));
         
         // Priority breakdown
         if stats.total > 0 {
-            self.writer.print_line("");
-            self.writer.print_line(&format!("  {}", "By Priority:".bright_cyan()));
-            self.writer.print_line(&format!("    {} {}", 
+            self.output_writer.borrow_mut().write_line("");
+            self.output_writer.borrow_mut().write_line(&format!("  {}", "By Priority:".bright_cyan()));
+            self.output_writer.borrow_mut().write_line(&format!("    {} {}", 
                 "▲ High:  ".red(), 
                 stats.high_priority));
-            self.writer.print_line(&format!("    {} {}", 
+            self.output_writer.borrow_mut().write_line(&format!("    {} {}", 
                 "■ Medium:".yellow(), 
                 stats.medium_priority));
-            self.writer.print_line(&format!("    {} {}", 
+            self.output_writer.borrow_mut().write_line(&format!("    {} {}", 
                 "▼ Low:   ".blue(), 
                 stats.low_priority));
         }
         
-        self.writer.print_line("");
+        self.output_writer.borrow_mut().write_line("");
     }
 
     /// Displays all unique categories.
     fn show_categories_internal(&mut self, categories: &[String]) {
-        self.writer.print_line("");
+        self.output_writer.borrow_mut().write_line("");
         if categories.is_empty() {
-            self.writer.print_line(&"↻ No categories found.".bright_yellow().to_string());
+            self.output_writer.borrow_mut().write_line(&"↻ No categories found.".bright_yellow().to_string());
         } else {
-            self.writer.print_line(&"--- All Categories ---".bright_cyan().bold().to_string());
-            self.writer.print_line("");
+            self.output_writer.borrow_mut().write_line(&"--- All Categories ---".bright_cyan().bold().to_string());
+            self.output_writer.borrow_mut().write_line("");
             for category in categories {
-                self.writer.print_line(&format!("  {}", category.bright_magenta()));
+                self.output_writer.borrow_mut().write_line(&format!("  {}", category.bright_magenta()));
             }
-            self.writer.print_line("");
-            self.writer.print_line(&format!("Total: {} categories", categories.len()).bright_black().to_string());
+            self.output_writer.borrow_mut().write_line("");
+            self.output_writer.borrow_mut().write_line(&format!("Total: {} categories", categories.len()).bright_black().to_string());
         }
-        self.writer.print_line("");
-    }
-}
-
-impl Default for TaskCommandOutputWriter<std::io::Stdout> {
-    fn default() -> Self {
-        Self::new()
+        self.output_writer.borrow_mut().write_line("");
     }
 }
 
@@ -328,6 +312,7 @@ mod tests {
     use super::*;
     use crate::models::TaskStatistics;
     use crate::models::overdue_filter::OverdueFilter;
+    use crate::ui::output::FileOutputWriter;
 
     // Disable colors for all tests
     fn setup() {
@@ -338,7 +323,8 @@ mod tests {
     fn test_task_output_writer_task_added() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_task_added(1, "Test task");
         
@@ -351,7 +337,8 @@ mod tests {
     fn test_task_output_writer_task_removed() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_task_removed("Completed task");
         
@@ -364,7 +351,8 @@ mod tests {
     fn test_task_output_writer_task_completed() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_task_completed("Finish homework");
         
@@ -377,7 +365,8 @@ mod tests {
     fn test_task_output_writer_task_uncompleted() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_task_uncompleted("Review code");
         
@@ -390,7 +379,8 @@ mod tests {
     fn test_task_output_writer_task_edited() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_task_edited("Old description", "New description");
         
@@ -404,7 +394,8 @@ mod tests {
     fn test_task_output_writer_task_toggled_completed() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_task_toggled("Test task", true);
         
@@ -416,7 +407,8 @@ mod tests {
     fn test_task_output_writer_task_toggled_pending() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_task_toggled("Test task", false);
         
@@ -428,7 +420,8 @@ mod tests {
     fn test_task_output_writer_priority_set() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_priority_set("Important task", Priority::High);
         
@@ -441,7 +434,8 @@ mod tests {
     fn test_task_output_writer_due_date_set() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         let date = chrono::NaiveDate::from_ymd_opt(2024, 12, 31).unwrap();
         writer.show_due_date_set("Task with deadline", Some(date));
@@ -456,7 +450,8 @@ mod tests {
     fn test_task_output_writer_due_date_cleared() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_due_date_set("Task without deadline", None);
         
@@ -469,7 +464,8 @@ mod tests {
     fn test_task_output_writer_category_set() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_category_set("Work task", Some("Work".to_string()));
         
@@ -483,7 +479,8 @@ mod tests {
     fn test_task_output_writer_category_cleared() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_category_set("Uncategorized task", None);
         
@@ -496,7 +493,8 @@ mod tests {
     fn test_task_output_writer_task_not_found() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_task_not_found(42);
         
@@ -508,7 +506,8 @@ mod tests {
     fn test_task_output_writer_invalid_priority() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_invalid_priority();
         
@@ -520,7 +519,8 @@ mod tests {
     fn test_task_output_writer_invalid_date_format() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_invalid_date_format();
         
@@ -532,7 +532,8 @@ mod tests {
     fn test_task_output_writer_show_error() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_error("Custom error message");
         
@@ -544,7 +545,8 @@ mod tests {
     fn test_task_output_writer_all_tasks_empty() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_all_tasks(&[]);
         
@@ -556,7 +558,8 @@ mod tests {
     fn test_task_output_writer_all_tasks_with_data() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         let tasks = vec![
             Task::new(1, "Task 1".to_string()),
@@ -575,7 +578,8 @@ mod tests {
     fn test_task_output_writer_filtered_tasks_empty() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         let filter = TaskFilter::new(None, None, OverdueFilter::All);
         writer.show_filtered_tasks(&[], &filter);
@@ -588,7 +592,8 @@ mod tests {
     fn test_task_output_writer_statistics() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         let stats = TaskStatistics {
             total: 10,
@@ -617,7 +622,8 @@ mod tests {
     fn test_task_output_writer_categories_empty() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         writer.show_categories_internal(&[]);
         
@@ -629,7 +635,8 @@ mod tests {
     fn test_task_output_writer_categories_with_data() {
         setup();
         let mut buffer = Vec::new();
-        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        let output_writer = FileOutputWriter::new(&mut buffer);
+        let mut writer = TaskCommandOutputManager::new(Rc::new(RefCell::new(output_writer)));
         
         let categories = vec!["Work".to_string(), "Personal".to_string(), "Shopping".to_string()];
         writer.show_categories_internal(&categories);

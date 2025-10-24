@@ -1,54 +1,40 @@
-use std::io::{self, Write};
+use std::io::Write;
 use colored::*;
-use super::formatters::MessageFormatter;
+use crate::ui::formatters::MessageFormatter;
+use super::output_writer::OutputWriter;
 
-/// Handles core output operations for the command-line interface.
+/// File-based implementation of OutputWriter for the command-line interface.
 ///
-/// `OutputWriter` provides only the fundamental output methods.
+/// `FileOutputWriter` provides the fundamental output methods for CLI.
 /// Specialized output writers for different command types build upon these methods.
 ///
 /// # Examples
 ///
 /// ```
-/// use todo_manager::ui::output_writer::OutputWriter;
+/// use todo_manager::ui::output::{FileOutputWriter, OutputWriter};
 ///
-/// let mut output = OutputWriter::new();
-/// output.print_line("Hello, World!");
+/// let mut output = FileOutputWriter::new();
+/// output.write_line("Hello, World!");
 /// ```
-pub struct OutputWriter<W: Write = io::Stdout> {
+pub struct FileOutputWriter<W: Write> {
     writer: W,
 }
 
-impl OutputWriter<io::Stdout> {
-    /// Creates a new output writer that writes to stdout.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use todo_manager::ui::output_writer::OutputWriter;
-    ///
-    /// let output = OutputWriter::new();
-    /// ```
-    pub fn new() -> Self {
-        OutputWriter {
-            writer: io::stdout(),
-        }
+impl<W: Write> FileOutputWriter<W> {
+    /// Creates a new output writer with a custom writer (for testing).
+    pub fn new(writer: W) -> Self {
+        FileOutputWriter { writer }
     }
 }
 
-impl<W: Write> OutputWriter<W> {
-    /// Creates a new output writer with a custom writer (for testing).
-    pub fn with_writer(writer: W) -> Self {
-        OutputWriter { writer }
-    }
-
+impl<W: Write> OutputWriter for FileOutputWriter<W> {
     /// Displays an error message for invalid input.
     ///
     /// # Arguments
     ///
     /// * `message` - The error message to display
-    pub fn show_error(&mut self, message: &str) {
-        self.print_line(&MessageFormatter::error(message));
+    fn show_error(&mut self, message: &str) {
+        self.write_line(&MessageFormatter::error(message));
     }
 
     /// Displays a success message to the user.
@@ -56,25 +42,25 @@ impl<W: Write> OutputWriter<W> {
     /// # Arguments
     ///
     /// * `message` - The success message to display
-    pub fn show_success(&mut self, message: &str) {
-        self.print_line(&MessageFormatter::success(message));
+    fn show_success(&mut self, message: &str) {
+        self.write_line(&MessageFormatter::success(message));
     }
 
-    /// Prints a line of text to the output.
+    /// Writes a line of text to the output.
     ///
     /// # Arguments
     ///
-    /// * `text` - The text to print
+    /// * `text` - The text to write
     ///
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::ui::output_writer::OutputWriter;
+    /// use todo_manager::ui::output::{FileOutputWriter, OutputWriter};
     ///
-    /// let mut output = OutputWriter::new();
-    /// output.print_line("Task added successfully!");
+    /// let mut output = FileOutputWriter::new();
+    /// output.write_line("Task added successfully!");
     /// ```
-    pub fn print_line(&mut self, text: &str) {
+    fn write_line(&mut self, text: &str) {
         writeln!(self.writer, "{}", text).unwrap();
     }
 
@@ -83,12 +69,12 @@ impl<W: Write> OutputWriter<W> {
     /// # Examples
     ///
     /// ```no_run
-    /// use todo_manager::ui::output_writer::OutputWriter;
+    /// use todo_manager::ui::output::{FileOutputWriter, OutputWriter};
     ///
-    /// let mut output = OutputWriter::new();
-    /// output.print_prompt();
+    /// let mut output = FileOutputWriter::new();
+    /// output.write_prompt();
     /// ```
-    pub fn print_prompt(&mut self) {
+    fn write_prompt(&mut self) {
         write!(self.writer, "{}", "> ".bright_green().bold()).unwrap();
         self.writer.flush().unwrap();
     }
@@ -107,8 +93,8 @@ mod tests {
     fn test_new_output_writer() {
         setup();
         let mut buffer = Vec::new();
-        let mut output = OutputWriter::with_writer(&mut buffer);
-        output.print_line("Test message");
+        let mut output = FileOutputWriter::new(&mut buffer);
+        output.write_line("Test message");
         let result = String::from_utf8(buffer).unwrap();
         assert_eq!(result, "Test message\n");
     }
@@ -117,7 +103,7 @@ mod tests {
     fn test_show_error() {
         setup();
         let mut buffer = Vec::new();
-        let mut output = OutputWriter::with_writer(&mut buffer);
+        let mut output = FileOutputWriter::new(&mut buffer);
         output.show_error("Invalid input");
         let result = String::from_utf8(buffer).unwrap();
         assert_eq!(result, "✗ Invalid input\n");
@@ -127,7 +113,7 @@ mod tests {
     fn test_show_error_different_message() {
         setup();
         let mut buffer = Vec::new();
-        let mut output = OutputWriter::with_writer(&mut buffer);
+        let mut output = FileOutputWriter::new(&mut buffer);
         output.show_error("Task ID must be a number");
         let result = String::from_utf8(buffer).unwrap();
         assert_eq!(result, "✗ Task ID must be a number\n");
@@ -137,36 +123,36 @@ mod tests {
     fn test_show_success() {
         setup();
         let mut buffer = Vec::new();
-        let mut output = OutputWriter::with_writer(&mut buffer);
+        let mut output = FileOutputWriter::new(&mut buffer);
         output.show_success("Operation completed");
         let result = String::from_utf8(buffer).unwrap();
         assert_eq!(result, "✓ Operation completed\n");
     }
 
     #[test]
-    fn test_print_line_empty_string() {
+    fn test_write_line_empty_string() {
         let mut buffer = Vec::new();
-        let mut output = OutputWriter::with_writer(&mut buffer);
-        output.print_line("");
+        let mut output = FileOutputWriter::new(&mut buffer);
+        output.write_line("");
         let result = String::from_utf8(buffer).unwrap();
         assert_eq!(result, "\n");
     }
 
     #[test]
-    fn test_print_line_multiline_string() {
+    fn test_write_line_multiline_string() {
         let mut buffer = Vec::new();
-        let mut output = OutputWriter::with_writer(&mut buffer);
-        output.print_line("Line 1\nLine 2\nLine 3");
+        let mut output = FileOutputWriter::new(&mut buffer);
+        output.write_line("Line 1\nLine 2\nLine 3");
         let result = String::from_utf8(buffer).unwrap();
         assert_eq!(result, "Line 1\nLine 2\nLine 3\n");
     }
 
     #[test]
-    fn test_print_prompt() {
+    fn test_write_prompt() {
         setup();
         let mut buffer = Vec::new();
-        let mut output = OutputWriter::with_writer(&mut buffer);
-        output.print_prompt();
+        let mut output = FileOutputWriter::new(&mut buffer);
+        output.write_prompt();
         let result = String::from_utf8(buffer).unwrap();
         assert_eq!(result, "> ");
     }
@@ -175,7 +161,7 @@ mod tests {
     fn test_multiple_operations() {
         setup();
         let mut buffer = Vec::new();
-        let mut output = OutputWriter::with_writer(&mut buffer);
+        let mut output = FileOutputWriter::new(&mut buffer);
         output.show_success("First operation");
         output.show_success("Second operation");
         output.show_error("An error occurred");
