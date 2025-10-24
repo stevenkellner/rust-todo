@@ -1,19 +1,20 @@
-use crate::ui::GeneralCommandOutputWriter;
+use crate::ui::output_writer::OutputWriter;
 use std::io::Write;
+use colored::*;
 
 /// Manages all UI operations for the application.
 ///
 /// `UIManager` provides a centralized interface for displaying messages,
 /// prompts, and handling UI-related operations.
 pub struct UIManager<W: Write> {
-    output: GeneralCommandOutputWriter<W>,
+    writer: OutputWriter<W>,
 }
 
 impl UIManager<std::io::Stdout> {
     /// Creates a new UI manager with stdout.
     pub fn new() -> Self {
         UIManager {
-            output: GeneralCommandOutputWriter::new(),
+            writer: OutputWriter::new(),
         }
     }
 }
@@ -22,29 +23,44 @@ impl<W: Write> UIManager<W> {
     /// Creates a new UI manager with a custom output writer.
     pub fn with_writer(writer: W) -> Self {
         UIManager {
-            output: GeneralCommandOutputWriter::with_writer(writer),
+            writer: OutputWriter::with_writer(writer),
         }
     }
 
     /// Displays the welcome message.
     pub fn show_welcome(&mut self) {
-        self.output.show_welcome();
+        self.writer.print_line("");
+        self.writer.print_line(&"═════════════════════════════════════════════════════".bright_cyan().bold().to_string());
+        self.writer.print_line(&"       ████████╗  ██████╗  ██████╗   ██████╗       ".bright_cyan().bold().to_string());
+        self.writer.print_line(&"       ╚══██╔══╝ ██╔═══██╗ ██╔══██╗ ██╔═══██╗      ".bright_cyan().bold().to_string());
+        self.writer.print_line(&"          ██║    ██║   ██║ ██║  ██║ ██║   ██║      ".bright_cyan().bold().to_string());
+        self.writer.print_line(&"          ██║    ██║   ██║ ██║  ██║ ██║   ██║      ".bright_cyan().bold().to_string());
+        self.writer.print_line(&"          ██║    ╚██████╔╝ ██████╔╝ ╚██████╔╝      ".bright_cyan().bold().to_string());
+        self.writer.print_line(&"          ╚═╝     ╚═════╝  ╚═════╝   ╚═════╝       ".bright_cyan().bold().to_string());
+        self.writer.print_line(&"                 📝 LIST MANAGER 📝                 ".bright_green().bold().to_string());
+        self.writer.print_line(&"═════════════════════════════════════════════════════".bright_cyan().bold().to_string());
+        self.writer.print_line("");
+        self.writer.print_line(&"    Welcome to your personal task management system!".white().to_string());
+        self.writer.print_line("");
+        self.writer.print_line(&format!("    Type {} to see available commands.", "help".bright_yellow().bold()));
+        self.writer.print_line("");
+        self.writer.print_line(&"─────────────────────────────────────────────────────".bright_black().to_string());
+        self.writer.print_line("");
     }
 
     /// Prints the command prompt.
     pub fn print_prompt(&mut self) {
-        print!("> ");
-        std::io::stdout().flush().unwrap();
+        self.writer.print_prompt();
     }
 
     /// Shows an error message.
     pub fn show_error(&mut self, message: &str) {
-        self.output.show_error(message);
+        self.writer.show_error(message);
     }
 
     /// Handles an unknown command by displaying an error message.
     pub fn handle_unknown_command(&mut self, command: &str) {
-        self.output.show_unknown_command(command);
+        self.writer.show_error(&format!("Unknown command '{}'. Type help for available commands.", command));
     }
 }
 

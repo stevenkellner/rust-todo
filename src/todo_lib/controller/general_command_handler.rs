@@ -72,26 +72,6 @@ impl<W: Write> GeneralCommandHandler<W> {
         self.output.show_goodbye();
         LoopControl::Exit
     }
-
-    /// Displays the welcome message.
-    pub fn show_welcome(&mut self) {
-        self.output.show_welcome();
-    }
-
-    /// Prints the command prompt.
-    pub fn print_prompt(&mut self) {
-        self.output.print_prompt();
-    }
-
-    /// Shows an error message.
-    pub fn show_error(&mut self, message: &str) {
-        self.output.show_error(message);
-    }
-
-    /// Handles an unknown command by displaying an error message.
-    pub fn handle_unknown_command(&mut self, command: &str) {
-        self.output.show_unknown_command(command);
-    }
 }
 
 impl Default for GeneralCommandHandler<std::io::Stdout> {

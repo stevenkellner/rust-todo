@@ -28,27 +28,6 @@ impl<W: Write> GeneralCommandOutputWriter<W> {
         }
     }
 
-    /// Displays the welcome message.
-    pub fn show_welcome(&mut self) {
-        self.writer.print_line("");
-        self.writer.print_line(&"═════════════════════════════════════════════════════".bright_cyan().bold().to_string());
-        self.writer.print_line(&"       ████████╗  ██████╗  ██████╗   ██████╗       ".bright_cyan().bold().to_string());
-        self.writer.print_line(&"       ╚══██╔══╝ ██╔═══██╗ ██╔══██╗ ██╔═══██╗      ".bright_cyan().bold().to_string());
-        self.writer.print_line(&"          ██║    ██║   ██║ ██║  ██║ ██║   ██║      ".bright_cyan().bold().to_string());
-        self.writer.print_line(&"          ██║    ██║   ██║ ██║  ██║ ██║   ██║      ".bright_cyan().bold().to_string());
-        self.writer.print_line(&"          ██║    ╚██████╔╝ ██████╔╝ ╚██████╔╝      ".bright_cyan().bold().to_string());
-        self.writer.print_line(&"          ╚═╝     ╚═════╝  ╚═════╝   ╚═════╝       ".bright_cyan().bold().to_string());
-        self.writer.print_line(&"                 📝 LIST MANAGER 📝                 ".bright_green().bold().to_string());
-        self.writer.print_line(&"═════════════════════════════════════════════════════".bright_cyan().bold().to_string());
-        self.writer.print_line("");
-        self.writer.print_line(&"    Welcome to your personal task management system!".white().to_string());
-        self.writer.print_line("");
-        self.writer.print_line(&format!("    Type {} to see available commands.", "help".bright_yellow().bold()));
-        self.writer.print_line("");
-        self.writer.print_line(&"─────────────────────────────────────────────────────".bright_black().to_string());
-        self.writer.print_line("");
-    }
-
     /// Displays the goodbye message.
     pub fn show_goodbye(&mut self) {
         self.writer.print_line("");
@@ -116,31 +95,6 @@ impl<W: Write> GeneralCommandOutputWriter<W> {
         self.writer.print_line("");
         self.writer.print_line(&format!("{}\n", MessageFormatter::separator(40)));
     }
-
-    /// Displays an error for unknown commands.
-    pub fn show_unknown_command(&mut self, command: &str) {
-        self.writer.show_error(&format!("Unknown command '{}'. Type help for available commands.", command));
-    }
-
-    /// Displays a generic error message.
-    pub fn show_error(&mut self, message: &str) {
-        self.writer.show_error(message);
-    }
-
-    /// Displays a generic success message.
-    pub fn show_success(&mut self, message: &str) {
-        self.writer.show_success(message);
-    }
-
-    /// Prints a line of text.
-    pub fn print_line(&mut self, text: &str) {
-        self.writer.print_line(text);
-    }
-
-    /// Displays the command prompt.
-    pub fn print_prompt(&mut self) {
-        self.writer.print_prompt();
-    }
 }
 
 impl Default for GeneralCommandOutputWriter<std::io::Stdout> {
@@ -156,33 +110,6 @@ mod tests {
     // Disable colors for all tests
     fn setup() {
         colored::control::set_override(false);
-    }
-
-    #[test]
-    fn test_general_output_writer_unknown_command() {
-        setup();
-        let mut buffer = Vec::new();
-        let mut writer = GeneralCommandOutputWriter::with_writer(&mut buffer);
-        
-        writer.show_unknown_command("invalid");
-        
-        let output = String::from_utf8(buffer).unwrap();
-        assert!(output.contains("Unknown command"));
-        assert!(output.contains("invalid"));
-    }
-
-    #[test]
-    fn test_show_welcome() {
-        setup();
-        let mut buffer = Vec::new();
-        let mut writer = GeneralCommandOutputWriter::with_writer(&mut buffer);
-        
-        writer.show_welcome();
-        
-        let output = String::from_utf8(buffer).unwrap();
-        assert!(output.contains("LIST MANAGER"));
-        assert!(output.contains("Welcome to your personal task management system"));
-        assert!(output.contains("Type help to see available commands"));
     }
 
     #[test]
