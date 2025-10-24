@@ -1,6 +1,5 @@
 use crate::models::general_command::GeneralCommand;
-use crate::models::general_command_result::GeneralCommandResult;
-use crate::models::loop_control::LoopControl;
+use crate::models::command_controller_result::CommandControllerResult;
 use crate::ui::GeneralCommandOutputWriter;
 use std::io::Write;
 
@@ -41,11 +40,11 @@ impl<W: Write> GeneralCommandHandler<W> {
     pub fn handle(
         &mut self,
         command: &GeneralCommand,
-    ) -> GeneralCommandResult {
+    ) -> CommandControllerResult {
         match command {
-            GeneralCommand::ShowHelp => GeneralCommandResult::Continue(self.show_help()),
-            GeneralCommand::Quit => GeneralCommandResult::Continue(self.handle_quit()),
-            GeneralCommand::ToggleDebug => GeneralCommandResult::ToggleDebug,
+            GeneralCommand::ShowHelp => self.show_help(),
+            GeneralCommand::Quit => self.handle_quit(),
+            GeneralCommand::ToggleDebug => CommandControllerResult::ToggleDebug,
         }
     }
 
@@ -56,9 +55,9 @@ impl<W: Write> GeneralCommandHandler<W> {
     /// * `LoopControl::Continue` - Always continues after showing help
     fn show_help(
         &mut self,
-    ) -> LoopControl {
+    ) -> CommandControllerResult {
         self.output.show_help();
-        LoopControl::Continue
+        CommandControllerResult::Continue
     }
 
     /// Handles the quit command.
@@ -68,9 +67,9 @@ impl<W: Write> GeneralCommandHandler<W> {
     /// * `LoopControl::Exit` - Always exits after quit command
     fn handle_quit(
         &mut self,
-    ) -> LoopControl {
+    ) -> CommandControllerResult {
         self.output.show_goodbye();
-        LoopControl::Exit
+        CommandControllerResult::ExitMainLoop
     }
 }
 
@@ -99,21 +98,21 @@ mod tests {
     fn test_show_help_returns_continue() {
         let mut handler = create_test_handler();
         let result = handler.handle(&GeneralCommand::ShowHelp);
-        assert_eq!(result, GeneralCommandResult::Continue(LoopControl::Continue));
+        assert_eq!(result, CommandControllerResult::Continue);
     }
 
     #[test]
     fn test_quit_returns_exit() {
         let mut handler = create_test_handler();
         let result = handler.handle(&GeneralCommand::Quit);
-        assert_eq!(result, GeneralCommandResult::Continue(LoopControl::Exit));
+        assert_eq!(result, CommandControllerResult::ExitMainLoop);
     }
 
     #[test]
     fn test_toggle_debug_returns_toggle_debug() {
         let mut handler = create_test_handler();
         let result = handler.handle(&GeneralCommand::ToggleDebug);
-        assert_eq!(result, GeneralCommandResult::ToggleDebug);
+        assert_eq!(result, CommandControllerResult::ToggleDebug);
     }
 
     #[test]

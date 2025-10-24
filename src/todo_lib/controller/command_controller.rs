@@ -1,5 +1,6 @@
 use crate::models::todo_list::TodoList;
 use crate::models::parse_error::ParseError;
+use crate::models::command_controller_result::CommandControllerResult;
 
 /// Trait for command controllers that can handle user input.
 ///
@@ -22,5 +23,5 @@ pub trait CommandController {
         &mut self,
         input: &str,
         todo_list: &mut TodoList,
-    ) -> Option<Result<(), ParseError>>;
+    ) -> Option<Result<CommandControllerResult, ParseError>>;
 }

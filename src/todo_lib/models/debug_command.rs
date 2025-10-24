@@ -8,7 +8,4 @@ pub enum DebugCommand {
     
     /// Clear all tasks
     ClearAll,
-    
-    /// Toggle debug mode on/off
-    Toggle,
 }

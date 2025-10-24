@@ -1,11 +1,12 @@
 use crate::models::todo_list::TodoList;
-use crate::models::loop_control::LoopControl;
-use crate::models::general_command_result::GeneralCommandResult;
+use crate::models::command_controller_result::CommandControllerResult;
 use crate::controller::command_controller::CommandController;
+use crate::controller::command_controller_type::CommandControllerType;
 use crate::controller::task_command_controller::TaskCommandController;
 use crate::controller::debug_command_controller::DebugCommandController;
-use crate::controller::general_command_controller::GeneralCommandController;
+use crate::models::loop_control::LoopControl;
 use crate::ui::{InputReader, UIManager};
+use std::collections::HashMap;
 
 /// Controls the todo list application by coordinating specialized controllers.
 ///
@@ -24,8 +25,7 @@ pub struct TodoController {
     todo_list: TodoList,
     input_reader: InputReader,
     ui_manager: UIManager<std::io::Stdout>,
-    command_controllers: Vec<Box<dyn CommandController>>,
-    general_controller: GeneralCommandController<std::io::Stdout>,
+    command_controllers: HashMap<CommandControllerType, Box<dyn CommandController>>,
 }
 
 impl TodoController {
@@ -39,17 +39,16 @@ impl TodoController {
     /// let controller = TodoController::new();
     /// ```
     pub fn new() -> Self {
-        let mut command_controllers: Vec<Box<dyn CommandController>> = Vec::new();
-        
-        // Add task controller (always present)
-        command_controllers.push(Box::new(TaskCommandController::new()));
+        let command_controllers = HashMap::from([
+            (CommandControllerType::Task, Box::new(TaskCommandController::new()) as Box<dyn CommandController>),
+            (CommandControllerType::Debug, Box::new(DebugCommandController::new()) as Box<dyn CommandController>),
+        ]);
         
         TodoController {
             todo_list: TodoList::new(),
             input_reader: InputReader::new(),
             ui_manager: UIManager::new(),
             command_controllers,
-            general_controller: GeneralCommandController::new(),
         }
     }
 
@@ -97,26 +96,19 @@ impl TodoController {
         }
 
         // Try dynamic command controllers (task and optionally debug)
-        for controller in &mut self.command_controllers {
+        for controller in self.command_controllers.values_mut() {
             if let Some(result) = controller.try_handle(trimmed, &mut self.todo_list) {
-                if let Err(err) = result {
-                    self.ui_manager.show_error(&err.message());
-                }
-                return LoopControl::Continue;
-            }
-        }
-
-        // Check if it was a general command (help, quit, debug)
-        if let Some(result) = self.general_controller.try_handle_general(trimmed) {
-            match result {
-                Ok(GeneralCommandResult::Continue(control)) => return control,
-                Ok(GeneralCommandResult::ToggleDebug) => {
-                    self.toggle_debug_mode();
-                    return LoopControl::Continue;
-                }
-                Err(err) => {
-                    self.ui_manager.show_error(&err.message());
-                    return LoopControl::Continue;
+                match result {
+                    Ok(CommandControllerResult::Continue) => return LoopControl::Continue,
+                    Ok(CommandControllerResult::ExitMainLoop) => return LoopControl::Exit,
+                    Ok(CommandControllerResult::ToggleDebug) => {
+                        self.toggle_debug_mode();
+                        return LoopControl::Continue;
+                    }
+                    Err(err) => {
+                        self.ui_manager.show_error(&err.message());
+                        return LoopControl::Continue;
+                    }
                 }
             }
         }
@@ -128,17 +120,16 @@ impl TodoController {
 
     /// Toggles debug mode by adding or removing the debug command controller.
     fn toggle_debug_mode(&mut self) {
-        // Check if debug controller is already in the list (will be at index 1 if present)
-        // Index 0 is always the task controller
-        let has_debug = self.command_controllers.len() > 1;
-        
+        // Check if debug controller is already in the list
+        let has_debug = self.command_controllers.contains_key(&CommandControllerType::Debug);
+
         if has_debug {
-            // Remove debug controller (always at index 1)
-            self.command_controllers.remove(1);
+            // Remove debug controller
+            self.command_controllers.remove(&CommandControllerType::Debug);
             println!("Debug mode disabled.");
         } else {
             // Add debug controller
-            self.command_controllers.push(Box::new(DebugCommandController::new()));
+            self.command_controllers.insert(CommandControllerType::Debug, Box::new(DebugCommandController::new()));
             println!("Debug mode enabled.");
         }
     }

@@ -24,25 +24,9 @@ impl DebugCommandParser {
     /// * `None` - Not a debug command
     pub fn try_parse_command(&self, command: &str, args: &[&str]) -> Option<Result<DebugCommand, ParseError>> {
         match command {
-            "debug" => Some(self.parse_debug_command(args)),
             "debug:gen" => Some(self.parse_debug_generate_command(args)),
             "debug:clear" => Some(Ok(DebugCommand::ClearAll)),
             _ => None,
-        }
-    }
-
-    /// Parses the 'debug' command.
-    fn parse_debug_command(&self, args: &[&str]) -> Result<DebugCommand, ParseError> {
-        if args.is_empty() || args[0].to_lowercase() == "on" {
-            Ok(DebugCommand::Toggle)
-        } else if args[0].to_lowercase() == "off" {
-            Ok(DebugCommand::Toggle)
-        } else {
-            Err(ParseError::InvalidValue { 
-                field: "debug mode".to_string(), 
-                value: args[0].to_string(), 
-                allowed: "on or off".to_string() 
-            })
         }
     }
 

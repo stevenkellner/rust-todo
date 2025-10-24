@@ -1,3 +1,4 @@
+use crate::models::command_controller_result::CommandControllerResult;
 use crate::models::todo_list::TodoList;
 use crate::models::parse_error::ParseError;
 use crate::controller::task_command_handler::TaskCommandHandler;
@@ -32,7 +33,9 @@ impl<W: Write> TaskCommandController<W> {
             parser: TaskCommandParser::new(),
         }
     }
+}
 
+impl<W: Write> CommandController for TaskCommandController<W> {
     /// Attempts to parse and handle a task command from raw input.
     ///
     /// # Arguments
@@ -45,11 +48,11 @@ impl<W: Write> TaskCommandController<W> {
     /// * `Some(Ok(()))` - Command was successfully parsed and executed
     /// * `Some(Err(ParseError))` - Command was recognized as a task command but had an error
     /// * `None` - Not a task command, should try other parsers
-    pub fn try_handle(
+    fn try_handle(
         &mut self,
         input: &str,
         todo_list: &mut TodoList,
-    ) -> Option<Result<(), ParseError>> {
+    ) -> Option<Result<CommandControllerResult, ParseError>> {
         let parts: Vec<&str> = input.split_whitespace().collect();
         
         if parts.is_empty() {
@@ -62,7 +65,7 @@ impl<W: Write> TaskCommandController<W> {
         match self.parser.try_parse_command(&command, args) {
             Some(Ok(task_command)) => {
                 self.handler.handle(&task_command, todo_list);
-                Some(Ok(()))
+                Some(Ok(CommandControllerResult::Continue))
             }
             Some(Err(err)) => Some(Err(err)),
             None => None,
@@ -79,15 +82,6 @@ where
     }
 }
 
-impl CommandController for TaskCommandController<std::io::Stdout> {
-    fn try_handle(
-        &mut self,
-        input: &str,
-        todo_list: &mut TodoList,
-    ) -> Option<Result<(), ParseError>> {
-        TaskCommandController::try_handle(self, input, todo_list)
-    }
-}
 
 #[cfg(test)]
 mod tests {
