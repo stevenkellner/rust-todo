@@ -1,6 +1,6 @@
 use crate::models::todo_list::TodoList;
-use crate::ui::input_reader::InputReader;
-use crate::ui::output_writer::OutputWriter;
+use crate::ui::command_parser::CommandParser;
+use crate::ui::{TaskCommandOutputWriter, DebugCommandOutputWriter, GeneralCommandOutputWriter};
 use crate::models::ui_event::UiEvent;
 use crate::models::loop_control::LoopControl;
 use crate::controller::debug_command_handler::DebugCommandHandler;
@@ -22,8 +22,10 @@ use crate::controller::task_command_handler::TaskCommandHandler;
 /// ```
 pub struct TodoController {
     todo_list: TodoList,
-    input: InputReader,
-    output: OutputWriter,
+    parser: CommandParser<std::io::Stdin>,
+    task_output: TaskCommandOutputWriter<std::io::Stdout>,
+    debug_output: DebugCommandOutputWriter<std::io::Stdout>,
+    general_output: GeneralCommandOutputWriter<std::io::Stdout>,
     task_handler: TaskCommandHandler,
     debug_handler: DebugCommandHandler,
 }
@@ -41,8 +43,10 @@ impl TodoController {
     pub fn new() -> Self {
         TodoController {
             todo_list: TodoList::new(),
-            input: InputReader::new(),
-            output: OutputWriter::new(),
+            parser: CommandParser::new_stdin(),
+            task_output: TaskCommandOutputWriter::new(),
+            debug_output: DebugCommandOutputWriter::new(),
+            general_output: GeneralCommandOutputWriter::new(),
             task_handler: TaskCommandHandler::new(),
             debug_handler: DebugCommandHandler::new(),
         }
@@ -62,11 +66,11 @@ impl TodoController {
     /// controller.run();
     /// ```
     pub fn run(&mut self) {
-        self.output.show_welcome();
+        self.general_output.show_welcome();
 
         loop {
-            self.output.print_prompt();
-            let event = self.input.read_event();
+            self.general_output.print_prompt();
+            let event = self.parser.read_event();
             
             if self.handle_event(&event) == LoopControl::Exit {
                 break;
@@ -86,23 +90,43 @@ impl TodoController {
     fn handle_event(&mut self, event: &UiEvent) -> LoopControl {
         match event {
             UiEvent::Task(task_command) => {
-                self.task_handler.handle(task_command, &mut self.todo_list, &mut self.output);
+                self.task_handler.handle(task_command, &mut self.todo_list, &mut self.task_output);
             }
             UiEvent::Debug(debug_command) => {
-                self.debug_handler.handle(debug_command, &mut self.todo_list, &mut self.output);
+                self.debug_handler.handle(debug_command, &mut self.todo_list, &mut self.debug_output);
             }
-            UiEvent::ShowHelp => self.output.show_help(),
-            UiEvent::Quit => return self.handle_quit(),
-            UiEvent::UnknownCommand(command) => self.output.show_unknown_command(command),
-            UiEvent::InvalidInput(message) => self.output.show_error(message),
+            UiEvent::General(general_command) => {
+                return self.handle_general_command(general_command);
+            }
         }
         
         LoopControl::Continue
     }
 
+    /// Handles general application commands.
+    fn handle_general_command(&mut self, command: &crate::models::general_command::GeneralCommand) -> LoopControl {
+        use crate::models::general_command::GeneralCommand;
+        
+        match command {
+            GeneralCommand::ShowHelp => {
+                self.general_output.show_help();
+                LoopControl::Continue
+            }
+            GeneralCommand::Quit => self.handle_quit(),
+            GeneralCommand::Unknown(cmd) => {
+                self.general_output.show_unknown_command(cmd);
+                LoopControl::Continue
+            }
+            GeneralCommand::InvalidInput(msg) => {
+                self.general_output.show_error(msg);
+                LoopControl::Continue
+            }
+        }
+    }
+
     /// Handles the Quit event.
     fn handle_quit(&mut self) -> LoopControl {
-        self.output.show_goodbye();
+        self.general_output.show_goodbye();
         LoopControl::Exit
     }
 }
@@ -282,7 +306,7 @@ mod tests {
     fn test_handle_event_quit() {
         let mut controller = TodoController::new();
         
-        let control = controller.handle_event(&UiEvent::Quit);
+        let control = controller.handle_event(&UiEvent::General(crate::models::general_command::GeneralCommand::Quit));
         
         assert_eq!(control, LoopControl::Exit);
     }
@@ -291,7 +315,7 @@ mod tests {
     fn test_handle_event_non_quit() {
         let mut controller = TodoController::new();
         
-        let control = controller.handle_event(&UiEvent::ShowHelp);
+        let control = controller.handle_event(&UiEvent::General(crate::models::general_command::GeneralCommand::ShowHelp));
         
         assert_eq!(control, LoopControl::Continue);
     }
@@ -310,7 +334,7 @@ mod tests {
     fn test_handle_event_invalid_input() {
         let mut controller = TodoController::new();
         
-        let control = controller.handle_event(&UiEvent::InvalidInput("Error".to_string()));
+        let control = controller.handle_event(&UiEvent::General(crate::models::general_command::GeneralCommand::InvalidInput("Error".to_string())));
         
         assert_eq!(control, LoopControl::Continue);
     }
@@ -319,7 +343,7 @@ mod tests {
     fn test_handle_event_unknown_command() {
         let mut controller = TodoController::new();
         
-        let control = controller.handle_event(&UiEvent::UnknownCommand("invalid".to_string()));
+        let control = controller.handle_event(&UiEvent::General(crate::models::general_command::GeneralCommand::Unknown("invalid".to_string())));
         
         assert_eq!(control, LoopControl::Continue);
     }

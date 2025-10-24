@@ -1,5 +1,6 @@
 use crate::models::task_command::TaskCommand;
 use crate::models::debug_command::DebugCommand;
+use crate::models::general_command::GeneralCommand;
 
 /// Represents events that occur in the user interface.
 ///
@@ -13,15 +14,6 @@ pub enum UiEvent {
     /// Debug-related command
     Debug(DebugCommand),
     
-    /// User wants to see help information
-    ShowHelp,
-    
-    /// User wants to quit the application
-    Quit,
-    
-    /// Unknown command entered
-    UnknownCommand(String),
-    
-    /// Invalid input (e.g., missing arguments)
-    InvalidInput(String),
+    /// General application command
+    General(GeneralCommand),
 }

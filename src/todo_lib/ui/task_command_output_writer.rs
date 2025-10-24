@@ -1,0 +1,644 @@
+use crate::ui::output_writer::OutputWriter;
+use crate::ui::formatters::{TaskFormatter, MessageFormatter};
+use crate::models::todo_list::TodoList;
+use crate::models::task::Task;
+use crate::models::priority::Priority;
+use crate::models::task_filter::TaskFilter;
+use crate::models::task_status::TaskStatus;
+use chrono::NaiveDate;
+use std::io::Write;
+use colored::*;
+
+/// Output writer specifically for task commands.
+///
+/// Handles all output operations related to task management commands
+/// like add, remove, complete, edit, etc.
+pub struct TaskCommandOutputWriter<W: Write> {
+    writer: OutputWriter<W>,
+}
+
+impl TaskCommandOutputWriter<std::io::Stdout> {
+    /// Creates a new TaskCommandOutputWriter with stdout.
+    pub fn new() -> Self {
+        TaskCommandOutputWriter {
+            writer: OutputWriter::new(),
+        }
+    }
+}
+
+impl<W: Write> TaskCommandOutputWriter<W> {
+    /// Creates a new TaskCommandOutputWriter with a custom writer.
+    pub fn with_writer(writer: W) -> Self {
+        TaskCommandOutputWriter {
+            writer: OutputWriter::with_writer(writer),
+        }
+    }
+
+    /// Displays a success message after adding a task.
+    pub fn show_task_added(&mut self, id: usize, description: &str) {
+        self.writer.show_success(&format!("Task added with ID {}: '{}'", id, description));
+    }
+
+    /// Displays a success message after removing a task.
+    pub fn show_task_removed(&mut self, description: &str) {
+        self.writer.show_success(&format!("Task removed: '{}'", description));
+    }
+
+    /// Displays a success message after completing a task.
+    pub fn show_task_completed(&mut self, description: &str) {
+        self.writer.show_success(&format!("Task '{}' marked as completed.", description));
+    }
+
+    /// Displays a success message after uncompleting a task.
+    pub fn show_task_uncompleted(&mut self, description: &str) {
+        self.writer.show_success(&format!("Task '{}' marked as pending.", description));
+    }
+
+    /// Displays a success message after updating a task.
+    pub fn show_task_updated(&mut self, old_desc: &str, new_desc: &str) {
+        self.writer.show_success(&format!("Task '{}' updated to '{}'.", old_desc, new_desc));
+    }
+
+    /// Displays a success message after updating a task description.
+    pub fn show_task_edited(&mut self, old_desc: &str, new_desc: &str) {
+        self.show_task_updated(old_desc, new_desc);
+    }
+
+    /// Displays a success message after toggling a task.
+    pub fn show_task_toggled(&mut self, description: &str, is_completed: bool) {
+        if is_completed {
+            self.show_task_completed(description);
+        } else {
+            self.show_task_uncompleted(description);
+        }
+    }
+
+    /// Displays a success message after setting priority.
+    pub fn show_priority_set(&mut self, description: &str, priority: Priority) {
+        use crate::ui::formatters::TaskFormatter;
+        let colored_priority = TaskFormatter::format_priority_with_name(priority);
+        self.writer.show_success(&format!("Priority set to {} for task: '{}'", colored_priority, description));
+    }
+
+    /// Displays a success message after setting due date.
+    pub fn show_due_date_set(&mut self, description: &str, due_date: Option<NaiveDate>) {
+        let message = if let Some(date) = due_date {
+            format!("Due date set to {} for task: '{}'", date.format("%d.%m.%Y"), description)
+        } else {
+            format!("Due date cleared for task: '{}'", description)
+        };
+        self.writer.show_success(&message);
+    }
+
+    /// Displays a success message after clearing due date.
+    pub fn show_due_date_cleared(&mut self, description: &str) {
+        self.writer.show_success(&format!("Due date cleared for task: '{}'", description));
+    }
+
+    /// Displays a success message after setting category.
+    pub fn show_category_set(&mut self, description: &str, category: Option<String>) {
+        let message = if let Some(cat) = category {
+            format!("Category set to '{}' for task: '{}'", cat, description)
+        } else {
+            format!("Category cleared for task: '{}'", description)
+        };
+        self.writer.show_success(&message);
+    }
+
+    /// Displays a success message after clearing category.
+    pub fn show_category_cleared(&mut self, description: &str) {
+        self.show_category_set(description, None);
+    }
+
+    /// Displays an error when a task is not found.
+    pub fn show_task_not_found(&mut self, id: usize) {
+        self.writer.show_error(&format!("Task with ID {} not found.", id));
+    }
+
+    /// Displays an error for invalid priority.
+    pub fn show_invalid_priority(&mut self) {
+        self.writer.show_error("Invalid priority. Use: high, medium, or low");
+    }
+
+    /// Displays an error for invalid date format.
+    pub fn show_invalid_date_format(&mut self) {
+        self.writer.show_error("Invalid date format. Use DD.MM.YYYY");
+    }
+
+    /// Displays a generic error message.
+    pub fn show_error(&mut self, message: &str) {
+        self.writer.show_error(message);
+    }
+
+    /// Displays a list of tasks.
+    pub fn show_task_list(&mut self, todo_list: &TodoList, filter: &TaskFilter) {
+        let tasks = todo_list.get_filtered_tasks(filter);
+        self.show_filtered_tasks(&tasks, filter);
+    }
+
+    /// Displays search results.
+    pub fn show_search_results(&mut self, todo_list: &TodoList, keyword: &str) {
+        let tasks = todo_list.search_tasks(keyword);
+        self.show_search_results_internal(&tasks, keyword);
+    }
+
+    /// Displays all categories.
+    pub fn show_categories(&mut self, todo_list: &TodoList) {
+        let categories = todo_list.get_all_categories();
+        self.show_categories_internal(&categories);
+    }
+
+    /// Displays task statistics.
+    pub fn show_statistics(&mut self, todo_list: &TodoList) {
+        let stats = todo_list.get_statistics();
+        self.show_statistics_internal(&stats);
+    }
+
+    /// Helper method to display a list of tasks with a given title.
+    fn show_task_list_internal(&mut self, title: &str, tasks: Vec<&Task>) {
+        let separator_length = title.len() + 8;
+        let max_id_width = TaskFormatter::calculate_max_id_width(&tasks);
+        
+        self.writer.print_line(&format!("\n{}", MessageFormatter::section_title(title)));
+        
+        for task in &tasks {
+            let formatted_task = TaskFormatter::format_task(task, max_id_width);
+            self.writer.print_line(&formatted_task);
+        }
+        
+        self.writer.print_line(&format!("{}\n", MessageFormatter::separator(separator_length)));
+    }
+
+    /// Displays a list of all tasks.
+    pub fn show_all_tasks(&mut self, tasks: &[Task]) {
+        if tasks.is_empty() {
+            self.writer.print_line(&MessageFormatter::warning("No tasks found. Use 'add <description>' to create a task."));
+            return;
+        }
+
+        self.show_task_list_internal("All Tasks", tasks.iter().collect());
+    }
+
+    /// Displays a list of completed tasks.
+    pub fn show_completed_tasks(&mut self, tasks: &[&Task]) {
+        if tasks.is_empty() {
+            self.writer.print_line(&MessageFormatter::warning("No completed tasks found."));
+            return;
+        }
+
+        self.show_task_list_internal("Completed Tasks", tasks.to_vec());
+    }
+
+    /// Displays a list of pending tasks.
+    pub fn show_pending_tasks(&mut self, tasks: &[&Task]) {
+        if tasks.is_empty() {
+            self.writer.print_line(&MessageFormatter::warning("No pending tasks found."));
+            return;
+        }
+
+        self.show_task_list_internal("Pending Tasks", tasks.to_vec());
+    }
+
+    /// Displays tasks filtered by priority level.
+    pub fn show_tasks_by_priority(&mut self, tasks: &[&Task], priority: Priority) {
+        if tasks.is_empty() {
+            let message = format!("No {} priority tasks found.", priority.as_str());
+            self.writer.print_line(&MessageFormatter::warning(&message));
+            return;
+        }
+
+        let title = format!("{} Priority Tasks", priority.as_str());
+        self.show_task_list_internal(&title, tasks.to_vec());
+    }
+
+    /// Displays tasks filtered by both status and priority.
+    pub fn show_filtered_tasks(&mut self, tasks: &[&Task], filter: &TaskFilter) {
+        if tasks.is_empty() {
+            let status_str = match filter.status {
+                Some(TaskStatus::Completed) => "completed ",
+                Some(TaskStatus::Pending) => "pending ",
+                None => "",
+            };
+            let priority_str = match filter.priority {
+                Some(priority) => format!("{} priority ", priority.as_str()),
+                None => String::new(),
+            };
+            let message = format!("No {}{}tasks found.", status_str, priority_str);
+            self.writer.print_line(&MessageFormatter::warning(&message));
+            return;
+        }
+
+        // Build title based on filter
+        let mut title_parts = Vec::new();
+        if let Some(priority) = filter.priority {
+            title_parts.push(format!("{} Priority", priority.as_str()));
+        }
+        if let Some(status) = filter.status {
+            match status {
+                TaskStatus::Completed => title_parts.push("Completed".to_string()),
+                TaskStatus::Pending => title_parts.push("Pending".to_string()),
+            }
+        }
+        
+        let title = if title_parts.is_empty() {
+            "Tasks".to_string()
+        } else {
+            format!("{} Tasks", title_parts.join(" "))
+        };
+        
+        self.show_task_list_internal(&title, tasks.to_vec());
+    }
+
+    /// Displays search results for tasks matching a keyword.
+    fn show_search_results_internal(&mut self, tasks: &[&Task], keyword: &str) {
+        if tasks.is_empty() {
+            let message = format!("No tasks found matching '{}'.", keyword);
+            self.writer.print_line(&MessageFormatter::warning(&message));
+            return;
+        }
+
+        let title = format!("Search Results for '{}'", keyword);
+        self.show_task_list_internal(&title, tasks.to_vec());
+    }
+
+    /// Displays task statistics.
+    fn show_statistics_internal(&mut self, stats: &crate::models::TaskStatistics) {
+        self.writer.print_line("");
+        self.writer.print_line(&MessageFormatter::section_title("Task Statistics"));
+        self.writer.print_line("");
+        
+        // Overall statistics
+        self.writer.print_line(&format!("  {}: {}", 
+            "Total Tasks".bright_white().bold(), 
+            stats.total));
+        self.writer.print_line(&format!("  {}: {}", 
+            "Completed".bright_white().bold(), 
+            stats.completed.to_string().green()));
+        self.writer.print_line(&format!("  {}: {}", 
+            "Pending".bright_white().bold(), 
+            stats.pending.to_string().yellow()));
+        self.writer.print_line(&format!("  {}: {:.1}%", 
+            "Completion".bright_white().bold(), 
+            stats.completion_percentage));
+        
+        // Priority breakdown
+        if stats.total > 0 {
+            self.writer.print_line("");
+            self.writer.print_line(&format!("  {}", "By Priority:".bright_cyan()));
+            self.writer.print_line(&format!("    {} {}", 
+                "▲ High:  ".red(), 
+                stats.high_priority));
+            self.writer.print_line(&format!("    {} {}", 
+                "■ Medium:".yellow(), 
+                stats.medium_priority));
+            self.writer.print_line(&format!("    {} {}", 
+                "▼ Low:   ".blue(), 
+                stats.low_priority));
+        }
+        
+        self.writer.print_line("");
+    }
+
+    /// Displays all unique categories.
+    fn show_categories_internal(&mut self, categories: &[String]) {
+        self.writer.print_line("");
+        if categories.is_empty() {
+            self.writer.print_line(&"↻ No categories found.".bright_yellow().to_string());
+        } else {
+            self.writer.print_line(&"--- All Categories ---".bright_cyan().bold().to_string());
+            self.writer.print_line("");
+            for category in categories {
+                self.writer.print_line(&format!("  {}", category.bright_magenta()));
+            }
+            self.writer.print_line("");
+            self.writer.print_line(&format!("Total: {} categories", categories.len()).bright_black().to_string());
+        }
+        self.writer.print_line("");
+    }
+}
+
+impl Default for TaskCommandOutputWriter<std::io::Stdout> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::TaskStatistics;
+    use crate::models::overdue_filter::OverdueFilter;
+
+    // Disable colors for all tests
+    fn setup() {
+        colored::control::set_override(false);
+    }
+
+    #[test]
+    fn test_task_output_writer_task_added() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_task_added(1, "Test task");
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Task added with ID 1"));
+        assert!(output.contains("Test task"));
+    }
+
+    #[test]
+    fn test_task_output_writer_task_removed() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_task_removed("Completed task");
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Task removed"));
+        assert!(output.contains("Completed task"));
+    }
+
+    #[test]
+    fn test_task_output_writer_task_completed() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_task_completed("Finish homework");
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("marked as completed"));
+        assert!(output.contains("Finish homework"));
+    }
+
+    #[test]
+    fn test_task_output_writer_task_uncompleted() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_task_uncompleted("Review code");
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("marked as pending"));
+        assert!(output.contains("Review code"));
+    }
+
+    #[test]
+    fn test_task_output_writer_task_edited() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_task_edited("Old description", "New description");
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Old description"));
+        assert!(output.contains("New description"));
+        assert!(output.contains("updated"));
+    }
+
+    #[test]
+    fn test_task_output_writer_task_toggled_completed() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_task_toggled("Test task", true);
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("marked as completed"));
+    }
+
+    #[test]
+    fn test_task_output_writer_task_toggled_pending() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_task_toggled("Test task", false);
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("marked as pending"));
+    }
+
+    #[test]
+    fn test_task_output_writer_priority_set() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_priority_set("Important task", Priority::High);
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Priority set"));
+        assert!(output.contains("Important task"));
+    }
+
+    #[test]
+    fn test_task_output_writer_due_date_set() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        let date = chrono::NaiveDate::from_ymd_opt(2024, 12, 31).unwrap();
+        writer.show_due_date_set("Task with deadline", Some(date));
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Due date set"));
+        assert!(output.contains("Task with deadline"));
+        assert!(output.contains("31.12.2024"));
+    }
+
+    #[test]
+    fn test_task_output_writer_due_date_cleared() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_due_date_set("Task without deadline", None);
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Due date cleared"));
+        assert!(output.contains("Task without deadline"));
+    }
+
+    #[test]
+    fn test_task_output_writer_category_set() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_category_set("Work task", Some("Work".to_string()));
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Category set"));
+        assert!(output.contains("Work"));
+        assert!(output.contains("Work task"));
+    }
+
+    #[test]
+    fn test_task_output_writer_category_cleared() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_category_set("Uncategorized task", None);
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Category cleared"));
+        assert!(output.contains("Uncategorized task"));
+    }
+
+    #[test]
+    fn test_task_output_writer_task_not_found() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_task_not_found(42);
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Task with ID 42 not found"));
+    }
+
+    #[test]
+    fn test_task_output_writer_invalid_priority() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_invalid_priority();
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Invalid priority"));
+    }
+
+    #[test]
+    fn test_task_output_writer_invalid_date_format() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_invalid_date_format();
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Invalid date format"));
+    }
+
+    #[test]
+    fn test_task_output_writer_show_error() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_error("Custom error message");
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Custom error message"));
+    }
+
+    #[test]
+    fn test_task_output_writer_all_tasks_empty() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_all_tasks(&[]);
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("No tasks found"));
+    }
+
+    #[test]
+    fn test_task_output_writer_all_tasks_with_data() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        let tasks = vec![
+            Task::new(1, "Task 1".to_string()),
+            Task::new(2, "Task 2".to_string()),
+        ];
+        
+        writer.show_all_tasks(&tasks);
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("All Tasks"));
+        assert!(output.contains("Task 1"));
+        assert!(output.contains("Task 2"));
+    }
+
+    #[test]
+    fn test_task_output_writer_filtered_tasks_empty() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        let filter = TaskFilter::new(None, None, OverdueFilter::All);
+        writer.show_filtered_tasks(&[], &filter);
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("No") && output.contains("tasks found"));
+    }
+
+    #[test]
+    fn test_task_output_writer_statistics() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        let stats = TaskStatistics {
+            total: 10,
+            completed: 3,
+            pending: 7,
+            completion_percentage: 30.0,
+            high_priority: 2,
+            medium_priority: 5,
+            low_priority: 3,
+        };
+        
+        writer.show_statistics_internal(&stats);
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("Task Statistics"));
+        assert!(output.contains("Total Tasks"));
+        assert!(output.contains("10"));
+        assert!(output.contains("Completed"));
+        assert!(output.contains("3"));
+        assert!(output.contains("Pending"));
+        assert!(output.contains("7"));
+        assert!(output.contains("30.0"));
+    }
+
+    #[test]
+    fn test_task_output_writer_categories_empty() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        writer.show_categories_internal(&[]);
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("No categories found"));
+    }
+
+    #[test]
+    fn test_task_output_writer_categories_with_data() {
+        setup();
+        let mut buffer = Vec::new();
+        let mut writer = TaskCommandOutputWriter::with_writer(&mut buffer);
+        
+        let categories = vec!["Work".to_string(), "Personal".to_string(), "Shopping".to_string()];
+        writer.show_categories_internal(&categories);
+        
+        let output = String::from_utf8(buffer).unwrap();
+        assert!(output.contains("All Categories"));
+        assert!(output.contains("Work"));
+        assert!(output.contains("Personal"));
+        assert!(output.contains("Shopping"));
+        assert!(output.contains("Total: 3 categories"));
+    }
+}

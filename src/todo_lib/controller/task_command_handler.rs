@@ -4,7 +4,7 @@ use crate::models::task::TaskWithoutId;
 use crate::models::priority::Priority;
 use crate::models::task_filter::TaskFilter;
 use crate::models::task_status::TaskStatus;
-use crate::ui::output_writer::OutputWriter;
+use crate::ui::TaskCommandOutputWriter;
 use chrono::NaiveDate;
 use std::io::Write;
 
@@ -26,7 +26,7 @@ impl TaskCommandHandler {
         &self,
         command: &TaskCommand,
         todo_list: &mut TodoList,
-        output: &mut OutputWriter<W>
+        output: &mut TaskCommandOutputWriter<W>
     ) {
         match command {
             TaskCommand::Add(description) => {
@@ -43,17 +43,14 @@ impl TaskCommandHandler {
             TaskCommand::SetDueDate(id, due_date) => self.set_due_date(*id, *due_date, todo_list, output),
             TaskCommand::SetCategory(id, category) => self.set_category(*id, category.clone(), todo_list, output),
             TaskCommand::ListCategories => {
-                let categories = todo_list.get_all_categories();
-                output.show_categories(&categories);
+                output.show_categories(todo_list);
             }
             TaskCommand::Edit(id, new_description) => self.edit_task(*id, new_description, todo_list, output),
             TaskCommand::Search(keyword) => {
-                let results = todo_list.search_tasks(keyword);
-                output.show_search_results(&results, keyword);
+                output.show_search_results(todo_list, keyword);
             }
             TaskCommand::ShowStatistics => {
-                let stats = todo_list.get_statistics();
-                output.show_statistics(&stats);
+                output.show_statistics(todo_list);
             }
         }
     }
@@ -63,7 +60,7 @@ impl TaskCommandHandler {
         &self,
         filter: &Option<TaskFilter>,
         todo_list: &mut TodoList,
-        output: &mut OutputWriter<W>
+        output: &mut TaskCommandOutputWriter<W>
     ) {
         match filter {
             None => output.show_all_tasks(todo_list.get_tasks()),
@@ -88,7 +85,7 @@ impl TaskCommandHandler {
         &self,
         id: usize,
         todo_list: &mut TodoList,
-        output: &mut OutputWriter<W>
+        output: &mut TaskCommandOutputWriter<W>
     ) {
         if let Some(task) = todo_list.remove_task(id) {
             output.show_task_removed(&task.description);
@@ -102,7 +99,7 @@ impl TaskCommandHandler {
         &self,
         id: usize,
         todo_list: &mut TodoList,
-        output: &mut OutputWriter<W>
+        output: &mut TaskCommandOutputWriter<W>
     ) {
         if let Some(task) = todo_list.complete_task(id) {
             if task.is_completed() {
@@ -118,7 +115,7 @@ impl TaskCommandHandler {
         &self,
         id: usize,
         todo_list: &mut TodoList,
-        output: &mut OutputWriter<W>
+        output: &mut TaskCommandOutputWriter<W>
     ) {
         if let Some(task) = todo_list.uncomplete_task(id) {
             if !task.is_completed() {
@@ -134,7 +131,7 @@ impl TaskCommandHandler {
         &self,
         id: usize,
         todo_list: &mut TodoList,
-        output: &mut OutputWriter<W>
+        output: &mut TaskCommandOutputWriter<W>
     ) {
         if let Some(task) = todo_list.toggle_task(id) {
             output.show_task_toggled(&task.description, task.is_completed());
@@ -149,7 +146,7 @@ impl TaskCommandHandler {
         id: usize,
         priority: Priority,
         todo_list: &mut TodoList,
-        output: &mut OutputWriter<W>
+        output: &mut TaskCommandOutputWriter<W>
     ) {
         if let Some(task) = todo_list.set_task_priority(id, priority) {
             output.show_priority_set(&task.description, priority);
@@ -164,7 +161,7 @@ impl TaskCommandHandler {
         id: usize,
         due_date: Option<NaiveDate>,
         todo_list: &mut TodoList,
-        output: &mut OutputWriter<W>
+        output: &mut TaskCommandOutputWriter<W>
     ) {
         if let Some(task) = todo_list.set_due_date(id, due_date) {
             output.show_due_date_set(&task.description, due_date);
@@ -179,7 +176,7 @@ impl TaskCommandHandler {
         id: usize,
         category: Option<String>,
         todo_list: &mut TodoList,
-        output: &mut OutputWriter<W>
+        output: &mut TaskCommandOutputWriter<W>
     ) {
         if let Some(task) = todo_list.set_task_category(id, category.clone()) {
             output.show_category_set(&task.description, category);
@@ -194,7 +191,7 @@ impl TaskCommandHandler {
         id: usize,
         new_description: &str,
         todo_list: &mut TodoList,
-        output: &mut OutputWriter<W>
+        output: &mut TaskCommandOutputWriter<W>
     ) {
         if new_description.trim().is_empty() {
             output.show_error("Task description cannot be empty.");
@@ -227,9 +224,9 @@ impl Default for TaskCommandHandler {
 mod tests {
     use super::*;
 
-    fn create_test_handler() -> (TodoList, OutputWriter) {
+    fn create_test_handler() -> (TodoList, TaskCommandOutputWriter<Vec<u8>>) {
         let todo_list = TodoList::new();
-        let output = OutputWriter::new();
+        let output = TaskCommandOutputWriter::with_writer(Vec::new());
         (todo_list, output)
     }
 

@@ -1,7 +1,7 @@
 use crate::models::todo_list::TodoList;
 use crate::models::debug_command::DebugCommand;
 use crate::controller::task_generator::RandomTaskGenerator;
-use crate::ui::output_writer::OutputWriter;
+use crate::ui::DebugCommandOutputWriter;
 use std::io::Write;
 
 /// Handler for debug commands and operations
@@ -31,22 +31,17 @@ impl DebugCommandHandler {
         &mut self,
         command: &DebugCommand,
         todo_list: &mut TodoList,
-        output: &mut OutputWriter<W>
+        output: &mut DebugCommandOutputWriter<W>
     ) {
         match command {
             DebugCommand::GenerateTasks(count) => self.generate_random_tasks(*count, todo_list, output),
             DebugCommand::ClearAll => self.clear_all_tasks(todo_list, output),
-            DebugCommand::Toggle => {
-                self.toggle_debug_mode(output);
-                if self.debug_mode {
-                    output.show_debug_help();
-                }
-            }
+            DebugCommand::Toggle => self.toggle_debug_mode(output),
         }
     }
     
     /// Toggles debug mode on/off
-    fn toggle_debug_mode<W: Write>(&mut self, output: &mut OutputWriter<W>) {
+    fn toggle_debug_mode<W: Write>(&mut self, output: &mut DebugCommandOutputWriter<W>) {
         self.debug_mode = !self.debug_mode;
         if self.debug_mode {
             output.show_success("Debug mode enabled");
@@ -66,7 +61,7 @@ impl DebugCommandHandler {
         &self,
         count: usize,
         todo_list: &mut TodoList,
-        output: &mut OutputWriter<W>
+        output: &mut DebugCommandOutputWriter<W>
     ) {
         if !self.debug_mode {
             output.show_error("Debug mode is not enabled. Use 'debug:toggle' to enable it.");
@@ -93,7 +88,7 @@ impl DebugCommandHandler {
     fn clear_all_tasks<W: Write>(
         &self,
         todo_list: &mut TodoList,
-        output: &mut OutputWriter<W>
+        output: &mut DebugCommandOutputWriter<W>
     ) {
         if !self.debug_mode {
             output.show_error("Debug mode is not enabled. Use 'debug:toggle' to enable it.");
@@ -127,7 +122,7 @@ mod tests {
     fn test_toggle_debug_mode() {
         let mut controller = DebugCommandHandler::new();
         let mut buffer = Vec::new();
-        let mut output = OutputWriter::with_writer(&mut buffer);
+        let mut output = DebugCommandOutputWriter::with_writer(&mut buffer);
         
         assert!(!controller.is_debug_mode());
         
@@ -143,7 +138,7 @@ mod tests {
         let controller = DebugCommandHandler::new();
         let mut todo_list = TodoList::new();
         let mut buffer = Vec::new();
-        let mut output = OutputWriter::with_writer(&mut buffer);
+        let mut output = DebugCommandOutputWriter::with_writer(&mut buffer);
         
         controller.generate_random_tasks(5, &mut todo_list, &mut output);
         
@@ -157,7 +152,7 @@ mod tests {
         let mut controller = DebugCommandHandler::new();
         let mut todo_list = TodoList::new();
         let mut buffer = Vec::new();
-        let mut output = OutputWriter::with_writer(&mut buffer);
+        let mut output = DebugCommandOutputWriter::with_writer(&mut buffer);
         
         controller.toggle_debug_mode(&mut output);
         controller.generate_random_tasks(10, &mut todo_list, &mut output);
@@ -171,7 +166,7 @@ mod tests {
         let mut todo_list = TodoList::new();
         todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
         let mut buffer = Vec::new();
-        let mut output = OutputWriter::with_writer(&mut buffer);
+        let mut output = DebugCommandOutputWriter::with_writer(&mut buffer);
         
         controller.clear_all_tasks(&mut todo_list, &mut output);
         
@@ -187,7 +182,7 @@ mod tests {
         todo_list.add_task(TaskWithoutId::new("Test task 1".to_string()));
         todo_list.add_task(TaskWithoutId::new("Test task 2".to_string()));
         let mut buffer = Vec::new();
-        let mut output = OutputWriter::with_writer(&mut buffer);
+        let mut output = DebugCommandOutputWriter::with_writer(&mut buffer);
         
         controller.toggle_debug_mode(&mut output);
         controller.clear_all_tasks(&mut todo_list, &mut output);
