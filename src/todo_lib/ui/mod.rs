@@ -16,7 +16,6 @@ pub mod debug_command_parser;
 pub mod general_command_parser;
 
 // Re-export commonly used types
-pub use command_parser::CommandParser;
 pub use debug_command_output_writer::DebugCommandOutputWriter;
 pub use general_command_output_writer::GeneralCommandOutputWriter;
 pub use input_reader::InputReader;

@@ -85,6 +85,11 @@ impl<W: Write> GeneralCommandHandler<W> {
     pub fn show_error(&mut self, message: &str) {
         self.output.show_error(message);
     }
+
+    /// Handles an unknown command by displaying an error message.
+    pub fn handle_unknown_command(&mut self, command: &str) {
+        self.output.show_unknown_command(command);
+    }
 }
 
 impl Default for GeneralCommandHandler<std::io::Stdout> {
