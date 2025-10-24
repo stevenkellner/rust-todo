@@ -62,6 +62,16 @@ impl<W: Write> UIManager<W> {
     pub fn handle_unknown_command(&mut self, command: &str) {
         self.writer.show_error(&format!("Unknown command '{}'. Type help for available commands.", command));
     }
+
+    /// Shows debug mode enabled message.
+    pub fn show_debug_enabled(&mut self) {
+        self.writer.print_line("Debug mode enabled.");
+    }
+
+    /// Shows debug mode disabled message.
+    pub fn show_debug_disabled(&mut self) {
+        self.writer.print_line("Debug mode disabled.");
+    }
 }
 
 impl Default for UIManager<std::io::Stdout> {

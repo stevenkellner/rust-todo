@@ -4,6 +4,7 @@ use crate::controller::command_controller::CommandController;
 use crate::controller::command_controller_type::CommandControllerType;
 use crate::controller::task_command_controller::TaskCommandController;
 use crate::controller::debug_command_controller::DebugCommandController;
+use crate::controller::general_command_controller::GeneralCommandController;
 use crate::models::loop_control::LoopControl;
 use crate::ui::{InputReader, UIManager};
 use std::collections::HashMap;
@@ -41,7 +42,7 @@ impl TodoController {
     pub fn new() -> Self {
         let command_controllers = HashMap::from([
             (CommandControllerType::Task, Box::new(TaskCommandController::new()) as Box<dyn CommandController>),
-            (CommandControllerType::Debug, Box::new(DebugCommandController::new()) as Box<dyn CommandController>),
+            (CommandControllerType::General, Box::new(GeneralCommandController::new()) as Box<dyn CommandController>),
         ]);
         
         TodoController {
@@ -126,11 +127,11 @@ impl TodoController {
         if has_debug {
             // Remove debug controller
             self.command_controllers.remove(&CommandControllerType::Debug);
-            println!("Debug mode disabled.");
+            self.ui_manager.show_debug_disabled();
         } else {
             // Add debug controller
             self.command_controllers.insert(CommandControllerType::Debug, Box::new(DebugCommandController::new()));
-            println!("Debug mode enabled.");
+            self.ui_manager.show_debug_enabled();
         }
     }
 }
