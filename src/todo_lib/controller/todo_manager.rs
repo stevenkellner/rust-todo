@@ -1,13 +1,9 @@
+use crate::controller::CommandControllerRegistry;
 use crate::models::todo_list::TodoList;
 use crate::models::command_controller_result::CommandControllerResult;
 use crate::models::command_controller_type::CommandControllerType;
 use crate::models::loop_control::LoopControl;
 use crate::ui::{InputReader, UIManager};
-use crate::controller::command_controller::CommandController;
-use crate::controller::task_command::TaskCommandController;
-use crate::controller::general_command::GeneralCommandController;
-use crate::controller::debug_command::DebugCommandController;
-use std::collections::HashMap;
 
 /// Controls the todo list application by coordinating specialized controllers.
 ///
@@ -25,7 +21,7 @@ pub struct TodoManager {
     todo_list: TodoList,
     input_reader: InputReader,
     ui_manager: UIManager<std::io::Stdout>,
-    command_controllers: HashMap<CommandControllerType, Box<dyn CommandController>>,
+    command_controller_registry: CommandControllerRegistry,
 }
 
 impl TodoManager {
@@ -40,16 +36,11 @@ impl TodoManager {
     /// let manager = TodoManager::new();
     /// ```
     pub fn new() -> Self {
-        let command_controllers = HashMap::from([
-            (CommandControllerType::Task, Box::new(TaskCommandController::new()) as Box<dyn CommandController>),
-            (CommandControllerType::General, Box::new(GeneralCommandController::new()) as Box<dyn CommandController>),
-        ]);
-        
         TodoManager {
             todo_list: TodoList::new(),
             input_reader: InputReader::new(),
             ui_manager: UIManager::new(),
-            command_controllers,
+            command_controller_registry: CommandControllerRegistry::new(),
         }
     }
 
@@ -96,24 +87,21 @@ impl TodoManager {
             return LoopControl::Continue;
         }
 
-        // Try dynamic command controllers (task and optionally debug)
-        for controller in self.command_controllers.values_mut() {
-            if let Some(result) = controller.try_execute(trimmed, &mut self.todo_list) {
-                match result {
-                    Ok(CommandControllerResult::Continue) => return LoopControl::Continue,
-                    Ok(CommandControllerResult::ExitMainLoop) => return LoopControl::Exit,
-                    Ok(CommandControllerResult::EnableDebugMode) => {
-                        self.command_controllers.insert(CommandControllerType::Debug, Box::new(DebugCommandController::new()));
-                        return LoopControl::Continue;
-                    }
-                    Ok(CommandControllerResult::DisableDebugMode) => {
-                        self.command_controllers.remove(&CommandControllerType::Debug);
-                        return LoopControl::Continue;
-                    }
-                    Err(err) => {
-                        self.ui_manager.show_error(&err.message());
-                        return LoopControl::Continue;
-                    }
+        if let Some(result) = self.command_controller_registry.try_execute(trimmed, &mut self.todo_list) {
+            match result {
+                Ok(CommandControllerResult::Continue) => return LoopControl::Continue,
+                Ok(CommandControllerResult::ExitMainLoop) => return LoopControl::Exit,
+                Ok(CommandControllerResult::EnableDebugMode) => {
+                    self.command_controller_registry.enable(CommandControllerType::Debug);
+                    return LoopControl::Continue;
+                }
+                Ok(CommandControllerResult::DisableDebugMode) => {
+                    self.command_controller_registry.disable(CommandControllerType::Debug);
+                    return LoopControl::Continue;
+                }
+                Err(err) => {
+                    self.ui_manager.show_error(&err.message());
+                    return LoopControl::Continue;
                 }
             }
         }
