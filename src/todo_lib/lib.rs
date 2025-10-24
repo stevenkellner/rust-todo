@@ -48,5 +48,5 @@ pub mod ui;
 
 // Re-export commonly used types for convenience
 pub use controller::TodoManager;
-pub use models::{LoopControl, Priority, Task, TaskFilter, TaskStatus, TodoList, UiEvent};
+pub use models::{LoopControl, Priority, Task, TaskFilter, TaskStatus, TodoList};
 pub use ui::{InputReader, OutputWriter};

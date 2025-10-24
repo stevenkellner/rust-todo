@@ -15,7 +15,6 @@ pub mod task_command;
 pub mod task_filter;
 pub mod task_status;
 pub mod todo_list;
-pub mod ui_event;
 pub mod loop_control;
 
 // Re-export commonly used types
@@ -29,5 +28,4 @@ pub use task_command::TaskCommand;
 pub use task_filter::TaskFilter;
 pub use task_status::TaskStatus;
 pub use todo_list::{TodoList, TaskStatistics};
-pub use ui_event::UiEvent;
 pub use loop_control::LoopControl;
