@@ -22,7 +22,7 @@ impl DebugCommandParser {
     /// * `Some(Ok(DebugCommand))` - Successfully parsed debug command
     /// * `Some(Err(ParseError))` - Recognized as debug command but has errors
     /// * `None` - Not a debug command
-    pub fn try_parse_command(&self, command: &str, args: &[&str]) -> Option<Result<DebugCommand, ParseError>> {
+    pub fn try_parse(&self, command: &str, args: &[&str]) -> Option<Result<DebugCommand, ParseError>> {
         match command {
             "debug:gen" => Some(self.parse_debug_generate_command(args)),
             "debug:clear" => Some(Ok(DebugCommand::ClearAll)),

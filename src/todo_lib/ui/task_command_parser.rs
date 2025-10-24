@@ -25,7 +25,7 @@ impl TaskCommandParser {
     /// * `Some(Ok(TaskCommand))` - Successfully parsed task command
     /// * `Some(Err(ParseError))` - Recognized as task command but has errors
     /// * `None` - Not a task command
-    pub fn try_parse_command(&self, command: &str, args: &[&str]) -> Option<Result<TaskCommand, ParseError>> {
+    pub fn try_parse(&self, command: &str, args: &[&str]) -> Option<Result<TaskCommand, ParseError>> {
         match command {
             "add" => Some(self.parse_add_command(args)),
             "list" => Some(self.parse_list_command(args)),

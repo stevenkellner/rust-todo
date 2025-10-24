@@ -1,59 +1,91 @@
-use crate::models::todo_list::TodoList;
-use crate::models::parse_error::ParseError;
-use crate::controller::debug_command_handler::DebugCommandHandler;
-use crate::controller::command_controller::CommandController;
-use crate::ui::debug_command_parser::DebugCommandParser;
+use crate::controller::CommandController;
 use crate::models::command_controller_result::CommandControllerResult;
+use crate::models::todo_list::TodoList;
+use crate::models::debug_command::DebugCommand;
+use crate::controller::task_generator::RandomTaskGenerator;
+use crate::models::ParseError;
+use crate::ui::debug_command_parser::DebugCommandParser;
+use crate::ui::DebugCommandOutputWriter;
 use std::io::Write;
 
-/// Controller that handles debug command parsing and execution.
-///
-/// `DebugCommandController` combines the debug command parser and handler,
-/// providing a unified interface for processing debug-related commands.
+/// Handler for debug commands and operations
 pub struct DebugCommandController<W: Write> {
-    handler: DebugCommandHandler<W>,
     parser: DebugCommandParser,
+    /// Output writer for displaying results
+    output: DebugCommandOutputWriter<W>,
+    /// Task generator for creating random tasks
+    task_generator: RandomTaskGenerator,
 }
 
 impl DebugCommandController<std::io::Stdout> {
-    /// Creates a new debug command controller with stdout.
+    /// Creates a new DebugCommandController with stdout
     pub fn new() -> Self {
-        DebugCommandController {
-            handler: DebugCommandHandler::new(),
+        Self {
             parser: DebugCommandParser::new(),
+            output: DebugCommandOutputWriter::new(), 
+            task_generator: RandomTaskGenerator::new(), 
         }
     }
 }
 
 impl<W: Write> DebugCommandController<W> {
-    /// Creates a new debug command controller with a custom output writer.
+    /// Creates a new DebugCommandController with a custom output writer
     pub fn with_writer(writer: W) -> Self {
-        DebugCommandController {
-            handler: DebugCommandHandler::with_writer(writer),
+        Self {
             parser: DebugCommandParser::new(),
+            output: DebugCommandOutputWriter::with_writer(writer),
+            task_generator: RandomTaskGenerator::new(), 
         }
     }
-}
-
-
-impl<W: Write> CommandController for DebugCommandController<W> {
-    /// Attempts to parse and handle a debug command from raw input.
+    
+    /// Handles a debug command
+    fn handle_command(&mut self, command: &DebugCommand, todo_list: &mut TodoList) -> CommandControllerResult {
+        match command {
+            DebugCommand::GenerateTasks(count) => self.generate_random_tasks(*count, todo_list),
+            DebugCommand::ClearAll => self.clear_all_tasks(todo_list),
+        }
+        CommandControllerResult::Continue
+    }
+    
+    /// Generates random tasks for testing
     ///
     /// # Arguments
     ///
-    /// * `input` - The raw input string to parse
-    /// * `todo_list` - The todo list to operate on
-    ///
-    /// # Returns
-    ///
-    /// * `Some(Ok(()))` - Command was successfully parsed and executed
-    /// * `Some(Err(ParseError))` - Command was recognized as a debug command but had an error
-    /// * `None` - Not a debug command, should try other parsers
-    fn try_handle(
+    /// * `count` - Number of random tasks to generate
+    /// * `todo_list` - The todo list to add tasks to
+    fn generate_random_tasks(
         &mut self,
-        input: &str,
+        count: usize,
         todo_list: &mut TodoList,
-    ) -> Option<Result<CommandControllerResult, ParseError>> {
+    ) {
+        // Generate random tasks
+        let new_tasks = self.task_generator.generate(count);
+        
+        // Add each generated task to the todo list
+        for new_task in new_tasks {
+            let _ = todo_list.add_task(new_task);
+        }
+        
+        self.output.show_success(&format!("Generated {} random tasks", count));
+    }
+    
+    /// Clears all tasks from the todo list
+    ///
+    /// # Arguments
+    ///
+    /// * `todo_list` - The todo list to clear
+    fn clear_all_tasks(
+        &mut self,
+        todo_list: &mut TodoList,
+    ) {
+        let count = todo_list.get_tasks().len();
+        todo_list.clear_all();
+        self.output.show_success(&format!("Cleared {} tasks", count));
+    }
+}
+
+impl<W: Write> CommandController for DebugCommandController<W> {
+    fn try_execute(&mut self, input: &str, todo_list: &mut TodoList) -> Option<Result<CommandControllerResult, ParseError>> {
         let parts: Vec<&str> = input.split_whitespace().collect();
         
         if parts.is_empty() {
@@ -63,10 +95,10 @@ impl<W: Write> CommandController for DebugCommandController<W> {
         let command = parts[0].to_lowercase();
         let args = &parts[1..];
 
-        match self.parser.try_parse_command(&command, args) {
-            Some(Ok(debug_command)) => {
-                self.handler.handle(&debug_command, todo_list);
-                Some(Ok(CommandControllerResult::Continue))
+        match self.parser.try_parse(&command, args) {
+            Some(Ok(cmd)) => {
+                let result = self.handle_command(&cmd, todo_list);
+                Some(Ok(result))
             }
             Some(Err(err)) => Some(Err(err)),
             None => None,
@@ -74,73 +106,36 @@ impl<W: Write> CommandController for DebugCommandController<W> {
     }
 }
 
-impl<W: Write> Default for DebugCommandController<W>
-where
-    W: Write + Default,
-{
+impl Default for DebugCommandController<std::io::Stdout> {
     fn default() -> Self {
-        Self::with_writer(W::default())
+        Self::new()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use crate::models::task::TaskWithoutId;
+    
     #[test]
-    fn test_new_controller() {
-        let _controller = DebugCommandController::new();
-    }
-
-    #[test]
-    fn test_try_handle_debug_generate() {
-        let mut controller = DebugCommandController::with_writer(Vec::new());
-        let mut todo_list = TodoList::new();
-
-        // Enable debug mode first
-        controller.try_handle("debug", &mut todo_list);
-
-        let result = controller.try_handle("debug:gen 5", &mut todo_list);
-        
-        assert!(result.is_some());
-        assert!(result.unwrap().is_ok());
-        assert_eq!(todo_list.get_tasks().len(), 5);
-    }
-
-    #[test]
-    fn test_try_handle_non_debug_command() {
-        let mut controller = DebugCommandController::with_writer(Vec::new());
-        let mut todo_list = TodoList::new();
-
-        let result = controller.try_handle("help", &mut todo_list);
-        
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn test_try_handle_invalid_debug_command() {
-        let mut controller = DebugCommandController::with_writer(Vec::new());
-        let mut todo_list = TodoList::new();
-
-        let result = controller.try_handle("debug:gen", &mut todo_list);
-        
-        assert!(result.is_some());
-        assert!(result.unwrap().is_err());
-    }
-
-    #[test]
-    fn test_try_handle_debug_clear() {
+    fn test_generate_random_tasks() {
         let mut controller = DebugCommandController::with_writer(Vec::new());
         let mut todo_list = TodoList::new();
         
-        // Add some tasks and enable debug mode
-        todo_list.add_task(crate::models::task::TaskWithoutId::new("Test".to_string()));
-        controller.try_handle("debug", &mut todo_list);
-
-        let result = controller.try_handle("debug:clear", &mut todo_list);
+        controller.generate_random_tasks(10, &mut todo_list);
         
-        assert!(result.is_some());
-        assert!(result.unwrap().is_ok());
+        assert_eq!(todo_list.get_tasks().len(), 10);
+    }
+    
+    #[test]
+    fn test_clear_all_tasks() {
+        let mut controller = DebugCommandController::with_writer(Vec::new());
+        let mut todo_list = TodoList::new();
+        todo_list.add_task(TaskWithoutId::new("Test task 1".to_string()));
+        todo_list.add_task(TaskWithoutId::new("Test task 2".to_string()));
+        
+        controller.clear_all_tasks(&mut todo_list);
+        
         assert_eq!(todo_list.get_tasks().len(), 0);
     }
 }

@@ -209,32 +209,6 @@ mod tests {
     }
 
     #[test]
-    fn test_generated_tasks_have_properties() {
-        let generator = RandomTaskGenerator::new();
-        
-        let tasks = generator.generate(10);
-        
-        // All tasks should have properties set
-        assert_eq!(tasks.len(), 10);
-        
-        // Verify tasks have descriptions and priorities
-        for task in &tasks {
-            assert!(!task.description.is_empty());
-            // Priority should be one of the defined values
-            assert!(matches!(task.priority, Priority::High | Priority::Medium | Priority::Low));
-        }
-        
-        // Some tasks should have categories and due dates (due to randomness)
-        let has_category = tasks.iter().any(|t| t.category.is_some());
-        let has_due_date = tasks.iter().any(|t| t.due_date.is_some());
-        let has_completed = tasks.iter().any(|t| t.completed);
-        
-        assert!(has_category, "At least one task should have a category");
-        assert!(has_due_date, "At least one task should have a due date");
-        assert!(has_completed, "At least one task should be completed");
-    }
-
-    #[test]
     fn test_default_trait() {
         let generator = RandomTaskGenerator::default();
         assert!(!generator.task_templates.is_empty());

@@ -1,23 +1,22 @@
 use crate::models::todo_list::TodoList;
 use crate::models::command_controller_result::CommandControllerResult;
-use crate::controller::command_controller::CommandController;
 use crate::controller::command_controller_type::CommandControllerType;
-use crate::controller::task_command_controller::TaskCommandController;
-use crate::controller::debug_command_controller::DebugCommandController;
-use crate::controller::general_command_controller::GeneralCommandController;
 use crate::models::loop_control::LoopControl;
 use crate::ui::{InputReader, UIManager};
+use crate::controller::command_controller::CommandController;
+use crate::controller::task_command_controller::TaskCommandController;
+use crate::controller::general_command_controller::GeneralCommandController;
+use crate::controller::debug_command_controller::DebugCommandController;
 use std::collections::HashMap;
 
 /// Controls the todo list application by coordinating specialized controllers.
 ///
-/// `TodoManager` acts as the main application orchestrator, managing the todo list state
 /// and delegating command processing to specialized controllers that can be added or removed dynamically.
 ///
 /// # Examples
 ///
 /// ```no_run
-/// use todo_manager::controller::todo_controller::TodoManager;
+/// use todo_manager::controller::todo_manager::TodoManager;
 ///
 /// let mut manager = TodoManager::new();
 /// manager.run();
@@ -30,12 +29,13 @@ pub struct TodoManager {
 }
 
 impl TodoManager {
+
     /// Creates a new manager with an empty todo list and new UI components.
     ///
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::controller::todo_controller::TodoManager;
+    /// use todo_manager::controller::todo_manager::TodoManager;
     ///
     /// let manager = TodoManager::new();
     /// ```
@@ -61,7 +61,7 @@ impl TodoManager {
     /// # Examples
     ///
     /// ```no_run
-    /// use todo_manager::controller::todo_controller::TodoManager;
+    /// use todo_manager::controller::todo_manager::TodoManager;
     ///
     /// let mut manager = TodoManager::new();
     /// manager.run();
@@ -98,7 +98,7 @@ impl TodoManager {
 
         // Try dynamic command controllers (task and optionally debug)
         for controller in self.command_controllers.values_mut() {
-            if let Some(result) = controller.try_handle(trimmed, &mut self.todo_list) {
+            if let Some(result) = controller.try_execute(trimmed, &mut self.todo_list) {
                 match result {
                     Ok(CommandControllerResult::Continue) => return LoopControl::Continue,
                     Ok(CommandControllerResult::ExitMainLoop) => return LoopControl::Exit,
