@@ -11,7 +11,7 @@
 /// let control = LoopControl::Continue;
 /// assert_eq!(control, LoopControl::Continue);
 /// ```
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LoopControl {
     /// Continue processing events in the main loop
     Continue,

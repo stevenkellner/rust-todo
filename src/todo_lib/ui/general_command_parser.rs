@@ -23,6 +23,7 @@ impl GeneralCommandParser {
         match command {
             "help" | "h" => Some(GeneralCommand::ShowHelp),
             "quit" | "exit" | "q" => Some(GeneralCommand::Quit),
+            "debug" => Some(GeneralCommand::ToggleDebug),
             _ => None,
         }
     }

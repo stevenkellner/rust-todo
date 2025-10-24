@@ -1,14 +1,16 @@
 use crate::models::todo_list::TodoList;
 use crate::models::loop_control::LoopControl;
+use crate::models::general_command_result::GeneralCommandResult;
+use crate::controller::command_controller::CommandController;
 use crate::controller::task_command_controller::TaskCommandController;
 use crate::controller::debug_command_controller::DebugCommandController;
 use crate::controller::general_command_controller::GeneralCommandController;
-use crate::ui::InputReader;
+use crate::ui::{InputReader, UIManager};
 
 /// Controls the todo list application by coordinating specialized controllers.
 ///
 /// `TodoController` acts as the main controller layer, managing the todo list state
-/// and delegating command processing to specialized controllers for tasks, debug, and general commands.
+/// and delegating command processing to specialized controllers that can be added or removed dynamically.
 ///
 /// # Examples
 ///
@@ -21,8 +23,8 @@ use crate::ui::InputReader;
 pub struct TodoController {
     todo_list: TodoList,
     input_reader: InputReader,
-    task_controller: TaskCommandController<std::io::Stdout>,
-    debug_controller: DebugCommandController<std::io::Stdout>,
+    ui_manager: UIManager<std::io::Stdout>,
+    command_controllers: Vec<Box<dyn CommandController>>,
     general_controller: GeneralCommandController<std::io::Stdout>,
 }
 
@@ -37,11 +39,16 @@ impl TodoController {
     /// let controller = TodoController::new();
     /// ```
     pub fn new() -> Self {
+        let mut command_controllers: Vec<Box<dyn CommandController>> = Vec::new();
+        
+        // Add task controller (always present)
+        command_controllers.push(Box::new(TaskCommandController::new()));
+        
         TodoController {
             todo_list: TodoList::new(),
             input_reader: InputReader::new(),
-            task_controller: TaskCommandController::new(),
-            debug_controller: DebugCommandController::new(),
+            ui_manager: UIManager::new(),
+            command_controllers,
             general_controller: GeneralCommandController::new(),
         }
     }
@@ -60,10 +67,10 @@ impl TodoController {
     /// controller.run();
     /// ```
     pub fn run(&mut self) {
-        self.general_controller.show_welcome();
+        self.ui_manager.show_welcome();
 
         loop {
-            self.general_controller.print_prompt();
+            self.ui_manager.print_prompt();
             let input = self.input_reader.read_input();
             
             if self.handle_input(&input) == LoopControl::Exit {
@@ -89,36 +96,51 @@ impl TodoController {
             return LoopControl::Continue;
         }
 
-        // Try task controller
-        if let Some(result) = self.task_controller.try_handle(trimmed, &mut self.todo_list) {
-            if let Err(err) = result {
-                self.general_controller.show_error(&err.message());
+        // Try dynamic command controllers (task and optionally debug)
+        for controller in &mut self.command_controllers {
+            if let Some(result) = controller.try_handle(trimmed, &mut self.todo_list) {
+                if let Err(err) = result {
+                    self.ui_manager.show_error(&err.message());
+                }
+                return LoopControl::Continue;
             }
-            return LoopControl::Continue;
         }
 
-        // Try debug controller
-        if let Some(result) = self.debug_controller.try_handle(trimmed, &mut self.todo_list) {
-            if let Err(err) = result {
-                self.general_controller.show_error(&err.message());
-            }
-            return LoopControl::Continue;
-        }
-
-        // Try general controller
-        if let Some(result) = self.general_controller.try_handle(trimmed) {
+        // Check if it was a general command (help, quit, debug)
+        if let Some(result) = self.general_controller.try_handle_general(trimmed) {
             match result {
-                Ok(control) => return control,
+                Ok(GeneralCommandResult::Continue(control)) => return control,
+                Ok(GeneralCommandResult::ToggleDebug) => {
+                    self.toggle_debug_mode();
+                    return LoopControl::Continue;
+                }
                 Err(err) => {
-                    self.general_controller.show_error(&err.message());
+                    self.ui_manager.show_error(&err.message());
                     return LoopControl::Continue;
                 }
             }
         }
 
         // Unknown command
-        self.general_controller.handle_unknown_command(trimmed);
+        self.ui_manager.handle_unknown_command(trimmed);
         LoopControl::Continue
+    }
+
+    /// Toggles debug mode by adding or removing the debug command controller.
+    fn toggle_debug_mode(&mut self) {
+        // Check if debug controller is already in the list (will be at index 1 if present)
+        // Index 0 is always the task controller
+        let has_debug = self.command_controllers.len() > 1;
+        
+        if has_debug {
+            // Remove debug controller (always at index 1)
+            self.command_controllers.remove(1);
+            println!("Debug mode disabled.");
+        } else {
+            // Add debug controller
+            self.command_controllers.push(Box::new(DebugCommandController::new()));
+            println!("Debug mode enabled.");
+        }
     }
 }
 

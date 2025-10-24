@@ -6,6 +6,7 @@
 pub mod debug_command;
 pub mod filter_builder;
 pub mod general_command;
+pub mod general_command_result;
 pub mod loop_control;
 pub mod overdue_filter;
 pub mod parse_error;

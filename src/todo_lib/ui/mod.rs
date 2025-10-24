@@ -14,6 +14,7 @@ pub mod task_command_output_writer;
 pub mod task_command_parser;
 pub mod debug_command_parser;
 pub mod general_command_parser;
+pub mod ui_manager;
 
 // Re-export commonly used types
 pub use debug_command_output_writer::DebugCommandOutputWriter;
@@ -22,3 +23,4 @@ pub use input_reader::InputReader;
 pub use interactive_task_properties_prompt::InteractiveTaskPropertiesPrompt;
 pub use output_writer::OutputWriter;
 pub use task_command_output_writer::TaskCommandOutputWriter;
+pub use ui_manager::UIManager;

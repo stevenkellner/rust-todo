@@ -1,6 +1,7 @@
 use crate::models::todo_list::TodoList;
 use crate::models::parse_error::ParseError;
 use crate::controller::debug_command_handler::DebugCommandHandler;
+use crate::controller::command_controller::CommandController;
 use crate::ui::debug_command_parser::DebugCommandParser;
 use std::io::Write;
 
@@ -80,6 +81,16 @@ where
 {
     fn default() -> Self {
         Self::with_writer(W::default())
+    }
+}
+
+impl CommandController for DebugCommandController<std::io::Stdout> {
+    fn try_handle(
+        &mut self,
+        input: &str,
+        todo_list: &mut TodoList,
+    ) -> Option<Result<(), ParseError>> {
+        DebugCommandController::try_handle(self, input, todo_list)
     }
 }
 

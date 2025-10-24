@@ -8,4 +8,7 @@ pub enum GeneralCommand {
     
     /// Quit the application
     Quit,
+    
+    /// Toggle debug mode on/off
+    ToggleDebug,
 }
