@@ -11,6 +11,9 @@ pub enum CommandControllerResult {
     /// Exit the main loop
     ExitMainLoop,
     
-    /// Toggle debug mode on/off
-    ToggleDebug,
+    /// Enable debug mode
+    EnableDebugMode,
+
+    /// Disable debug mode
+    DisableDebugMode,
 }

@@ -144,7 +144,13 @@ mod tests {
         assert!(result.is_some());
         let cmd_result = result.unwrap();
         assert!(cmd_result.is_ok());
-        assert_eq!(cmd_result.unwrap(), CommandControllerResult::ToggleDebug);
+        assert_eq!(cmd_result.unwrap(), CommandControllerResult::EnableDebugMode);
+
+        let result = controller.try_handle("debug", &mut todo_list);
+        assert!(result.is_some());
+        let cmd_result = result.unwrap();
+        assert!(cmd_result.is_ok());
+        assert_eq!(cmd_result.unwrap(), CommandControllerResult::DisableDebugMode);
     }
 
     #[test]

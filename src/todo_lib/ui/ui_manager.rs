@@ -62,16 +62,6 @@ impl<W: Write> UIManager<W> {
     pub fn handle_unknown_command(&mut self, command: &str) {
         self.writer.show_error(&format!("Unknown command '{}'. Type help for available commands.", command));
     }
-
-    /// Shows debug mode enabled message.
-    pub fn show_debug_enabled(&mut self) {
-        self.writer.print_line("Debug mode enabled.");
-    }
-
-    /// Shows debug mode disabled message.
-    pub fn show_debug_disabled(&mut self) {
-        self.writer.print_line("Debug mode disabled.");
-    }
 }
 
 impl Default for UIManager<std::io::Stdout> {
@@ -292,30 +282,6 @@ mod tests {
         
         assert!(output_str2.contains("Specific error B"));
         assert!(!output_str2.contains("Specific error A"));
-    }
-
-    #[test]
-    fn test_show_debug_enabled() {
-        setup();
-        let mut output = Vec::new();
-        let mut manager = UIManager::with_writer(&mut output);
-        
-        manager.show_debug_enabled();
-        
-        let output_str = String::from_utf8(output).unwrap();
-        assert!(output_str.contains("Debug mode enabled"));
-    }
-
-    #[test]
-    fn test_show_debug_disabled() {
-        setup();
-        let mut output = Vec::new();
-        let mut manager = UIManager::with_writer(&mut output);
-        
-        manager.show_debug_disabled();
-        
-        let output_str = String::from_utf8(output).unwrap();
-        assert!(output_str.contains("Debug mode disabled"));
     }
 }
 

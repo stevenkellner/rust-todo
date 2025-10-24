@@ -102,8 +102,12 @@ impl TodoController {
                 match result {
                     Ok(CommandControllerResult::Continue) => return LoopControl::Continue,
                     Ok(CommandControllerResult::ExitMainLoop) => return LoopControl::Exit,
-                    Ok(CommandControllerResult::ToggleDebug) => {
-                        self.toggle_debug_mode();
+                    Ok(CommandControllerResult::EnableDebugMode) => {
+                        self.command_controllers.insert(CommandControllerType::Debug, Box::new(DebugCommandController::new()));
+                        return LoopControl::Continue;
+                    }
+                    Ok(CommandControllerResult::DisableDebugMode) => {
+                        self.command_controllers.remove(&CommandControllerType::Debug);
                         return LoopControl::Continue;
                     }
                     Err(err) => {
@@ -117,22 +121,6 @@ impl TodoController {
         // Unknown command
         self.ui_manager.handle_unknown_command(trimmed);
         LoopControl::Continue
-    }
-
-    /// Toggles debug mode by adding or removing the debug command controller.
-    fn toggle_debug_mode(&mut self) {
-        // Check if debug controller is already in the list
-        let has_debug = self.command_controllers.contains_key(&CommandControllerType::Debug);
-
-        if has_debug {
-            // Remove debug controller
-            self.command_controllers.remove(&CommandControllerType::Debug);
-            self.ui_manager.show_debug_disabled();
-        } else {
-            // Add debug controller
-            self.command_controllers.insert(CommandControllerType::Debug, Box::new(DebugCommandController::new()));
-            self.ui_manager.show_debug_enabled();
-        }
     }
 }
 

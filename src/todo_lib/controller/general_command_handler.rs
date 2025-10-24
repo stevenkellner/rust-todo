@@ -9,6 +9,7 @@ use std::io::Write;
 /// application control such as showing help, handling quit, and unknown commands.
 pub struct GeneralCommandHandler<W: Write> {
     output: GeneralCommandOutputWriter<W>,
+    debug_mode: bool,
 }
 
 impl GeneralCommandHandler<std::io::Stdout> {
@@ -16,6 +17,7 @@ impl GeneralCommandHandler<std::io::Stdout> {
     pub fn new() -> Self {
         GeneralCommandHandler {
             output: GeneralCommandOutputWriter::new(),
+            debug_mode: false,
         }
     }
 }
@@ -25,6 +27,7 @@ impl<W: Write> GeneralCommandHandler<W> {
     pub fn with_writer(writer: W) -> Self {
         GeneralCommandHandler {
             output: GeneralCommandOutputWriter::with_writer(writer),
+            debug_mode: false,
         }
     }
 
@@ -44,7 +47,7 @@ impl<W: Write> GeneralCommandHandler<W> {
         match command {
             GeneralCommand::ShowHelp => self.show_help(),
             GeneralCommand::Quit => self.handle_quit(),
-            GeneralCommand::ToggleDebug => CommandControllerResult::ToggleDebug,
+            GeneralCommand::ToggleDebug => self.handle_toggle_debug(),
         }
     }
 
@@ -52,7 +55,7 @@ impl<W: Write> GeneralCommandHandler<W> {
     ///
     /// # Returns
     ///
-    /// * `LoopControl::Continue` - Always continues after showing help
+    /// * `CommandControllerResult::Continue` - Always continues after showing help
     fn show_help(
         &mut self,
     ) -> CommandControllerResult {
@@ -64,12 +67,31 @@ impl<W: Write> GeneralCommandHandler<W> {
     ///
     /// # Returns
     ///
-    /// * `LoopControl::Exit` - Always exits after quit command
+    /// * `CommandControllerResult::ExitMainLoop` - Always exits after quit command
     fn handle_quit(
         &mut self,
     ) -> CommandControllerResult {
         self.output.show_goodbye();
         CommandControllerResult::ExitMainLoop
+    }
+
+    /// Handles the toggle debug command.
+    ///
+    /// # Returns
+    ///
+    /// * `CommandControllerResult::EnableDebugMode` - Indicates that debug mode has been enabled
+    /// * `CommandControllerResult::DisableDebugMode` - Indicates that debug mode has been disabled
+    fn handle_toggle_debug(
+        &mut self,
+    ) -> CommandControllerResult {
+        self.debug_mode = !self.debug_mode;
+        if self.debug_mode {
+            self.output.show_debug_enabled();
+            CommandControllerResult::EnableDebugMode
+        } else {
+            self.output.show_debug_disabled();
+            CommandControllerResult::DisableDebugMode
+        }
     }
 }
 
@@ -112,7 +134,9 @@ mod tests {
     fn test_toggle_debug_returns_toggle_debug() {
         let mut handler = create_test_handler();
         let result = handler.handle(&GeneralCommand::ToggleDebug);
-        assert_eq!(result, CommandControllerResult::ToggleDebug);
+        assert_eq!(result, CommandControllerResult::EnableDebugMode);
+        let result = handler.handle(&GeneralCommand::ToggleDebug);
+        assert_eq!(result, CommandControllerResult::DisableDebugMode);
     }
 
     #[test]

@@ -95,6 +95,26 @@ impl<W: Write> GeneralCommandOutputWriter<W> {
         self.writer.print_line("");
         self.writer.print_line(&format!("{}\n", MessageFormatter::separator(40)));
     }
+
+    /// Shows debug mode enabled message.
+    pub fn show_debug_enabled(&mut self) {
+        self.writer.print_line("");
+        self.writer.print_line(&"Debug mode enabled.".green().to_string());
+        self.writer.print_line("");
+        self.writer.print_line(&"Additional debug commands available:".bright_yellow().to_string());
+        self.writer.print_line("");
+        self.writer.print_line(&format!("  {} <count>  - Generate random tasks", "debug:gen".bright_cyan()));
+        self.writer.print_line(&format!("  {}          - Clear all tasks", "debug:clear".bright_cyan()));
+        self.writer.print_line(&format!("  {}          - Disable debug mode", "debug".bright_cyan()));
+        self.writer.print_line("");
+    }
+
+    /// Shows debug mode disabled message.
+    pub fn show_debug_disabled(&mut self) {
+        self.writer.print_line("");
+        self.writer.print_line(&"Debug mode disabled.".yellow().to_string());
+        self.writer.print_line("");
+    }
 }
 
 impl Default for GeneralCommandOutputWriter<std::io::Stdout> {
@@ -140,5 +160,32 @@ mod tests {
         assert!(output.contains("remove <id>"));
         assert!(output.contains("help"));
         assert!(output.contains("quit"));
+    }
+
+    #[test]
+    fn test_show_debug_enabled() {
+        setup();
+        let mut output = Vec::new();
+        let mut manager = GeneralCommandOutputWriter::with_writer(&mut output);
+        
+        manager.show_debug_enabled();
+        
+        let output_str = String::from_utf8(output).unwrap();
+        assert!(output_str.contains("Debug mode enabled"));
+        assert!(output_str.contains("debug:gen"));
+        assert!(output_str.contains("debug:clear"));
+        assert!(output_str.contains("Additional debug commands"));
+    }
+
+    #[test]
+    fn test_show_debug_disabled() {
+        setup();
+        let mut output = Vec::new();
+        let mut manager = GeneralCommandOutputWriter::with_writer(&mut output);
+        
+        manager.show_debug_disabled();
+        
+        let output_str = String::from_utf8(output).unwrap();
+        assert!(output_str.contains("Debug mode disabled"));
     }
 }
