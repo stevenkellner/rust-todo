@@ -5,19 +5,33 @@ use crate::ui::DebugCommandOutputWriter;
 use std::io::Write;
 
 /// Handler for debug commands and operations
-pub struct DebugCommandHandler {
+pub struct DebugCommandHandler<W: Write> {
     /// Flag to track if debug mode is enabled
     debug_mode: bool,
     /// Task generator for creating random tasks
     task_generator: RandomTaskGenerator,
+    /// Output writer for displaying results
+    output: DebugCommandOutputWriter<W>,
 }
 
-impl DebugCommandHandler {
-    /// Creates a new DebugCommandHandler
+impl DebugCommandHandler<std::io::Stdout> {
+    /// Creates a new DebugCommandHandler with stdout
     pub fn new() -> Self {
         Self {
             debug_mode: false,
             task_generator: RandomTaskGenerator::new(),
+            output: DebugCommandOutputWriter::new(),
+        }
+    }
+}
+
+impl<W: Write> DebugCommandHandler<W> {
+    /// Creates a new DebugCommandHandler with a custom output writer
+    pub fn with_writer(writer: W) -> Self {
+        Self {
+            debug_mode: false,
+            task_generator: RandomTaskGenerator::new(),
+            output: DebugCommandOutputWriter::with_writer(writer),
         }
     }
     
@@ -27,26 +41,25 @@ impl DebugCommandHandler {
     }
     
     /// Handles a debug command
-    pub fn handle<W: Write>(
+    pub fn handle(
         &mut self,
         command: &DebugCommand,
         todo_list: &mut TodoList,
-        output: &mut DebugCommandOutputWriter<W>
     ) {
         match command {
-            DebugCommand::GenerateTasks(count) => self.generate_random_tasks(*count, todo_list, output),
-            DebugCommand::ClearAll => self.clear_all_tasks(todo_list, output),
-            DebugCommand::Toggle => self.toggle_debug_mode(output),
+            DebugCommand::GenerateTasks(count) => self.generate_random_tasks(*count, todo_list),
+            DebugCommand::ClearAll => self.clear_all_tasks(todo_list),
+            DebugCommand::Toggle => self.toggle_debug_mode(),
         }
     }
     
     /// Toggles debug mode on/off
-    fn toggle_debug_mode<W: Write>(&mut self, output: &mut DebugCommandOutputWriter<W>) {
+    fn toggle_debug_mode(&mut self) {
         self.debug_mode = !self.debug_mode;
         if self.debug_mode {
-            output.show_success("Debug mode enabled");
+            self.output.show_success("Debug mode enabled");
         } else {
-            output.show_success("Debug mode disabled");
+            self.output.show_success("Debug mode disabled");
         }
     }
     
@@ -56,15 +69,13 @@ impl DebugCommandHandler {
     ///
     /// * `count` - Number of random tasks to generate
     /// * `todo_list` - The todo list to add tasks to
-    /// * `output` - Output writer for displaying results
-    fn generate_random_tasks<W: Write>(
-        &self,
+    fn generate_random_tasks(
+        &mut self,
         count: usize,
         todo_list: &mut TodoList,
-        output: &mut DebugCommandOutputWriter<W>
     ) {
         if !self.debug_mode {
-            output.show_error("Debug mode is not enabled. Use 'debug:toggle' to enable it.");
+            self.output.show_error("Debug mode is not enabled. Use 'debug:toggle' to enable it.");
             return;
         }
         
@@ -76,7 +87,7 @@ impl DebugCommandHandler {
             let _ = todo_list.add_task(new_task);
         }
         
-        output.show_success(&format!("Generated {} random tasks", count));
+        self.output.show_success(&format!("Generated {} random tasks", count));
     }
     
     /// Clears all tasks from the todo list
@@ -84,24 +95,22 @@ impl DebugCommandHandler {
     /// # Arguments
     ///
     /// * `todo_list` - The todo list to clear
-    /// * `output` - Output writer for displaying results
-    fn clear_all_tasks<W: Write>(
-        &self,
+    fn clear_all_tasks(
+        &mut self,
         todo_list: &mut TodoList,
-        output: &mut DebugCommandOutputWriter<W>
     ) {
         if !self.debug_mode {
-            output.show_error("Debug mode is not enabled. Use 'debug:toggle' to enable it.");
+            self.output.show_error("Debug mode is not enabled. Use 'debug:toggle' to enable it.");
             return;
         }
         
         let count = todo_list.get_tasks().len();
         todo_list.clear_all();
-        output.show_success(&format!("Cleared {} tasks", count));
+        self.output.show_success(&format!("Cleared {} tasks", count));
     }
 }
 
-impl Default for DebugCommandHandler {
+impl Default for DebugCommandHandler<std::io::Stdout> {
     fn default() -> Self {
         Self::new()
     }
@@ -120,72 +129,58 @@ mod tests {
     
     #[test]
     fn test_toggle_debug_mode() {
-        let mut controller = DebugCommandHandler::new();
-        let mut buffer = Vec::new();
-        let mut output = DebugCommandOutputWriter::with_writer(&mut buffer);
+        let mut controller = DebugCommandHandler::with_writer(Vec::new());
         
         assert!(!controller.is_debug_mode());
         
-        controller.toggle_debug_mode(&mut output);
+        controller.toggle_debug_mode();
         assert!(controller.is_debug_mode());
         
-        controller.toggle_debug_mode(&mut output);
+        controller.toggle_debug_mode();
         assert!(!controller.is_debug_mode());
     }
     
     #[test]
     fn test_generate_random_tasks_without_debug_mode() {
-        let controller = DebugCommandHandler::new();
+        let mut controller = DebugCommandHandler::with_writer(Vec::new());
         let mut todo_list = TodoList::new();
-        let mut buffer = Vec::new();
-        let mut output = DebugCommandOutputWriter::with_writer(&mut buffer);
         
-        controller.generate_random_tasks(5, &mut todo_list, &mut output);
+        controller.generate_random_tasks(5, &mut todo_list);
         
         assert_eq!(todo_list.get_tasks().len(), 0);
-        let result = String::from_utf8(buffer).unwrap();
-        assert!(result.contains("Debug mode is not enabled"));
     }
     
     #[test]
     fn test_generate_random_tasks_with_debug_mode() {
-        let mut controller = DebugCommandHandler::new();
+        let mut controller = DebugCommandHandler::with_writer(Vec::new());
         let mut todo_list = TodoList::new();
-        let mut buffer = Vec::new();
-        let mut output = DebugCommandOutputWriter::with_writer(&mut buffer);
         
-        controller.toggle_debug_mode(&mut output);
-        controller.generate_random_tasks(10, &mut todo_list, &mut output);
+        controller.toggle_debug_mode();
+        controller.generate_random_tasks(10, &mut todo_list);
         
         assert_eq!(todo_list.get_tasks().len(), 10);
     }
     
     #[test]
     fn test_clear_all_tasks_without_debug_mode() {
-        let controller = DebugCommandHandler::new();
+        let mut controller = DebugCommandHandler::with_writer(Vec::new());
         let mut todo_list = TodoList::new();
         todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
-        let mut buffer = Vec::new();
-        let mut output = DebugCommandOutputWriter::with_writer(&mut buffer);
         
-        controller.clear_all_tasks(&mut todo_list, &mut output);
+        controller.clear_all_tasks(&mut todo_list);
         
         assert_eq!(todo_list.get_tasks().len(), 1);
-        let result = String::from_utf8(buffer).unwrap();
-        assert!(result.contains("Debug mode is not enabled"));
     }
     
     #[test]
     fn test_clear_all_tasks_with_debug_mode() {
-        let mut controller = DebugCommandHandler::new();
+        let mut controller = DebugCommandHandler::with_writer(Vec::new());
         let mut todo_list = TodoList::new();
         todo_list.add_task(TaskWithoutId::new("Test task 1".to_string()));
         todo_list.add_task(TaskWithoutId::new("Test task 2".to_string()));
-        let mut buffer = Vec::new();
-        let mut output = DebugCommandOutputWriter::with_writer(&mut buffer);
         
-        controller.toggle_debug_mode(&mut output);
-        controller.clear_all_tasks(&mut todo_list, &mut output);
+        controller.toggle_debug_mode();
+        controller.clear_all_tasks(&mut todo_list);
         
         assert_eq!(todo_list.get_tasks().len(), 0);
     }

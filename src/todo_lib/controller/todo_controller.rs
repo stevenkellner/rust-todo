@@ -1,9 +1,9 @@
 use crate::models::todo_list::TodoList;
 use crate::ui::command_parser::CommandParser;
-use crate::ui::{TaskCommandOutputWriter, DebugCommandOutputWriter, GeneralCommandOutputWriter};
 use crate::models::ui_event::UiEvent;
 use crate::models::loop_control::LoopControl;
 use crate::controller::debug_command_handler::DebugCommandHandler;
+use crate::controller::general_command_handler::GeneralCommandHandler;
 use crate::controller::task_command_handler::TaskCommandHandler;
 
 /// Controls the todo list application by reacting to UI events.
@@ -23,11 +23,9 @@ use crate::controller::task_command_handler::TaskCommandHandler;
 pub struct TodoController {
     todo_list: TodoList,
     parser: CommandParser<std::io::Stdin>,
-    task_output: TaskCommandOutputWriter<std::io::Stdout>,
-    debug_output: DebugCommandOutputWriter<std::io::Stdout>,
-    general_output: GeneralCommandOutputWriter<std::io::Stdout>,
-    task_handler: TaskCommandHandler,
-    debug_handler: DebugCommandHandler,
+    task_handler: TaskCommandHandler<std::io::Stdout>,
+    debug_handler: DebugCommandHandler<std::io::Stdout>,
+    general_handler: GeneralCommandHandler<std::io::Stdout>,
 }
 
 impl TodoController {
@@ -44,11 +42,9 @@ impl TodoController {
         TodoController {
             todo_list: TodoList::new(),
             parser: CommandParser::new_stdin(),
-            task_output: TaskCommandOutputWriter::new(),
-            debug_output: DebugCommandOutputWriter::new(),
-            general_output: GeneralCommandOutputWriter::new(),
             task_handler: TaskCommandHandler::new(),
             debug_handler: DebugCommandHandler::new(),
+            general_handler: GeneralCommandHandler::new(),
         }
     }
 
@@ -66,10 +62,10 @@ impl TodoController {
     /// controller.run();
     /// ```
     pub fn run(&mut self) {
-        self.general_output.show_welcome();
+        self.general_handler.show_welcome();
 
         loop {
-            self.general_output.print_prompt();
+            self.general_handler.print_prompt();
             match self.parser.read_event() {
                 Ok(event) => {
                     if self.handle_event(&event) == LoopControl::Exit {
@@ -77,7 +73,7 @@ impl TodoController {
                     }
                 }
                 Err(err) => {
-                    self.general_output.show_error(&err.message());
+                    self.general_handler.show_error(&err.message());
                 }
             }
         }
@@ -95,40 +91,17 @@ impl TodoController {
     fn handle_event(&mut self, event: &UiEvent) -> LoopControl {
         match event {
             UiEvent::Task(task_command) => {
-                self.task_handler.handle(task_command, &mut self.todo_list, &mut self.task_output);
+                self.task_handler.handle(task_command, &mut self.todo_list);
             }
             UiEvent::Debug(debug_command) => {
-                self.debug_handler.handle(debug_command, &mut self.todo_list, &mut self.debug_output);
+                self.debug_handler.handle(debug_command, &mut self.todo_list);
             }
             UiEvent::General(general_command) => {
-                return self.handle_general_command(general_command);
+                return self.general_handler.handle(general_command);
             }
         }
         
         LoopControl::Continue
-    }
-
-    /// Handles general application commands.
-    fn handle_general_command(&mut self, command: &crate::models::general_command::GeneralCommand) -> LoopControl {
-        use crate::models::general_command::GeneralCommand;
-        
-        match command {
-            GeneralCommand::ShowHelp => {
-                self.general_output.show_help();
-                LoopControl::Continue
-            }
-            GeneralCommand::Quit => self.handle_quit(),
-            GeneralCommand::Unknown(cmd) => {
-                self.general_output.show_unknown_command(cmd);
-                LoopControl::Continue
-            }
-        }
-    }
-
-    /// Handles the Quit event.
-    fn handle_quit(&mut self) -> LoopControl {
-        self.general_output.show_goodbye();
-        LoopControl::Exit
     }
 }
 
