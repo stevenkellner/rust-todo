@@ -19,59 +19,61 @@ use std::cell::RefCell;
 /// `TaskCommandController` encapsulates all operations related to individual tasks
 /// such as completing, editing, setting priority, due date, and category.
 pub struct TaskCommandController<O: OutputWriter> {
+    todo_list: Rc<RefCell<TodoList>>,
     input_parser: TaskCommandInputParser,
     output_manager: TaskCommandOutputManager<O>,
 }
 
 impl<O: OutputWriter> TaskCommandController<O> {
     /// Creates a new task command handler with a custom output writer.
-    pub fn new(output_writer: Rc<RefCell<O>>) -> Self {
+    pub fn new(todo_list: Rc<RefCell<TodoList>>, output_writer: Rc<RefCell<O>>) -> Self {
         Self {
+            todo_list,
             input_parser: TaskCommandInputParser::new(),
             output_manager: TaskCommandOutputManager::new(output_writer),
         }
     }
 
     /// Handles a task command
-    fn handle_command(&mut self, command: &TaskCommand, todo_list: &mut TodoList) -> CommandControllerResult {
+    fn handle_command(&mut self, command: &TaskCommand) -> CommandControllerResult {
         match command {
-            TaskCommand::Add(description) => {
-                let new_task = TaskWithoutId::new(description.clone());
-                let task_id = todo_list.add_task(new_task);
-                self.output_manager.show_task_added(task_id, description);
-            }
-            TaskCommand::List(filter) => self.list_tasks(filter, todo_list),
-            TaskCommand::Remove(id) => self.remove_task(*id, todo_list),
-            TaskCommand::Complete(id) => self.complete_task(*id, todo_list),
-            TaskCommand::Uncomplete(id) => self.uncomplete_task(*id, todo_list),
-            TaskCommand::Toggle(id) => self.toggle_task(*id, todo_list),
-            TaskCommand::SetPriority(id, priority) => self.set_priority(*id, *priority, todo_list),
-            TaskCommand::SetDueDate(id, due_date) => self.set_due_date(*id, *due_date, todo_list),
-            TaskCommand::SetCategory(id, category) => self.set_category(*id, category.clone(), todo_list),
+            TaskCommand::Add(description) => self.add_task(description),
+            TaskCommand::List(filter) => self.list_tasks(filter),
+            TaskCommand::Remove(id) => self.remove_task(*id),
+            TaskCommand::Complete(id) => self.complete_task(*id),
+            TaskCommand::Uncomplete(id) => self.uncomplete_task(*id),
+            TaskCommand::Toggle(id) => self.toggle_task(*id),
+            TaskCommand::SetPriority(id, priority) => self.set_priority(*id, *priority),
+            TaskCommand::SetDueDate(id, due_date) => self.set_due_date(*id, *due_date),
+            TaskCommand::SetCategory(id, category) => self.set_category(*id, category.clone()),
             TaskCommand::ListCategories => {
-                self.output_manager.show_categories(todo_list);
+                self.output_manager.show_categories(&self.todo_list.borrow());
             }
-            TaskCommand::Edit(id, new_description) => self.edit_task(*id, new_description, todo_list),
+            TaskCommand::Edit(id, new_description) => self.edit_task(*id, new_description),
             TaskCommand::Search(keyword) => {
-                self.output_manager.show_search_results(todo_list, keyword);
+                self.output_manager.show_search_results(&self.todo_list.borrow(), keyword);
             }
             TaskCommand::ShowStatistics => {
-                self.output_manager.show_statistics(todo_list);
+                self.output_manager.show_statistics(&self.todo_list.borrow());
             }
         }
         CommandControllerResult::Continue
     }
 
+    fn add_task(&mut self, description: &str) {
+        let new_task = TaskWithoutId::new(description.to_string());
+        let task_id = self.todo_list.borrow_mut().add_task(new_task);
+        self.output_manager.show_task_added(task_id, description);
+    }
+
+
     /// Lists tasks with optional filtering
-    fn list_tasks(
-        &mut self,
-        filter: &Option<TaskFilter>,
-        todo_list: &mut TodoList,
-    ) {
+    fn list_tasks(&mut self, filter: &Option<TaskFilter>) {
         match filter {
-            None => self.output_manager.show_all_tasks(todo_list.get_tasks()),
+            None => self.output_manager.show_all_tasks(self.todo_list.borrow().get_tasks()),
             Some(task_filter) => {
-                let filtered_tasks = todo_list.get_filtered_tasks(task_filter);
+                let todo_list_ref = self.todo_list.borrow();
+                let filtered_tasks = todo_list_ref.get_filtered_tasks(task_filter);
                 
                 if task_filter.status == Some(TaskStatus::Completed) && task_filter.priority.is_none() {
                     self.output_manager.show_completed_tasks(&filtered_tasks);
@@ -87,12 +89,8 @@ impl<O: OutputWriter> TaskCommandController<O> {
     }
 
     /// Removes a task by ID.
-    fn remove_task(
-        &mut self,
-        id: usize,
-        todo_list: &mut TodoList,
-    ) {
-        if let Some(task) = todo_list.remove_task(id) {
+    fn remove_task(&mut self, id: usize) {
+        if let Some(task) = self.todo_list.borrow_mut().remove_task(id) {
             self.output_manager.show_task_removed(&task.description);
         } else {
             self.output_manager.show_task_not_found(id);
@@ -100,12 +98,8 @@ impl<O: OutputWriter> TaskCommandController<O> {
     }
 
     /// Marks a task as completed.
-    fn complete_task(
-        &mut self,
-        id: usize,
-        todo_list: &mut TodoList,
-    ) {
-        if let Some(task) = todo_list.complete_task(id) {
+    fn complete_task(&mut self, id: usize) {
+        if let Some(task) = self.todo_list.borrow_mut().complete_task(id) {
             if task.is_completed() {
                 self.output_manager.show_task_completed(&task.description);
             }
@@ -115,12 +109,8 @@ impl<O: OutputWriter> TaskCommandController<O> {
     }
 
     /// Marks a task as not completed.
-    fn uncomplete_task(
-        &mut self,
-        id: usize,
-        todo_list: &mut TodoList,
-    ) {
-        if let Some(task) = todo_list.uncomplete_task(id) {
+    fn uncomplete_task(&mut self, id: usize) {
+        if let Some(task) = self.todo_list.borrow_mut().uncomplete_task(id) {
             if !task.is_completed() {
                 self.output_manager.show_task_uncompleted(&task.description);
             }
@@ -130,12 +120,8 @@ impl<O: OutputWriter> TaskCommandController<O> {
     }
 
     /// Toggles a task's completion status.
-    fn toggle_task(
-        &mut self,
-        id: usize,
-        todo_list: &mut TodoList,
-    ) {
-        if let Some(task) = todo_list.toggle_task(id) {
+    fn toggle_task(&mut self, id: usize) {
+        if let Some(task) = self.todo_list.borrow_mut().toggle_task(id) {
             self.output_manager.show_task_toggled(&task.description, task.is_completed());
         } else {
             self.output_manager.show_task_not_found(id);
@@ -143,13 +129,8 @@ impl<O: OutputWriter> TaskCommandController<O> {
     }
 
     /// Sets the priority of a task.
-    fn set_priority(
-        &mut self,
-        id: usize,
-        priority: Priority,
-        todo_list: &mut TodoList,
-    ) {
-        if let Some(task) = todo_list.set_task_priority(id, priority) {
+    fn set_priority(&mut self, id: usize, priority: Priority) {
+        if let Some(task) = self.todo_list.borrow_mut().set_task_priority(id, priority) {
             self.output_manager.show_priority_set(&task.description, priority);
         } else {
             self.output_manager.show_task_not_found(id);
@@ -157,13 +138,8 @@ impl<O: OutputWriter> TaskCommandController<O> {
     }
 
     /// Sets the due date of a task.
-    fn set_due_date(
-        &mut self,
-        id: usize,
-        due_date: Option<NaiveDate>,
-        todo_list: &mut TodoList,
-    ) {
-        if let Some(task) = todo_list.set_due_date(id, due_date) {
+    fn set_due_date(&mut self, id: usize, due_date: Option<NaiveDate>) {
+        if let Some(task) = self.todo_list.borrow_mut().set_due_date(id, due_date) {
             self.output_manager.show_due_date_set(&task.description, due_date);
         } else {
             self.output_manager.show_task_not_found(id);
@@ -171,13 +147,8 @@ impl<O: OutputWriter> TaskCommandController<O> {
     }
 
     /// Sets the category of a task.
-    fn set_category(
-        &mut self,
-        id: usize,
-        category: Option<String>,
-        todo_list: &mut TodoList,
-    ) {
-        if let Some(task) = todo_list.set_task_category(id, category.clone()) {
+    fn set_category(&mut self, id: usize, category: Option<String>) {
+        if let Some(task) = self.todo_list.borrow_mut().set_task_category(id, category.clone()) {
             self.output_manager.show_category_set(&task.description, category);
         } else {
             self.output_manager.show_task_not_found(id);
@@ -185,24 +156,19 @@ impl<O: OutputWriter> TaskCommandController<O> {
     }
 
     /// Edits a task's description.
-    fn edit_task(
-        &mut self,
-        id: usize,
-        new_description: &str,
-        todo_list: &mut TodoList,
-    ) {
+    fn edit_task(&mut self, id: usize, new_description: &str) {
         if new_description.trim().is_empty() {
             self.output_manager.show_error("Task description cannot be empty.");
             return;
         }
 
         // Get the old description before editing
-        let old_description = todo_list.get_tasks()
+        let old_description = self.todo_list.borrow().get_tasks()
             .iter()
             .find(|task| task.id == id)
             .map(|task| task.description.clone());
 
-        if let Some(_task) = todo_list.edit_task(id, new_description.to_string()) {
+        if let Some(_task) = self.todo_list.borrow_mut().edit_task(id, new_description.to_string()) {
             if let Some(old_desc) = old_description {
                 self.output_manager.show_task_edited(&old_desc, new_description);
             }
@@ -213,7 +179,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 }
 
 impl<O: OutputWriter> CommandController for TaskCommandController<O> {
-    fn try_execute(&mut self, input: &str, todo_list: &mut TodoList) -> Option<Result<CommandControllerResult, ParseError>> {
+    fn try_execute(&mut self, input: &str) -> Option<Result<CommandControllerResult, ParseError>> {
         let parts: Vec<&str> = input.split_whitespace().collect();
         
         if parts.is_empty() {
@@ -225,7 +191,7 @@ impl<O: OutputWriter> CommandController for TaskCommandController<O> {
 
         match self.input_parser.try_parse(&command, args) {
             Some(Ok(cmd)) => {
-                let result = self.handle_command(&cmd, todo_list);
+                let result = self.handle_command(&cmd);
                 Some(Ok(result))
             }
             Some(Err(err)) => Some(Err(err)),
@@ -240,53 +206,53 @@ mod tests {
 
     #[test]
     fn test_remove_task_existing() {
+        let todo_list = Rc::new(RefCell::new(TodoList::new()));
+        let id = todo_list.borrow_mut().add_task(TaskWithoutId::new("Test task".to_string()));
         let buffer = Vec::new();
         let output_writer = crate::ui::output::FileOutputWriter::new(buffer);
-        let mut handler = TaskCommandController::new(Rc::new(RefCell::new(output_writer)));
-        let mut todo_list = TodoList::new();
-        let id = todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
+        let mut handler = TaskCommandController::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output_writer)));
         
-        handler.remove_task(id, &mut todo_list);
+        handler.remove_task(id);
         
-        assert!(todo_list.get_tasks().iter().find(|t| t.id == id).is_none());
+        assert!(todo_list.borrow().get_tasks().iter().find(|t| t.id == id).is_none());
     }
 
     #[test]
     fn test_complete_task() {
+        let todo_list = Rc::new(RefCell::new(TodoList::new()));
+        let id = todo_list.borrow_mut().add_task(TaskWithoutId::new("Test task".to_string()));
         let buffer = Vec::new();
         let output_writer = crate::ui::output::FileOutputWriter::new(buffer);
-        let mut handler = TaskCommandController::new(Rc::new(RefCell::new(output_writer)));
-        let mut todo_list = TodoList::new();
-        let id = todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
+        let mut handler = TaskCommandController::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output_writer)));
         
-        handler.complete_task(id, &mut todo_list);
+        handler.complete_task(id);
         
-        assert!(todo_list.get_tasks().iter().find(|t| t.id == id).unwrap().is_completed());
+        assert!(todo_list.borrow().get_tasks().iter().find(|t| t.id == id).unwrap().is_completed());
     }
 
     #[test]
     fn test_set_priority() {
+        let todo_list = Rc::new(RefCell::new(TodoList::new()));
+        let id = todo_list.borrow_mut().add_task(TaskWithoutId::new("Test task".to_string()));
         let buffer = Vec::new();
         let output_writer = crate::ui::output::FileOutputWriter::new(buffer);
-        let mut handler = TaskCommandController::new(Rc::new(RefCell::new(output_writer)));
-        let mut todo_list = TodoList::new();
-        let id = todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
+        let mut handler = TaskCommandController::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output_writer)));
         
-        handler.set_priority(id, Priority::High, &mut todo_list);
+        handler.set_priority(id, Priority::High);
         
-        assert_eq!(todo_list.get_tasks().iter().find(|t| t.id == id).unwrap().priority, Priority::High);
+        assert_eq!(todo_list.borrow().get_tasks().iter().find(|t| t.id == id).unwrap().priority, Priority::High);
     }
 
     #[test]
     fn test_edit_task() {
+        let todo_list = Rc::new(RefCell::new(TodoList::new()));
+        let id = todo_list.borrow_mut().add_task(TaskWithoutId::new("Old description".to_string()));
         let buffer = Vec::new();
         let output_writer = crate::ui::output::FileOutputWriter::new(buffer);
-        let mut handler = TaskCommandController::new(Rc::new(RefCell::new(output_writer)));
-        let mut todo_list = TodoList::new();
-        let id = todo_list.add_task(TaskWithoutId::new("Old description".to_string()));
+        let mut handler = TaskCommandController::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output_writer)));
         
-        handler.edit_task(id, "New description", &mut todo_list);
+        handler.edit_task(id, "New description");
         
-        assert_eq!(todo_list.get_tasks().iter().find(|t| t.id == id).unwrap().description, "New description");
+        assert_eq!(todo_list.borrow().get_tasks().iter().find(|t| t.id == id).unwrap().description, "New description");
     }
 }

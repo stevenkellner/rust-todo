@@ -16,13 +16,21 @@ use std::cell::RefCell;
 /// ```no_run
 /// use todo_manager::controller::todo_manager::TodoManager;
 /// use todo_manager::ui::input::FileInputStream;
+/// use todo_manager::ui::output::FileOutputWriter;
+/// use std::rc::Rc;
+/// use std::cell::RefCell;
 ///
 /// let input_stream = FileInputStream::new(std::io::stdin());
-/// let mut manager = TodoManager::new(&mut input_stream);
+/// let output_writer = FileOutputWriter::new(std::io::stdout());
+/// let mut manager = TodoManager::new(
+///     Rc::new(RefCell::new(input_stream)),
+///     Rc::new(RefCell::new(output_writer))
+/// );
 /// manager.run();
 /// ```
 pub struct TodoManager<I: InputStream, O: OutputWriter> {
-    todo_list: TodoList,
+    #[cfg(test)]
+    todo_list: Rc<RefCell<TodoList>>,
     input_stream: Rc<RefCell<I>>,
     output_manager: OutputManager<O>,
     command_controller_registry: CommandControllerRegistry<O>,
@@ -37,16 +45,25 @@ impl<I: InputStream, O: OutputWriter> TodoManager<I, O> {
     /// ```
     /// use todo_manager::controller::todo_manager::TodoManager;
     /// use todo_manager::ui::input::FileInputStream;
+    /// use todo_manager::ui::output::FileOutputWriter;
+    /// use std::rc::Rc;
+    /// use std::cell::RefCell;
     ///
     /// let input_stream = FileInputStream::new(std::io::stdin());
-    /// let manager = TodoManager::new(&mut input_stream);
+    /// let output_writer = FileOutputWriter::new(std::io::stdout());
+    /// let manager = TodoManager::new(
+    ///     Rc::new(RefCell::new(input_stream)),
+    ///     Rc::new(RefCell::new(output_writer))
+    /// );
     /// ```
     pub fn new(input_stream: Rc<RefCell<I>>, output_writer: Rc<RefCell<O>>) -> Self {
+        let todo_list = Rc::new(RefCell::new(TodoList::new()));
         Self {
-            todo_list: TodoList::new(),
+            #[cfg(test)]
+            todo_list: Rc::clone(&todo_list),
             input_stream,
             output_manager: OutputManager::new(Rc::clone(&output_writer)),
-            command_controller_registry: CommandControllerRegistry::new(output_writer),
+            command_controller_registry: CommandControllerRegistry::new(Rc::clone(&todo_list), Rc::clone(&output_writer)),
         }
     }
 
@@ -60,9 +77,16 @@ impl<I: InputStream, O: OutputWriter> TodoManager<I, O> {
     /// ```no_run
     /// use todo_manager::controller::todo_manager::TodoManager;
     /// use todo_manager::ui::input::FileInputStream;
+    /// use todo_manager::ui::output::FileOutputWriter;
+    /// use std::rc::Rc;
+    /// use std::cell::RefCell;
     ///
     /// let input_stream = FileInputStream::new(std::io::stdin());
-    /// let mut manager = TodoManager::new(&mut input_stream);
+    /// let output_writer = FileOutputWriter::new(std::io::stdout());
+    /// let mut manager = TodoManager::new(
+    ///     Rc::new(RefCell::new(input_stream)),
+    ///     Rc::new(RefCell::new(output_writer))
+    /// );
     /// manager.run();
     /// ```
     pub fn run(&mut self) {
@@ -95,7 +119,7 @@ impl<I: InputStream, O: OutputWriter> TodoManager<I, O> {
             return LoopControl::Continue;
         }
 
-        if let Some(result) = self.command_controller_registry.try_execute(trimmed, &mut self.todo_list) {
+        if let Some(result) = self.command_controller_registry.try_execute(trimmed) {
             match result {
                 Ok(CommandControllerResult::Continue) => return LoopControl::Continue,
                 Ok(CommandControllerResult::ExitMainLoop) => return LoopControl::Exit,
@@ -131,7 +155,7 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let manager = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
-        assert!(manager.todo_list.is_empty());
+        assert!(manager.todo_list.borrow().is_empty());
     }
 
     #[test]
@@ -141,8 +165,8 @@ mod tests {
         let mut manager = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         manager.handle_input("add Test task");
         
-        assert_eq!(manager.todo_list.get_tasks().len(), 1);
-        assert_eq!(manager.todo_list.get_tasks()[0].description, "Test task");
+        assert_eq!(manager.todo_list.borrow().get_tasks().len(), 1);
+        assert_eq!(manager.todo_list.borrow().get_tasks()[0].description, "Test task");
     }
 
     #[test]
@@ -155,7 +179,7 @@ mod tests {
         controller.handle_input("add Task 2");
         controller.handle_input("add Task 3");
         
-        assert_eq!(controller.todo_list.get_tasks().len(), 3);
+        assert_eq!(controller.todo_list.borrow().get_tasks().len(), 3);
     }
 
     #[test]
@@ -165,11 +189,11 @@ mod tests {
          let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Task to remove");
-        let task_id = controller.todo_list.get_tasks()[0].id;
+        let task_id = controller.todo_list.borrow().get_tasks()[0].id;
         
         controller.handle_input(&format!("remove {}", task_id));
         
-        assert!(controller.todo_list.is_empty());
+        assert!(controller.todo_list.borrow().is_empty());
     }
 
     #[test]
@@ -181,7 +205,7 @@ mod tests {
         controller.handle_input("add Test task");
         controller.handle_input("remove 999");
         
-        assert_eq!(controller.todo_list.get_tasks().len(), 1);
+        assert_eq!(controller.todo_list.borrow().get_tasks().len(), 1);
     }
 
     #[test]
@@ -191,12 +215,12 @@ mod tests {
          let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Task to complete");
-        let task_id = controller.todo_list.get_tasks()[0].id;
+        let task_id = controller.todo_list.borrow().get_tasks()[0].id;
         
         controller.handle_input(&format!("complete {}", task_id));
         
-        assert!(controller.todo_list.get_tasks()[0].is_completed());
-        assert_eq!(controller.todo_list.get_completed_tasks().len(), 1);
+        assert!(controller.todo_list.borrow().get_tasks()[0].is_completed());
+        assert_eq!(controller.todo_list.borrow().get_completed_tasks().len(), 1);
     }
 
     #[test]
@@ -208,7 +232,7 @@ mod tests {
         controller.handle_input("add Test task");
         controller.handle_input("complete 999");
         
-        assert!(!controller.todo_list.get_tasks()[0].is_completed());
+        assert!(!controller.todo_list.borrow().get_tasks()[0].is_completed());
     }
 
     #[test]
@@ -218,14 +242,14 @@ mod tests {
          let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Task to uncomplete");
-        let task_id = controller.todo_list.get_tasks()[0].id;
+        let task_id = controller.todo_list.borrow().get_tasks()[0].id;
         
         controller.handle_input(&format!("complete {}", task_id));
-        assert!(controller.todo_list.get_tasks()[0].is_completed());
+        assert!(controller.todo_list.borrow().get_tasks()[0].is_completed());
         
         controller.handle_input(&format!("uncomplete {}", task_id));
-        assert!(!controller.todo_list.get_tasks()[0].is_completed());
-        assert_eq!(controller.todo_list.get_pending_tasks().len(), 1);
+        assert!(!controller.todo_list.borrow().get_tasks()[0].is_completed());
+        assert_eq!(controller.todo_list.borrow().get_pending_tasks().len(), 1);
     }
 
     #[test]
@@ -237,7 +261,7 @@ mod tests {
         controller.handle_input("add Test task");
         controller.handle_input("uncomplete 999");
         
-        assert!(!controller.todo_list.get_tasks()[0].is_completed());
+        assert!(!controller.todo_list.borrow().get_tasks()[0].is_completed());
     }
 
     #[test]
@@ -247,15 +271,15 @@ mod tests {
          let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Task to toggle");
-        let task_id = controller.todo_list.get_tasks()[0].id;
+        let task_id = controller.todo_list.borrow().get_tasks()[0].id;
         
-        assert!(!controller.todo_list.get_tasks()[0].is_completed());
-        
-        controller.handle_input(&format!("toggle {}", task_id));
-        assert!(controller.todo_list.get_tasks()[0].is_completed());
+        assert!(!controller.todo_list.borrow().get_tasks()[0].is_completed());
         
         controller.handle_input(&format!("toggle {}", task_id));
-        assert!(!controller.todo_list.get_tasks()[0].is_completed());
+        assert!(controller.todo_list.borrow().get_tasks()[0].is_completed());
+        
+        controller.handle_input(&format!("toggle {}", task_id));
+        assert!(!controller.todo_list.borrow().get_tasks()[0].is_completed());
     }
 
     #[test]
@@ -265,11 +289,11 @@ mod tests {
         let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)));
         
         controller.handle_input("add Test task");
-        let initial_status = controller.todo_list.get_tasks()[0].is_completed();
+        let initial_status = controller.todo_list.borrow().get_tasks()[0].is_completed();
         
         controller.handle_input("toggle 999");
         
-        assert_eq!(controller.todo_list.get_tasks()[0].is_completed(), initial_status);
+        assert_eq!(controller.todo_list.borrow().get_tasks()[0].is_completed(), initial_status);
     }
 
     #[test]
@@ -284,7 +308,7 @@ mod tests {
         
         controller.handle_input("list");
         
-        assert_eq!(controller.todo_list.get_tasks().len(), 2);
+        assert_eq!(controller.todo_list.borrow().get_tasks().len(), 2);
     }
 
     #[test]
@@ -299,7 +323,7 @@ mod tests {
         
         controller.handle_input("list completed");
         
-        assert_eq!(controller.todo_list.get_completed_tasks().len(), 1);
+        assert_eq!(controller.todo_list.borrow().get_completed_tasks().len(), 1);
     }
 
     #[test]
@@ -314,7 +338,7 @@ mod tests {
         
         controller.handle_input("list pending");
         
-        assert_eq!(controller.todo_list.get_pending_tasks().len(), 1);
+        assert_eq!(controller.todo_list.borrow().get_pending_tasks().len(), 1);
     }
 
     #[test]
@@ -348,7 +372,7 @@ mod tests {
         let control = controller.handle_input("add New task");
         
         assert_eq!(control, LoopControl::Continue);
-        assert_eq!(controller.todo_list.get_tasks().len(), 1);
+        assert_eq!(controller.todo_list.borrow().get_tasks().len(), 1);
     }
 
     #[test]
@@ -384,25 +408,25 @@ mod tests {
         controller.handle_input("add Task 2");
         controller.handle_input("add Task 3");
         
-        assert_eq!(controller.todo_list.get_tasks().len(), 3);
+        assert_eq!(controller.todo_list.borrow().get_tasks().len(), 3);
         
         // Complete some tasks
         controller.handle_input("complete 1");
         controller.handle_input("complete 2");
         
-        assert_eq!(controller.todo_list.get_completed_tasks().len(), 2);
-        assert_eq!(controller.todo_list.get_pending_tasks().len(), 1);
+        assert_eq!(controller.todo_list.borrow().get_completed_tasks().len(), 2);
+        assert_eq!(controller.todo_list.borrow().get_pending_tasks().len(), 1);
         
         // Remove a task
         controller.handle_input("remove 3");
         
-        assert_eq!(controller.todo_list.get_tasks().len(), 2);
+        assert_eq!(controller.todo_list.borrow().get_tasks().len(), 2);
         
         // Toggle a task
         controller.handle_input("toggle 1");
         
-        assert_eq!(controller.todo_list.get_completed_tasks().len(), 1);
-        assert_eq!(controller.todo_list.get_pending_tasks().len(), 1);
+        assert_eq!(controller.todo_list.borrow().get_completed_tasks().len(), 1);
+        assert_eq!(controller.todo_list.borrow().get_pending_tasks().len(), 1);
     }
 
     #[test]

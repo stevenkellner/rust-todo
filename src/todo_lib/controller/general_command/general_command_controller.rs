@@ -4,7 +4,7 @@ use crate::models::command_controller_result::CommandControllerResult;
 use crate::models::ParseError;
 use crate::controller::general_command::general_command_input_parser::GeneralCommandInputParser;
 use crate::controller::general_command::GeneralCommandOutputManager;
-use crate::{OutputWriter, TodoList};
+use crate::OutputWriter;
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -76,7 +76,7 @@ impl<O: OutputWriter> GeneralCommandController<O> {
 }
 
 impl<O: OutputWriter> CommandController for GeneralCommandController<O> {
-    fn try_execute(&mut self, input: &str, _todo_list: &mut TodoList) -> Option<Result<CommandControllerResult, ParseError>> {
+    fn try_execute(&mut self, input: &str) -> Option<Result<CommandControllerResult, ParseError>> {
         let parts: Vec<&str> = input.split_whitespace().collect();
         
         if parts.is_empty() {

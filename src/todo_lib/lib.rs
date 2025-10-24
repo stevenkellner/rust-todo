@@ -37,9 +37,16 @@
 //! ```no_run
 //! use todo_manager::controller::TodoManager;
 //! use todo_manager::ui::input::FileInputStream;
+//! use todo_manager::ui::output::FileOutputWriter;
+//! use std::rc::Rc;
+//! use std::cell::RefCell;
 //!
-//! let mut input_stream = FileInputStream::new(std::io::stdin());
-//! let mut manager = TodoManager::new(&mut input_stream);
+//! let input_stream = FileInputStream::new(std::io::stdin());
+//! let output_writer = FileOutputWriter::new(std::io::stdout());
+//! let mut manager = TodoManager::new(
+//!     Rc::new(RefCell::new(input_stream)),
+//!     Rc::new(RefCell::new(output_writer))
+//! );
 //! manager.run();  // Starts the interactive application
 //! ```
 

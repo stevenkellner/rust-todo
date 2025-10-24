@@ -12,6 +12,7 @@ use std::cell::RefCell;
 
 /// Handler for debug commands and operations
 pub struct DebugCommandController<O: OutputWriter> {
+    todo_list: Rc<RefCell<TodoList>>,
     input_parser: DebugCommandInputParser,
     /// Output writer for displaying results
     output_manager: DebugCommandOutputManager<O>,
@@ -21,8 +22,9 @@ pub struct DebugCommandController<O: OutputWriter> {
 
 impl<O: OutputWriter> DebugCommandController<O> {
     /// Creates a new DebugCommandController with a custom output writer
-    pub fn new(output_writer: Rc<RefCell<O>>) -> Self {
+    pub fn new(todo_list: Rc<RefCell<TodoList>>, output_writer: Rc<RefCell<O>>) -> Self {
         Self {
+            todo_list,
             input_parser: DebugCommandInputParser::new(),
             output_manager: DebugCommandOutputManager::new(output_writer),
             task_generator: RandomTaskGenerator::new(), 
@@ -30,10 +32,10 @@ impl<O: OutputWriter> DebugCommandController<O> {
     }
     
     /// Handles a debug command
-    fn handle_command(&mut self, command: &DebugCommand, todo_list: &mut TodoList) -> CommandControllerResult {
+    fn handle_command(&mut self, command: &DebugCommand) -> CommandControllerResult {
         match command {
-            DebugCommand::GenerateTasks(count) => self.generate_random_tasks(*count, todo_list),
-            DebugCommand::ClearAll => self.clear_all_tasks(todo_list),
+            DebugCommand::GenerateTasks(count) => self.generate_random_tasks(*count),
+            DebugCommand::ClearAll => self.clear_all_tasks(),
         }
         CommandControllerResult::Continue
     }
@@ -44,17 +46,13 @@ impl<O: OutputWriter> DebugCommandController<O> {
     ///
     /// * `count` - Number of random tasks to generate
     /// * `todo_list` - The todo list to add tasks to
-    fn generate_random_tasks(
-        &mut self,
-        count: usize,
-        todo_list: &mut TodoList,
-    ) {
+    fn generate_random_tasks(        &mut self,        count: usize      ) {
         // Generate random tasks
         let new_tasks = self.task_generator.generate(count);
         
         // Add each generated task to the todo list
         for new_task in new_tasks {
-            let _ = todo_list.add_task(new_task);
+            let _ = self.todo_list.borrow_mut().add_task(new_task);
         }
         
         self.output_manager.show_success(&format!("Generated {} random tasks", count));
@@ -65,18 +63,15 @@ impl<O: OutputWriter> DebugCommandController<O> {
     /// # Arguments
     ///
     /// * `todo_list` - The todo list to clear
-    fn clear_all_tasks(
-        &mut self,
-        todo_list: &mut TodoList,
-    ) {
-        let count = todo_list.get_tasks().len();
-        todo_list.clear_all();
+    fn clear_all_tasks(&mut self) {
+        let count = self.todo_list.borrow().get_tasks().len();
+        self.todo_list.borrow_mut().clear_all();
         self.output_manager.show_success(&format!("Cleared {} tasks", count));
     }
 }
 
 impl<O: OutputWriter> CommandController for DebugCommandController<O> {
-    fn try_execute(&mut self, input: &str, todo_list: &mut TodoList) -> Option<Result<CommandControllerResult, ParseError>> {
+    fn try_execute(&mut self, input: &str) -> Option<Result<CommandControllerResult, ParseError>> {
         let parts: Vec<&str> = input.split_whitespace().collect();
         
         if parts.is_empty() {
@@ -88,7 +83,7 @@ impl<O: OutputWriter> CommandController for DebugCommandController<O> {
 
         match self.input_parser.try_parse(&command, args) {
             Some(Ok(cmd)) => {
-                let result = self.handle_command(&cmd, todo_list);
+                let result = self.handle_command(&cmd);
                 Some(Ok(result))
             }
             Some(Err(err)) => Some(Err(err)),
@@ -105,27 +100,27 @@ mod tests {
     
     #[test]
     fn test_generate_random_tasks() {
+        let todo_list = Rc::new(RefCell::new(TodoList::new()));
         let buffer = Vec::new();
         let output_writer = FileOutputWriter::new(buffer);
-        let mut controller = DebugCommandController::new(Rc::new(RefCell::new(output_writer)));
-        let mut todo_list = TodoList::new();
-        
-        controller.generate_random_tasks(10, &mut todo_list);
-        
-        assert_eq!(todo_list.get_tasks().len(), 10);
+        let mut controller = DebugCommandController::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output_writer)));
+
+        controller.generate_random_tasks(10);
+
+        assert_eq!(todo_list.borrow().get_tasks().len(), 10);
     }
     
     #[test]
     fn test_clear_all_tasks() {
+        let todo_list = Rc::new(RefCell::new(TodoList::new()));
+        todo_list.borrow_mut().add_task(TaskWithoutId::new("Test task 1".to_string()));
+        todo_list.borrow_mut().add_task(TaskWithoutId::new("Test task 2".to_string()));
         let buffer = Vec::new();
         let output_writer = FileOutputWriter::new(buffer);
-        let mut controller = DebugCommandController::new(Rc::new(RefCell::new(output_writer)));
-        let mut todo_list = TodoList::new();
-        todo_list.add_task(TaskWithoutId::new("Test task 1".to_string()));
-        todo_list.add_task(TaskWithoutId::new("Test task 2".to_string()));
+        let mut controller = DebugCommandController::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output_writer)));
+
+        controller.clear_all_tasks();
         
-        controller.clear_all_tasks(&mut todo_list);
-        
-        assert_eq!(todo_list.get_tasks().len(), 0);
+        assert_eq!(todo_list.borrow().get_tasks().len(), 0);
     }
 }

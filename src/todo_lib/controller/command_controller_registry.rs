@@ -23,11 +23,11 @@ pub struct CommandControllerRegistry<O: OutputWriter> {
 impl<O: OutputWriter> CommandControllerRegistry<O> {
     /// Creates a new CommandControllerRegistry with task and general controllers active,
     /// and debug controller inactive by default.
-    pub fn new(output_writer: Rc<RefCell<O>>) -> Self {
+    pub fn new(todo_list: Rc<RefCell<TodoList>>, output_writer: Rc<RefCell<O>>) -> Self {
         Self {
-            task_controller: TaskCommandController::new(Rc::clone(&output_writer)),
+            task_controller: TaskCommandController::new(Rc::clone(&todo_list), Rc::clone(&output_writer)),
             general_controller: GeneralCommandController::new(Rc::clone(&output_writer)),
-            debug_controller: DebugCommandController::new(Rc::clone(&output_writer)),
+            debug_controller: DebugCommandController::new(Rc::clone(&todo_list), Rc::clone(&output_writer)),
             is_debug_active: false,
         }
     }
@@ -56,15 +56,15 @@ impl<O: OutputWriter> CommandControllerRegistry<O> {
     /// # Returns
     ///
     /// `Some(Result)` if a controller handled the command, `None` if no controller recognized it
-    pub fn try_execute(&mut self, input: &str, todo_list: &mut TodoList) -> Option<Result<CommandControllerResult, ParseError>> {
-        if let Some(result) = self.task_controller.try_execute(input, todo_list) {
+    pub fn try_execute(&mut self, input: &str) -> Option<Result<CommandControllerResult, ParseError>> {
+        if let Some(result) = self.task_controller.try_execute(input) {
             return Some(result);
         }
-        if let Some(result) = self.general_controller.try_execute(input, todo_list) {
+        if let Some(result) = self.general_controller.try_execute(input) {
             return Some(result);
         }
         if self.is_debug_active {
-            if let Some(result) = self.debug_controller.try_execute(input, todo_list) {
+            if let Some(result) = self.debug_controller.try_execute(input) {
                 return Some(result);
             }
         }
@@ -78,70 +78,70 @@ mod tests {
 
     #[test]
     fn test_try_execute_with_task_command() {
+        let todo_list = Rc::new(RefCell::new(TodoList::new()));
         let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
-        let mut registry = CommandControllerRegistry::new(Rc::new(RefCell::new(output)));
-        let mut todo_list = TodoList::new();
-        
-        let result = registry.try_execute("add Test task", &mut todo_list);
+        let mut registry = CommandControllerRegistry::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output)));
+
+        let result = registry.try_execute("add Test task");
         assert!(result.is_some());
         assert!(result.unwrap().is_ok());
-        assert_eq!(todo_list.get_tasks().len(), 1);
+        assert_eq!(todo_list.borrow().get_tasks().len(), 1);
     }
 
     #[test]
     fn test_try_execute_with_general_command() {
+        let todo_list = Rc::new(RefCell::new(TodoList::new()));
         let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
-        let mut registry = CommandControllerRegistry::new(Rc::new(RefCell::new(output)));
-        let mut todo_list = TodoList::new();
-        
-        let result = registry.try_execute("quit", &mut todo_list);
+        let mut registry = CommandControllerRegistry::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output)));
+
+        let result = registry.try_execute("quit");
         assert!(result.is_some());
         assert!(result.unwrap().is_ok());
     }
 
     #[test]
     fn test_try_execute_with_debug_command_inactive() {
+        let todo_list = Rc::new(RefCell::new(TodoList::new()));
         let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
-        let mut registry = CommandControllerRegistry::new(Rc::new(RefCell::new(output)));
-        let mut todo_list = TodoList::new();
-        
+        let mut registry = CommandControllerRegistry::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output)));
+
         // Debug controller is not active, so debug commands should not be recognized
-        let result = registry.try_execute("debug:gen 5", &mut todo_list);
+        let result = registry.try_execute("debug:gen 5");
         assert!(result.is_none());
     }
 
     #[test]
     fn test_try_execute_with_debug_command_active() {
+        let todo_list = Rc::new(RefCell::new(TodoList::new()));
         let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
-        let mut registry = CommandControllerRegistry::new(Rc::new(RefCell::new(output)));
+        let mut registry = CommandControllerRegistry::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output)));
         registry.enable_debug();
-        let mut todo_list = TodoList::new();
-        
-        let result = registry.try_execute("debug:gen 3", &mut todo_list);
+
+        let result = registry.try_execute("debug:gen 3");
         assert!(result.is_some());
         assert!(result.unwrap().is_ok());
-        assert_eq!(todo_list.get_tasks().len(), 3);
+        assert_eq!(todo_list.borrow().get_tasks().len(), 3);
     }
 
     #[test]
     fn test_try_execute_unknown_command() {
+        let todo_list = Rc::new(RefCell::new(TodoList::new()));
         let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
-        let mut registry = CommandControllerRegistry::new(Rc::new(RefCell::new(output)));
-        let mut todo_list = TodoList::new();
-        
-        let result = registry.try_execute("unknown command", &mut todo_list);
+        let mut registry = CommandControllerRegistry::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output)));
+
+        let result = registry.try_execute("unknown command");
         assert!(result.is_none());
     }
 
     #[test]
     fn test_try_execute_with_disabled_task_controller() {
+        let todo_list = Rc::new(RefCell::new(TodoList::new()));
         let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
-        let mut registry = CommandControllerRegistry::new(Rc::new(RefCell::new(output)));
+        let mut registry = CommandControllerRegistry::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output)));
         registry.disable_debug();
-        let mut todo_list = TodoList::new();
         
         // Task controller is still active, so this should succeed
-        let result = registry.try_execute("add Test task", &mut todo_list);
+        let result = registry.try_execute("add Test task");
         assert!(result.is_some());
     }
 }
