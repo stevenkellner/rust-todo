@@ -1,4 +1,4 @@
-use crate::models::task_command::TaskCommand;
+use crate::controller::task_command::task_command::TaskCommand;
 use crate::models::filter_builder::FilterBuilder;
 use crate::models::priority::Priority;
 use crate::models::parse_error::ParseError;

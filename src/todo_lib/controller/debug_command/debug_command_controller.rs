@@ -1,14 +1,12 @@
 use crate::controller::CommandController;
 use crate::models::command_controller_result::CommandControllerResult;
 use crate::models::todo_list::TodoList;
-use crate::models::debug_command::DebugCommand;
-use crate::controller::task_generator::RandomTaskGenerator;
+use crate::controller::debug_command::debug_command::DebugCommand;
+use crate::controller::debug_command::RandomTaskGenerator;
 use crate::models::ParseError;
-use crate::ui::debug_command_parser::DebugCommandParser;
-use crate::ui::DebugCommandOutputWriter;
-use std::io::Write;
-
-/// Handler for debug commands and operations
+use crate::controller::debug_command::debug_command_parser::DebugCommandParser;
+use crate::controller::debug_command::DebugCommandOutputWriter;
+use std::io::Write;/// Handler for debug commands and operations
 pub struct DebugCommandController<W: Write> {
     parser: DebugCommandParser,
     /// Output writer for displaying results

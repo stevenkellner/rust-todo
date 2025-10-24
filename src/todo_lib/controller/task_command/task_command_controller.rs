@@ -1,14 +1,14 @@
 use crate::controller::command_controller::CommandController;
 use crate::models::command_controller_result::CommandControllerResult;
 use crate::models::todo_list::TodoList;
-use crate::models::task_command::TaskCommand;
+use crate::controller::task_command::task_command::TaskCommand;
 use crate::models::task::TaskWithoutId;
 use crate::models::priority::Priority;
 use crate::models::task_filter::TaskFilter;
 use crate::models::task_status::TaskStatus;
 use crate::models::ParseError;
-use crate::ui::task_command_parser::TaskCommandParser;
-use crate::ui::TaskCommandOutputWriter;
+use crate::controller::task_command::task_command_parser::TaskCommandParser;
+use crate::controller::task_command::TaskCommandOutputWriter;
 use chrono::NaiveDate;
 use std::io::Write;
 

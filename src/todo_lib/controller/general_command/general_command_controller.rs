@@ -1,9 +1,9 @@
 use crate::controller::command_controller::CommandController;
-use crate::models::general_command::GeneralCommand;
+use crate::controller::general_command::general_command::GeneralCommand;
 use crate::models::command_controller_result::CommandControllerResult;
 use crate::models::ParseError;
-use crate::ui::general_command_parser::GeneralCommandParser;
-use crate::ui::GeneralCommandOutputWriter;
+use crate::controller::general_command::general_command_parser::GeneralCommandParser;
+use crate::controller::general_command::GeneralCommandOutputWriter;
 use crate::TodoList;
 use std::io::Write;
 

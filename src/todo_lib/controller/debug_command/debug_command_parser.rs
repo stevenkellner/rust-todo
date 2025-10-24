@@ -1,4 +1,4 @@
-use crate::models::debug_command::DebugCommand;
+use crate::controller::debug_command::debug_command::DebugCommand;
 use crate::models::parse_error::ParseError;
 
 /// Parser for debug-related commands.

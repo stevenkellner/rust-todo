@@ -1,12 +1,12 @@
 use crate::models::todo_list::TodoList;
 use crate::models::command_controller_result::CommandControllerResult;
-use crate::controller::command_controller_type::CommandControllerType;
+use crate::models::command_controller_type::CommandControllerType;
 use crate::models::loop_control::LoopControl;
 use crate::ui::{InputReader, UIManager};
 use crate::controller::command_controller::CommandController;
-use crate::controller::task_command_controller::TaskCommandController;
-use crate::controller::general_command_controller::GeneralCommandController;
-use crate::controller::debug_command_controller::DebugCommandController;
+use crate::controller::task_command::TaskCommandController;
+use crate::controller::general_command::GeneralCommandController;
+use crate::controller::debug_command::DebugCommandController;
 use std::collections::HashMap;
 
 /// Controls the todo list application by coordinating specialized controllers.

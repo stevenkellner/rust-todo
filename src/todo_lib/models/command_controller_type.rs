@@ -12,7 +12,7 @@
 /// # Examples
 ///
 /// ```
-/// use todo_manager::controller::command_controller_type::CommandControllerType;
+/// use todo_manager::models::command_controller_type::CommandControllerType;
 ///
 /// let controller_type = CommandControllerType::Task;
 /// ```
