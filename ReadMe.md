@@ -41,25 +41,225 @@ cargo doc --open
 
 ## Project Structure
 
-For a detailed explanation of the project organization, see **[STRUCTURE.md](STRUCTURE.md)**.
-
-### Quick Overview
-
-```text
-src/todo_lib/
-├── models/            # Domain layer (business logic, data structures, events)
-├── ui/                # User interface layer (input/output)
-│   └── formatters/    # Formatting modules (task and message formatters)
-└── controller/        # Controller layer (orchestration)
-```
-
 The application follows a **layered architecture** with three distinct layers:
 
-- **Models**: All business logic, domain types, and events
-- **UI**: Terminal I/O, command parsing, and output formatting  
-- **Controller**: Orchestrates interactions between UI and models
+### Directory Structure
 
-> For detailed architecture documentation, see **[STRUCTURE.md](STRUCTURE.md)**
+```text
+src/
+├── main.rs                          # Application entry point
+└── todo_lib/
+    ├── lib.rs                       # Library root with module exports
+    │
+    ├── models/                      # Domain Models Layer
+    │   ├── mod.rs                   # Models module definition
+    │   ├── command_controller_result.rs # Result type for command execution
+    │   ├── filter_builder.rs        # Builder pattern for task filters
+    │   ├── id_parser.rs             # Parse ID ranges and lists
+    │   ├── loop_control.rs          # Control flow enum (Continue, Exit)
+    │   ├── overdue_filter.rs        # Filter for overdue tasks
+    │   ├── parse_error.rs           # Error types for parsing
+    │   ├── priority.rs              # Priority enum (Low, Medium, High)
+    │   ├── task.rs                  # Task struct with priority and status
+    │   ├── task_filter.rs           # Filter criteria for querying tasks
+    │   ├── task_status.rs           # Task status enum (Pending, Completed)
+    │   └── todo_list.rs             # TodoList collection and business logic
+    │
+    ├── ui/                          # User Interface Layer
+    │   ├── mod.rs                   # UI module definition
+    │   ├── input/                   # Input handling
+    │   │   ├── file_input_stream.rs # Read from stdin or files
+    │   │   └── interactive_task_properties_prompt.rs # Interactive prompts
+    │   ├── output/                  # Output handling
+    │   │   ├── file_output_writer.rs # Write to stdout or files
+    │   │   └── output_manager.rs    # Manage output operations
+    │   └── formatters/              # Formatting modules
+    │       ├── mod.rs               # Formatters module definition
+    │       ├── task_formatter.rs    # Task display formatting
+    │       └── message_formatter.rs # Message and UI element formatting
+    │
+    ├── controller/                  # Controller Layer
+    │   ├── mod.rs                   # Controller module definition
+    │   ├── command_controller.rs    # Trait for command controllers
+    │   ├── command_controller_registry.rs # Registry to route commands
+    │   ├── todo_manager.rs          # Top-level application manager
+    │   ├── debug_command/           # Debug-mode command controllers
+    │   │   ├── debug_command_controller.rs
+    │   │   ├── debug_command_output_manager.rs
+    │   │   └── random_task_generator.rs
+    │   ├── general_command/         # General command controllers
+    │   │   ├── general_command.rs
+    │   │   ├── general_command_controller.rs
+    │   │   └── general_command_output_manager.rs
+    │   └── task_command/            # Task-specific command controllers
+    │       ├── task.rs
+    │       ├── task_selection.rs
+    │       ├── task_command_controller.rs
+    │       ├── task_command_input_parser.rs
+    │       └── task_command_output_manager.rs
+    │
+    └── persistence/                 # Data Persistence Layer
+        └── todo_list_storage.rs     # Save/load TodoList to JSON
+
+tests/
+├── integration_tests.rs             # Integration tests for workflows
+└── filtering_tests.rs               # Tests for combined filtering feature
+```
+
+### Architecture Layers
+
+#### 1. Models Layer (`models/`)
+
+The domain layer containing all business logic and data structures.
+
+- **`task.rs`** - Core Task type with:
+  - Unique ID, description, completion status
+  - Priority level (Low/Medium/High)
+  - Category/tag support
+  - Due date with overdue detection
+  - Methods for state management
+
+- **`todo_list.rs`** - Collection managing tasks with:
+  - Add, remove, complete, uncomplete operations
+  - Bulk operations (complete/remove multiple tasks)
+  - Filtering by status, priority, and/or category
+  - Search functionality
+  - Task queries and retrieval
+  - Statistics generation
+
+- **`priority.rs`** - Priority levels:
+  - Low (▼), Medium (■), High (▲)
+  - Color-coded visual indicators
+  - String parsing and formatting
+
+- **`task_status.rs`** - Completion states:
+  - Pending - task not yet done
+  - Completed - task finished
+
+- **`task_filter.rs`** - Query builder for tasks:
+  - Filter by status (completed/pending)
+  - Filter by priority (high/medium/low)
+  - Filter by category
+  - Combined filters (e.g., "pending high priority work tasks")
+  - Overdue task filtering
+
+- **`id_parser.rs`** - Parse task IDs:
+  - Single IDs: `1`
+  - Ranges: `1-5`
+  - Lists: `1,3,5`
+  - Combined: `1-3,7,9-11`
+
+- **`loop_control.rs`** - Control flow signals:
+  - Continue - keep running the application loop
+  - Exit - exit the application
+
+#### 2. UI Layer (`ui/`)
+
+Handles all user interaction and terminal I/O.
+
+- **`input/file_input_stream.rs`** - Reads input:
+  - Reads from stdin (or custom reader for testing)
+  - Generic over any `BufRead` implementation
+
+- **`output/file_output_writer.rs`** - Writes output:
+  - Writes to stdout (or custom writer for testing)
+  - Generic over any `Write` implementation
+
+- **`output/output_manager.rs`** - Manages output:
+  - Welcome messages
+  - Error handling
+  - Unknown command messages
+
+- **`formatters/task_formatter.rs`** - Task formatting:
+  - Task display with status symbols, priorities, descriptions
+  - Category and due date display
+  - Dynamic ID width calculation for alignment
+  - Reusable formatting functions
+
+- **`formatters/message_formatter.rs`** - Message formatting:
+  - Success, error, and warning messages with icons
+  - Section titles and separators
+  - Help text formatting (commands, labels, sub-info)
+
+#### 3. Controller Layer (`controller/`)
+
+Coordinates between UI and model layers.
+
+- **`todo_manager.rs`** - Top-level application manager (`TodoManager`):
+  - Coordinates specialized command controllers
+  - Processes commands by delegating to the registry
+  - Manages the main application loop and I/O
+
+- **`command_controller_registry.rs`** - Command routing:
+  - Routes commands to appropriate controller
+  - Manages controller lifecycle
+  - Supports debug mode toggling
+
+- **`task_command/`** - Task command controllers:
+  - Add, remove, complete, uncomplete, toggle tasks
+  - Set priority, category, due date
+  - Edit task descriptions
+  - List, search, and view statistics
+  - Bulk operations support
+
+- **`general_command/`** - General command controllers:
+  - Help command
+  - Quit command
+  - Debug mode toggle
+
+- **`debug_command/`** - Debug command controllers:
+  - Generate random tasks
+  - Clear all tasks
+  - Isolated from production code
+
+#### 4. Persistence Layer (`persistence/`)
+
+Handles data storage and retrieval.
+
+- **`todo_list_storage.rs`** - JSON persistence:
+  - Save TodoList to JSON file
+  - Load TodoList from JSON file
+  - Auto-create directories if needed
+
+### Design Principles
+
+1. **Separation of Concerns**: Each layer has a specific responsibility
+   - Models: Business logic and data
+   - UI: User interaction
+   - Controller: Coordination
+   - Persistence: Data storage
+
+2. **One Type Per File**: Each struct/enum has its own file for clarity
+
+3. **Dependency Flow**:
+   - Controller depends on UI, Models, and Persistence
+   - UI depends on Models (for formatting)
+   - Persistence depends on Models
+   - Models are independent
+
+4. **Testability**:
+   - Each layer can be tested independently
+   - Generic input/output for testing
+   - Integration tests verify full workflows
+
+### Import Paths
+
+When using the library, import from the organized modules:
+
+```rust
+// Models (domain types, business logic)
+use todo_manager::models::{Task, TodoList, Priority, TaskFilter, TaskStatus};
+
+// UI components (input/output)
+use todo_manager::ui::input::FileInputStream;
+use todo_manager::ui::output::FileOutputWriter;
+
+// Controller (application orchestration)
+use todo_manager::controller::TodoManager;
+
+// Persistence
+use todo_manager::persistence::TodoListStorage;
+```
 
 ## Installation and Running
 
@@ -263,59 +463,103 @@ The application includes a **debug mode** for testing and development purposes. 
 
 ### Enabling Debug Mode
 
+To enable debug mode, type:
+
 ```bash
 > debug
+```
+
+You'll see:
+
+```text
 ✓ Debug mode enabled
-Debug commands available:
-  - debug:gen <count>  : Generate N random tasks
-  - debug:clear        : Clear all tasks
-  - debug               : Toggle debug mode
+
+Additional debug commands available:
+
+  debug:gen <count>  - Generate random tasks
+  debug:clear        - Clear all tasks
+  debug              - Disable debug mode
 ```
 
 ### Debug Commands
 
-- **`debug:gen <count>`** - Generates N random tasks with:
-  - Random descriptions from a predefined template list
-  - Random priorities (High, Medium, Low)
-  - ~30% randomly marked as completed
-  - Useful for testing filters, sorting, and UI with realistic data
+#### 1. Generate Random Tasks
 
-- **`debug:clear`** - Removes all tasks from the list
-  - Quick way to reset the application state
-  - Shows count of cleared tasks
+Generate multiple random tasks with random states and priorities:
 
-- **`debug`** - Toggles debug mode on/off
-  - When disabled, debug commands are not available
-  - Prevents accidental use of debug features in normal operation
+```bash
+> debug:gen 10
+```
 
-### Example Debug Session
+This command:
+
+- Creates 10 tasks with random descriptions from a predefined list
+- Assigns random priorities (Low, Medium, High)
+- Randomly completes ~30% of the tasks
+- Maximum limit: 100 tasks per command
+
+**Example output:**
+
+```text
+✓ Generated 10 random tasks
+```
+
+The generated tasks will have:
+
+- Random task descriptions like "Buy groceries #4523", "Fix bug in authentication module #7812"
+- Random priorities (Low ▼, Medium ■, High ▲)
+- Random completion status (~30% completed)
+
+#### 2. Clear All Tasks
+
+Remove all tasks from the list:
+
+```bash
+> debug:clear
+```
+
+**Example output:**
+
+```text
+✓ Cleared 15 tasks
+```
+
+#### 3. Toggle Debug Mode
+
+Disable debug mode to return to normal operation:
 
 ```bash
 > debug
-✓ Debug mode enabled
+```
 
-> debug:gen 5
-✓ Generated 5 random tasks
+**Example output:**
 
-> list
---- All Tasks ---
-1. [✓] ▲ Write documentation
-2. [ ] ■ Fix bug in authentication
-3. [ ] ▼ Update README
-4. [✓] ▲ Deploy to production
-5. [ ] ■ Code review session
------------------
-
-> debug:clear
-✓ Cleared 5 tasks
-
-> debug
+```text
 ✓ Debug mode disabled
 ```
 
+### Security
+
+Debug commands are protected and will only work when debug mode is enabled. If you try to use debug commands without enabling debug mode first:
+
+```bash
+> debug:gen 5
+✗ Debug mode is not enabled. Type 'debug' to enable it.
+```
+
+### Use Cases
+
+Debug mode is useful for:
+
+1. **Quick Testing** - Instantly populate the list with test data
+2. **UI Testing** - Test how the interface handles many tasks
+3. **Filter Testing** - Test filtering with diverse task states and priorities
+4. **Performance Testing** - Generate large numbers of tasks to test performance
+5. **Demo Purposes** - Quickly create a populated list for demonstrations
+
 ### Implementation Details
 
-Debug functionality is isolated in `DebugController` (`controller/debug_controller.rs`), keeping it separate from production code. This makes it easy to:
+Debug functionality is isolated in the `debug_command/` module, keeping it separate from production code. This makes it easy to:
 
 - Test the application with realistic data
 - Verify UI behavior with many tasks
