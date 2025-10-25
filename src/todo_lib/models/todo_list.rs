@@ -306,7 +306,19 @@ impl TodoList {
     /// ```
     pub fn remove_task(&mut self, id: usize) -> Option<Task> {
         if let Some(pos) = self.tasks.iter().position(|task| task.id == id) {
-            Some(self.tasks.remove(pos))
+            let removed_task = self.tasks.remove(pos);
+            
+            // If the removed task is a parent, also remove all its subtasks
+            let subtask_ids: Vec<usize> = self.tasks.iter()
+                .filter(|task| task.get_parent_id() == Some(id))
+                .map(|task| task.id)
+                .collect();
+            
+            for subtask_id in subtask_ids {
+                self.tasks.retain(|task| task.id != subtask_id);
+            }
+            
+            Some(removed_task)
         } else {
             None
         }
