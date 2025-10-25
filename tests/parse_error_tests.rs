@@ -7,10 +7,7 @@ fn test_missing_arguments_error() {
         usage: "add <description>".to_string(),
     };
     assert_eq!(error.message(), "Usage: add <description>");
-    assert_eq!(
-        format!("{}", error),
-        "Usage: add <description>"
-    );
+    assert_eq!(format!("{}", error), "Usage: add <description>");
 }
 
 #[test]
@@ -125,7 +122,7 @@ fn test_parse_error_equality() {
     let error1 = ParseError::InvalidId("Test".to_string());
     let error2 = ParseError::InvalidId("Test".to_string());
     let error3 = ParseError::InvalidId("Different".to_string());
-    
+
     assert_eq!(error1, error2);
     assert_ne!(error1, error3);
 }
@@ -164,7 +161,7 @@ fn test_all_error_variants_display() {
         ParseError::EmptyCommand("cmd".to_string()),
         ParseError::UnknownCommand("unknown".to_string()),
     ];
-    
+
     for error in errors {
         // Each error should have a non-empty message
         assert!(!error.message().is_empty());

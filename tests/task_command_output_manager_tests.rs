@@ -1,9 +1,9 @@
 use chrono::NaiveDate;
-use todo_manager::models::Priority;
-use todo_manager::ui::output::OutputWriter;
 use std::cell::RefCell;
 use std::rc::Rc;
 use todo_manager::controller::task_command::TaskCommandOutputManager;
+use todo_manager::models::Priority;
+use todo_manager::ui::output::OutputWriter;
 
 /// Mock output writer for testing
 struct MockOutputWriter {
@@ -42,7 +42,10 @@ impl OutputWriter for MockOutputWriter {
     }
 }
 
-fn create_test_manager() -> (TaskCommandOutputManager<MockOutputWriter>, Rc<RefCell<MockOutputWriter>>) {
+fn create_test_manager() -> (
+    TaskCommandOutputManager<MockOutputWriter>,
+    Rc<RefCell<MockOutputWriter>>,
+) {
     let writer = Rc::new(RefCell::new(MockOutputWriter::new()));
     let manager = TaskCommandOutputManager::new(writer.clone());
     (manager, writer)
@@ -88,12 +91,21 @@ fn test_show_dependency_removed() {
 fn test_show_dependency_graph_no_deps() {
     let (mut manager, writer) = create_test_manager();
     manager.show_dependency_graph(1, "Main task", false, &[], &[]);
-    
+
     let lines = writer.borrow();
-    assert!(lines.get_lines().iter().any(|l| l.contains("Dependency Graph for Task 1")));
+    assert!(lines
+        .get_lines()
+        .iter()
+        .any(|l| l.contains("Dependency Graph for Task 1")));
     assert!(lines.get_lines().iter().any(|l| l.contains("Main task")));
-    assert!(lines.get_lines().iter().any(|l| l.contains("Dependencies: None")));
-    assert!(lines.get_lines().iter().any(|l| l.contains("Dependents: None")));
+    assert!(lines
+        .get_lines()
+        .iter()
+        .any(|l| l.contains("Dependencies: None")));
+    assert!(lines
+        .get_lines()
+        .iter()
+        .any(|l| l.contains("Dependents: None")));
 }
 
 #[test]
@@ -104,9 +116,12 @@ fn test_show_dependency_graph_with_dependencies() {
         (3, "Dep task 2".to_string(), true),
     ];
     manager.show_dependency_graph(1, "Main task", false, &dependencies, &[]);
-    
+
     let lines = writer.borrow();
-    assert!(lines.get_lines().iter().any(|l| l.contains("Dependencies (2)")));
+    assert!(lines
+        .get_lines()
+        .iter()
+        .any(|l| l.contains("Dependencies (2)")));
     assert!(lines.get_lines().iter().any(|l| l.contains("Dep task 1")));
     assert!(lines.get_lines().iter().any(|l| l.contains("Dep task 2")));
 }
@@ -119,11 +134,20 @@ fn test_show_dependency_graph_with_dependents() {
         (5, "Dependent task 2".to_string(), true),
     ];
     manager.show_dependency_graph(1, "Main task", false, &[], &dependents);
-    
+
     let lines = writer.borrow();
-    assert!(lines.get_lines().iter().any(|l| l.contains("Dependents (2)")));
-    assert!(lines.get_lines().iter().any(|l| l.contains("Dependent task 1")));
-    assert!(lines.get_lines().iter().any(|l| l.contains("Dependent task 2")));
+    assert!(lines
+        .get_lines()
+        .iter()
+        .any(|l| l.contains("Dependents (2)")));
+    assert!(lines
+        .get_lines()
+        .iter()
+        .any(|l| l.contains("Dependent task 1")));
+    assert!(lines
+        .get_lines()
+        .iter()
+        .any(|l| l.contains("Dependent task 2")));
 }
 
 #[test]
@@ -355,5 +379,7 @@ fn test_show_task_edited() {
     let (mut manager, writer) = create_test_manager();
     manager.show_task_edited("Old description", "New description");
     assert!(writer.borrow().contains("updated"));
-    assert!(writer.borrow().contains("Old description") || writer.borrow().contains("New description"));
+    assert!(
+        writer.borrow().contains("Old description") || writer.borrow().contains("New description")
+    );
 }

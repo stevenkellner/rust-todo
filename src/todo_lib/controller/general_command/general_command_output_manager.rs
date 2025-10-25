@@ -100,8 +100,20 @@ impl<O: OutputWriter> GeneralCommandOutputManager<O> {
         self.output_writer
             .borrow_mut()
             .write_line(&MessageFormatter::subinfo(
+                "Sort:",
+                "sort:id, sort:priority, sort:due, sort:category, sort:status",
+            ));
+        self.output_writer
+            .borrow_mut()
+            .write_line(&MessageFormatter::subinfo(
+                "Order:",
+                "--reverse or -r for descending order",
+            ));
+        self.output_writer
+            .borrow_mut()
+            .write_line(&MessageFormatter::subinfo(
                 "Example:",
-                "list pending high category:work",
+                "list pending high category:work sort:priority",
             ));
         self.output_writer.borrow_mut().write_line("");
         self.output_writer

@@ -459,7 +459,7 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 ### 24. Task Sorting
 
-**Status:** Pending  
+**Status:** ✅ Complete  
 **Complexity:** Easy  
 **Description:**
 
@@ -470,14 +470,45 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 - Add `sort` parameter to list command
 - Sort options:
-  - `list --sort id`
-  - `list --sort priority`
-  - `list --sort due`
-  - `list --sort created`
-  - `list --sort category`
+  - `list sort:id`
+  - `list sort:priority`
+  - `list sort:due`
+  - `list sort:category`
+  - `list sort:status`
 - Add `--reverse` flag for descending order
-- Default sort by ID
-- Save preferred sort in config
+- Default sort by ID ascending
+- Combine with filtering: `list pending high sort:priority`
+
+**Implementation Notes:**
+
+- Created `SortBy` enum in `models/task_sort.rs` with variants:
+  - `Id` - Sort by task ID (default)
+  - `Priority` - Sort by priority (High > Medium > Low)
+  - `DueDate` - Sort by due date (earliest first, no due date last)
+  - `Category` - Sort by category name (alphabetically, no category last)
+  - `Status` - Sort by completion status (pending first, completed last)
+- Created `SortOrder` enum with `Ascending` and `Descending` variants
+- Extended `TaskFilter` struct with `sort_by` and `sort_order` fields
+- Extended `FilterBuilder` to parse sort arguments:
+  - Format: `sort:field` (e.g., `sort:priority`, `sort:due`)
+  - Reverse flag: `--reverse`, `--desc`, or `-r` for descending order
+- Updated `get_filtered_tasks()` in `TodoList` to apply sorting after filtering:
+  - Sorts by specified field using custom comparators
+  - Applies sort order (ascending/descending)
+  - Secondary sort by ID for stability
+- Updated help text with sort documentation:
+  - Sort options: sort:id, sort:priority, sort:due, sort:category, sort:status
+  - Order flag: --reverse or -r for descending
+  - Example: `list pending high category:work sort:priority`
+- Added comprehensive test suite in `tests/sorting_tests.rs` (12 tests):
+  - Sort by ID (ascending/descending)
+  - Sort by priority (ascending/descending)
+  - Sort by due date (ascending/descending)
+  - Sort by category (ascending/descending)
+  - Sort by status (ascending/descending)
+  - Default sort behavior
+  - Combined filtering and sorting
+- All 266 tests passing (254 unit + 12 sorting tests)
 
 ---
 

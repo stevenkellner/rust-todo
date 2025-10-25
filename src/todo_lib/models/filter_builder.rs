@@ -1,7 +1,9 @@
 use crate::models::overdue_filter::OverdueFilter;
 use crate::models::priority::Priority;
 use crate::models::task_filter::TaskFilter;
+use crate::models::task_sort::{SortBy, SortOrder};
 use crate::models::task_status::TaskStatus;
+use std::str::FromStr;
 
 /// Builds a TaskFilter from command-line arguments.
 ///
@@ -12,6 +14,8 @@ pub struct FilterBuilder {
     status_set: bool,
     priority_set: bool,
     category_set: bool,
+    sort_by_set: bool,
+    sort_order_set: bool,
 }
 
 impl FilterBuilder {
@@ -22,6 +26,8 @@ impl FilterBuilder {
             status_set: false,
             priority_set: false,
             category_set: false,
+            sort_by_set: false,
+            sort_order_set: false,
         }
     }
 
@@ -70,6 +76,28 @@ impl FilterBuilder {
         self
     }
 
+    /// Attempts to add a sort field.
+    ///
+    /// Returns an error if a sort field was already set.
+    pub fn with_sort_by(mut self, sort_by: SortBy) -> Result<Self, String> {
+        if self.sort_by_set {
+            return Err("Cannot specify multiple sort fields.".to_string());
+        }
+        self.filter = self.filter.with_sort_by(sort_by);
+        self.sort_by_set = true;
+        Ok(self)
+    }
+
+    /// Sets the sort order (doesn't need validation since it can only be set once explicitly).
+    pub fn with_sort_order(mut self, sort_order: SortOrder) -> Result<Self, String> {
+        if self.sort_order_set {
+            return Err("Cannot specify multiple sort orders.".to_string());
+        }
+        self.filter = self.filter.with_sort_order(sort_order);
+        self.sort_order_set = true;
+        Ok(self)
+    }
+
     /// Parses a filter argument and adds it to the builder.
     ///
     /// Returns an error if the argument is invalid or conflicts with existing filters.
@@ -86,6 +114,19 @@ impl FilterBuilder {
             return self.with_category(category);
         }
 
+        // Check for sort option (format: sort:field or --sort field)
+        if let Some(sort_field) = arg_lower.strip_prefix("sort:") {
+            return match SortBy::from_str(sort_field) {
+                Ok(sort_by) => self.with_sort_by(sort_by),
+                Err(err) => Err(err),
+            };
+        }
+
+        // Check for reverse/descending flag
+        if arg_lower == "--reverse" || arg_lower == "--desc" || arg_lower == "-r" {
+            return self.with_sort_order(SortOrder::Descending);
+        }
+
         match arg_lower.as_str() {
             "completed" | "done" => self.with_status(TaskStatus::Completed),
             "pending" | "todo" => self.with_status(TaskStatus::Pending),
@@ -94,7 +135,7 @@ impl FilterBuilder {
             "low" | "l" => self.with_priority(Priority::Low),
             "overdue" => Ok(self.with_overdue()),
             _ => Err(format!(
-                "Unknown filter: '{}'. Valid filters: done, todo, high, medium, low, overdue, category:name",
+                "Unknown filter: '{}'. Valid filters: done, todo, high, medium, low, overdue, category:name, sort:field, --reverse",
                 arg
             )),
         }
@@ -102,11 +143,13 @@ impl FilterBuilder {
 
     /// Builds the final filter.
     ///
-    /// Returns None if no filters were applied (meaning show all tasks).
+    /// Returns None if no filters or sorting were applied (meaning show all tasks with default sort).
     pub fn build(self) -> Option<TaskFilter> {
         if !self.status_set
             && !self.priority_set
             && !self.category_set
+            && !self.sort_by_set
+            && !self.sort_order_set
             && self.filter.overdue == OverdueFilter::All
         {
             None

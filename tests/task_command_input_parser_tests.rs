@@ -1,7 +1,7 @@
+use chrono::NaiveDate;
 use todo_manager::controller::task_command::{TaskCommand, TaskCommandInputParser, TaskSelection};
 use todo_manager::models::priority::Priority;
 use todo_manager::models::recurrence::Recurrence;
-use chrono::NaiveDate;
 
 #[test]
 fn test_parse_priority_command_single_id() {
@@ -66,17 +66,17 @@ fn test_parse_priority_command_invalid_priority() {
 #[test]
 fn test_parse_priority_command_aliases() {
     let parser = TaskCommandInputParser::new();
-    
+
     // Test "pri" alias
     let result = parser.try_parse("pri", &["1", "h"]);
     assert!(result.is_some());
     assert!(result.unwrap().is_ok());
-    
+
     // Test short priority names
     let result = parser.try_parse("priority", &["1", "m"]);
     assert!(result.is_some());
     assert!(result.unwrap().is_ok());
-    
+
     let result = parser.try_parse("priority", &["1", "l"]);
     assert!(result.is_some());
     assert!(result.unwrap().is_ok());
@@ -220,11 +220,11 @@ fn test_parse_set_category_command_missing_args() {
 #[test]
 fn test_parse_set_category_command_aliases() {
     let parser = TaskCommandInputParser::new();
-    
+
     let result = parser.try_parse("category", &["1", "work"]);
     assert!(result.is_some());
     assert!(result.unwrap().is_ok());
-    
+
     let result = parser.try_parse("cat", &["1", "work"]);
     assert!(result.is_some());
     assert!(result.unwrap().is_ok());
@@ -314,11 +314,11 @@ fn test_parse_set_recurring_command_all() {
 #[test]
 fn test_parse_set_recurring_command_aliases() {
     let parser = TaskCommandInputParser::new();
-    
+
     let result = parser.try_parse("recurring", &["1", "daily"]);
     assert!(result.is_some());
     assert!(result.unwrap().is_ok());
-    
+
     let result = parser.try_parse("recur", &["1", "weekly"]);
     assert!(result.is_some());
     assert!(result.unwrap().is_ok());
@@ -366,11 +366,11 @@ fn test_parse_add_dependency_command_invalid_depends_on_id() {
 #[test]
 fn test_parse_add_dependency_command_aliases() {
     let parser = TaskCommandInputParser::new();
-    
+
     let result = parser.try_parse("add-dep", &["2", "1"]);
     assert!(result.is_some());
     assert!(result.unwrap().is_ok());
-    
+
     let result = parser.try_parse("depends-on", &["2", "1"]);
     assert!(result.is_some());
     assert!(result.unwrap().is_ok());
@@ -410,11 +410,11 @@ fn test_parse_remove_dependency_command_invalid_ids() {
 #[test]
 fn test_parse_remove_dependency_command_aliases() {
     let parser = TaskCommandInputParser::new();
-    
+
     let result = parser.try_parse("remove-dep", &["2", "1"]);
     assert!(result.is_some());
     assert!(result.unwrap().is_ok());
-    
+
     let result = parser.try_parse("rm-dep", &["2", "1"]);
     assert!(result.is_some());
     assert!(result.unwrap().is_ok());
@@ -453,19 +453,19 @@ fn test_parse_show_dependency_graph_command_invalid_id() {
 #[test]
 fn test_parse_show_dependency_graph_command_aliases() {
     let parser = TaskCommandInputParser::new();
-    
+
     let result = parser.try_parse("dependencies", &["1"]);
     assert!(result.is_some());
     assert!(result.unwrap().is_ok());
-    
+
     let result = parser.try_parse("deps", &["1"]);
     assert!(result.is_some());
     assert!(result.unwrap().is_ok());
-    
+
     let result = parser.try_parse("dep-graph", &["1"]);
     assert!(result.is_some());
     assert!(result.unwrap().is_ok());
-    
+
     let result = parser.try_parse("dependency-graph", &["1"]);
     assert!(result.is_some());
     assert!(result.unwrap().is_ok());

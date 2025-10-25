@@ -1,5 +1,6 @@
 use super::overdue_filter::OverdueFilter;
 use super::priority::Priority;
+use super::task_sort::{SortBy, SortOrder};
 use super::task_status::TaskStatus;
 
 /// Filter options for listing tasks.
@@ -18,6 +19,12 @@ pub struct TaskFilter {
 
     /// Filter by category (None means all categories)
     pub category: Option<String>,
+
+    /// Sort tasks by this field (None means sort by ID)
+    pub sort_by: Option<SortBy>,
+
+    /// Sort order (None means ascending)
+    pub sort_order: Option<SortOrder>,
 }
 
 impl TaskFilter {
@@ -63,6 +70,8 @@ impl TaskFilter {
             priority,
             overdue,
             category: None,
+            sort_by: None,
+            sort_order: None,
         }
     }
 
@@ -92,6 +101,18 @@ impl TaskFilter {
     /// Sets the category filter.
     pub fn with_category(mut self, category: String) -> Self {
         self.category = Some(category);
+        self
+    }
+
+    /// Sets the sort field.
+    pub fn with_sort_by(mut self, sort_by: SortBy) -> Self {
+        self.sort_by = Some(sort_by);
+        self
+    }
+
+    /// Sets the sort order.
+    pub fn with_sort_order(mut self, sort_order: SortOrder) -> Self {
+        self.sort_order = Some(sort_order);
         self
     }
 }

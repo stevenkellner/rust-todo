@@ -461,7 +461,8 @@ impl TodoList {
     pub fn get_filtered_tasks(&self, filter: &TaskFilter) -> Vec<&Task> {
         let today = chrono::Local::now().date_naive();
 
-        self.tasks
+        let mut tasks: Vec<&Task> = self
+            .tasks
             .iter()
             .filter(|task| {
                 let status_matches = match filter.status {
@@ -492,7 +493,54 @@ impl TodoList {
 
                 status_matches && priority_matches && overdue_matches && category_matches
             })
-            .collect()
+            .collect();
+
+        // Apply sorting if specified
+        use crate::models::task_sort::{SortBy, SortOrder};
+        let sort_by = filter.sort_by.unwrap_or(SortBy::Id);
+        let sort_order = filter.sort_order.unwrap_or(SortOrder::Ascending);
+
+        tasks.sort_by(|a, b| {
+            use std::cmp::Ordering;
+
+            let ordering = match sort_by {
+                SortBy::Id => a.id.cmp(&b.id),
+                SortBy::Priority => {
+                    // High > Medium > Low (reverse natural order for priority)
+                    b.priority.cmp(&a.priority)
+                }
+                SortBy::DueDate => {
+                    // Tasks with due dates come first, sorted by date
+                    // Tasks without due dates come last
+                    match (&a.due_date, &b.due_date) {
+                        (Some(date_a), Some(date_b)) => date_a.cmp(date_b),
+                        (Some(_), None) => Ordering::Less,
+                        (None, Some(_)) => Ordering::Greater,
+                        (None, None) => a.id.cmp(&b.id), // Secondary sort by ID
+                    }
+                }
+                SortBy::Category => {
+                    // Tasks with categories come first, sorted alphabetically
+                    // Tasks without categories come last
+                    match (&a.category, &b.category) {
+                        (Some(cat_a), Some(cat_b)) => cat_a.cmp(cat_b),
+                        (Some(_), None) => Ordering::Less,
+                        (None, Some(_)) => Ordering::Greater,
+                        (None, None) => a.id.cmp(&b.id), // Secondary sort by ID
+                    }
+                }
+                SortBy::Status => {
+                    // Pending tasks first, then completed
+                    let status_a = if a.is_completed() { 1 } else { 0 };
+                    let status_b = if b.is_completed() { 1 } else { 0 };
+                    status_a.cmp(&status_b)
+                }
+            };
+
+            sort_order.apply(ordering)
+        });
+
+        tasks
     }
 
     /// Sets the priority of a task by its ID.
