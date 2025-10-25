@@ -3,6 +3,7 @@ use crate::models::command_controller_result::CommandControllerResult;
 use crate::models::command_controller_result::CommandControllerResultAction;
 use crate::models::todo_list::TodoList;
 use crate::controller::task_command::{TaskCommand, TaskSelection};
+use crate::controller::task_command::recurring_task_handler::RecurringTaskHandler;
 use crate::models::task::TaskWithoutId;
 use crate::models::priority::Priority;
 use crate::models::task_filter::TaskFilter;
@@ -23,15 +24,18 @@ pub struct TaskCommandController<O: OutputWriter> {
     todo_list: Rc<RefCell<TodoList>>,
     input_parser: TaskCommandInputParser,
     output_manager: TaskCommandOutputManager<O>,
+    recurring_task_handler: RecurringTaskHandler,
 }
 
 impl<O: OutputWriter> TaskCommandController<O> {
     /// Creates a new task command handler with a custom output writer.
     pub fn new(todo_list: Rc<RefCell<TodoList>>, output_writer: Rc<RefCell<O>>) -> Self {
+        let recurring_task_handler = RecurringTaskHandler::new(Rc::clone(&todo_list));
         Self {
             todo_list,
             input_parser: TaskCommandInputParser::new(),
             output_manager: TaskCommandOutputManager::new(output_writer),
+            recurring_task_handler,
         }
     }
 
@@ -111,49 +115,8 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Marks a task as completed.
     fn complete_task(&mut self, id: usize) -> CommandControllerResult {
-        // Check if the task is recurring before completing it
-        let is_recurring = self.todo_list.borrow()
-            .get_tasks()
-            .iter()
-            .find(|t| t.id == id)
-            .map(|t| t.is_recurring())
-            .unwrap_or(false);
-        
-        // Store task details before completing (for recurring task recreation)
-        let recurring_task_data = if is_recurring {
-            self.todo_list.borrow()
-                .get_tasks()
-                .iter()
-                .find(|t| t.id == id)
-                .map(|task| {
-                    (
-                        task.description.clone(),
-                        task.priority,
-                        task.category.clone(),
-                        task.parent_id,
-                        task.recurrence,
-                        task.calculate_next_due_date(),
-                    )
-                })
-        } else {
-            None
-        };
-        
-        // Store subtask details before completing (for recurring task subtask recreation)
-        let subtasks_data: Vec<_> = if is_recurring {
-            self.todo_list.borrow()
-                .get_subtasks(id)
-                .iter()
-                .map(|subtask| {
-                    (
-                        subtask.description.clone(),
-                        subtask.priority,
-                    )
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
+        // Collect recurring task data before completing
+        let recurring_data = self.recurring_task_handler.collect_recurring_task_data(id);
         
         // Complete the task
         if let Some(task) = self.todo_list.borrow_mut().complete_task(id) {
@@ -165,31 +128,10 @@ impl<O: OutputWriter> TaskCommandController<O> {
             return CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList);
         }
         
-        // If task was recurring, create a new instance with the next due date
-        if let Some((description, priority, category, parent_id, recurrence, next_due_date)) = recurring_task_data {
-            let mut new_task = crate::models::task::TaskWithoutId::new(description.clone());
-            new_task.priority = priority;
-            new_task.category = category;
-            new_task.parent_id = parent_id;
-            new_task.recurrence = recurrence;
-            new_task.due_date = next_due_date;
-            
-            let new_id = self.todo_list.borrow_mut().add_task(new_task);
-            self.output_manager.show_recurring_task_created(new_id, &description);
-            
-            // Recreate subtasks as pending
-            for (subtask_description, subtask_priority) in subtasks_data {
-                let mut new_subtask = crate::models::task::TaskWithoutId::new(subtask_description);
-                new_subtask.priority = subtask_priority;
-                new_subtask.completed = false; // Ensure subtask is pending
-                
-                // Add subtask and get its ID, releasing the borrow before setting priority
-                let subtask_id = self.todo_list.borrow_mut().add_subtask(new_id, new_subtask.description);
-                if let Some(subtask_id) = subtask_id {
-                    // Set the priority of the newly created subtask
-                    self.todo_list.borrow_mut().set_task_priority(subtask_id, subtask_priority);
-                }
-            }
+        // If task was recurring, recreate it with the next due date
+        if let Some(data) = recurring_data {
+            let new_id = self.recurring_task_handler.recreate_recurring_task(&data);
+            self.output_manager.show_recurring_task_created(new_id, &data.description);
         }
         
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
@@ -210,75 +152,16 @@ impl<O: OutputWriter> TaskCommandController<O> {
     /// Completes multiple tasks by their IDs.
     fn complete_multiple_tasks(&mut self, ids: &[usize]) -> CommandControllerResult {
         // Collect recurring task data before completing
-        // First pass: collect task info (without subtasks) to avoid nested borrows
-        let recurring_task_ids_and_info: Vec<_> = {
-            let todo_list = self.todo_list.borrow();
-            todo_list
-                .get_tasks()
-                .iter()
-                .filter(|t| ids.contains(&t.id) && t.is_recurring())
-                .map(|task| {
-                    (
-                        task.id,
-                        task.description.clone(),
-                        task.priority,
-                        task.category.clone(),
-                        task.parent_id,
-                        task.recurrence,
-                        task.calculate_next_due_date(),
-                    )
-                })
-                .collect()
-        };
-        
-        // Second pass: collect subtasks for each recurring task
-        let recurring_tasks_data: Vec<_> = recurring_task_ids_and_info
-            .into_iter()
-            .map(|(task_id, description, priority, category, parent_id, recurrence, next_due_date)| {
-                let subtasks: Vec<_> = self.todo_list.borrow()
-                    .get_subtasks(task_id)
-                    .iter()
-                    .map(|subtask| {
-                        (
-                            subtask.description.clone(),
-                            subtask.priority,
-                        )
-                    })
-                    .collect();
-                
-                (description, priority, category, parent_id, recurrence, next_due_date, subtasks)
-            })
-            .collect();
+        let recurring_tasks_data = self.recurring_task_handler.collect_multiple_recurring_tasks(ids);
         
         let (completed_count, not_found) = self.todo_list.borrow_mut().complete_tasks(ids);
         
         self.output_manager.show_multiple_tasks_completed(completed_count, &not_found);
         
-        // Create new instances for recurring tasks
-        for (description, priority, category, parent_id, recurrence, next_due_date, subtasks_data) in recurring_tasks_data {
-            let mut new_task = crate::models::task::TaskWithoutId::new(description.clone());
-            new_task.priority = priority;
-            new_task.category = category;
-            new_task.parent_id = parent_id;
-            new_task.recurrence = recurrence;
-            new_task.due_date = next_due_date;
-            
-            let new_id = self.todo_list.borrow_mut().add_task(new_task);
-            self.output_manager.show_recurring_task_created(new_id, &description);
-            
-            // Recreate subtasks as pending
-            for (subtask_description, subtask_priority) in subtasks_data {
-                let mut new_subtask = crate::models::task::TaskWithoutId::new(subtask_description);
-                new_subtask.priority = subtask_priority;
-                new_subtask.completed = false; // Ensure subtask is pending
-                
-                // Add subtask and get its ID, releasing the borrow before setting priority
-                let subtask_id = self.todo_list.borrow_mut().add_subtask(new_id, new_subtask.description);
-                if let Some(subtask_id) = subtask_id {
-                    // Set the priority of the newly created subtask
-                    self.todo_list.borrow_mut().set_task_priority(subtask_id, subtask_priority);
-                }
-            }
+        // Recreate recurring tasks
+        for data in &recurring_tasks_data {
+            let new_id = self.recurring_task_handler.recreate_recurring_task(data);
+            self.output_manager.show_recurring_task_created(new_id, &data.description);
         }
         
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
@@ -287,75 +170,16 @@ impl<O: OutputWriter> TaskCommandController<O> {
     /// Completes all tasks.
     fn complete_all_tasks(&mut self) -> CommandControllerResult {
         // Collect recurring task data before completing
-        // First pass: collect task info (without subtasks) to avoid nested borrows
-        let recurring_task_ids_and_info: Vec<_> = {
-            let todo_list = self.todo_list.borrow();
-            todo_list
-                .get_tasks()
-                .iter()
-                .filter(|t| !t.is_completed() && t.is_recurring())
-                .map(|task| {
-                    (
-                        task.id,
-                        task.description.clone(),
-                        task.priority,
-                        task.category.clone(),
-                        task.parent_id,
-                        task.recurrence,
-                        task.calculate_next_due_date(),
-                    )
-                })
-                .collect()
-        };
-        
-        // Second pass: collect subtasks for each recurring task
-        let recurring_tasks_data: Vec<_> = recurring_task_ids_and_info
-            .into_iter()
-            .map(|(task_id, description, priority, category, parent_id, recurrence, next_due_date)| {
-                let subtasks: Vec<_> = self.todo_list.borrow()
-                    .get_subtasks(task_id)
-                    .iter()
-                    .map(|subtask| {
-                        (
-                            subtask.description.clone(),
-                            subtask.priority,
-                        )
-                    })
-                    .collect();
-                
-                (description, priority, category, parent_id, recurrence, next_due_date, subtasks)
-            })
-            .collect();
+        let recurring_tasks_data = self.recurring_task_handler.collect_all_pending_recurring_tasks();
         
         let count = self.todo_list.borrow_mut().complete_all_tasks();
         
         self.output_manager.show_all_tasks_completed(count);
         
-        // Create new instances for recurring tasks
-        for (description, priority, category, parent_id, recurrence, next_due_date, subtasks_data) in recurring_tasks_data {
-            let mut new_task = crate::models::task::TaskWithoutId::new(description.clone());
-            new_task.priority = priority;
-            new_task.category = category;
-            new_task.parent_id = parent_id;
-            new_task.recurrence = recurrence;
-            new_task.due_date = next_due_date;
-            
-            let new_id = self.todo_list.borrow_mut().add_task(new_task);
-            self.output_manager.show_recurring_task_created(new_id, &description);
-            
-            // Recreate subtasks as pending
-            for (subtask_description, subtask_priority) in subtasks_data {
-                let mut new_subtask = crate::models::task::TaskWithoutId::new(subtask_description);
-                new_subtask.priority = subtask_priority;
-                new_subtask.completed = false; // Ensure subtask is pending
-                
-                // Add subtask and get its ID, releasing the borrow before setting priority
-                let subtask_id = self.todo_list.borrow_mut().add_subtask(new_id, new_subtask.description);
-                if let Some(subtask_id) = subtask_id {
-                    // Set the priority of the newly created subtask
-                    self.todo_list.borrow_mut().set_task_priority(subtask_id, subtask_priority);
-                }
-            }
+        // Recreate recurring tasks
+        for data in &recurring_tasks_data {
+            let new_id = self.recurring_task_handler.recreate_recurring_task(data);
+            self.output_manager.show_recurring_task_created(new_id, &data.description);
         }
         
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
