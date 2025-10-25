@@ -28,6 +28,8 @@ pub struct TaskWithoutId {
     pub due_date: Option<NaiveDate>,
     /// The optional category/tag for the task
     pub category: Option<String>,
+    /// The optional parent task ID for subtasks
+    pub parent_id: Option<usize>,
 }
 
 impl TaskWithoutId {
@@ -55,6 +57,7 @@ impl TaskWithoutId {
             priority: Priority::default(),
             due_date: None,
             category: None,
+            parent_id: None,
         }
     }
 
@@ -82,6 +85,7 @@ impl TaskWithoutId {
             priority: self.priority,
             due_date: self.due_date,
             category: self.category,
+            parent_id: self.parent_id,
         }
     }
 }
@@ -114,6 +118,8 @@ pub struct Task {
     pub due_date: Option<NaiveDate>,
     /// The optional category/tag for the task
     pub category: Option<String>,
+    /// The optional parent task ID for subtasks
+    pub parent_id: Option<usize>,
 }
 
 impl Task {
@@ -144,6 +150,7 @@ impl Task {
             priority: Priority::default(),
             due_date: None,
             category: None,
+            parent_id: None,
         }
     }
 
@@ -336,6 +343,84 @@ impl Task {
     /// ```
     pub fn get_category(&self) -> Option<&String> {
         self.category.as_ref()
+    }
+
+    /// Sets the parent task ID, making this task a subtask.
+    ///
+    /// # Arguments
+    ///
+    /// * `parent_id` - The ID of the parent task
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    ///
+    /// let mut task = Task::new(2, "Subtask".to_string());
+    /// task.set_parent_id(1);
+    /// assert_eq!(task.get_parent_id(), Some(1));
+    /// assert!(task.is_subtask());
+    /// ```
+    pub fn set_parent_id(&mut self, parent_id: usize) {
+        self.parent_id = Some(parent_id);
+    }
+
+    /// Gets the parent task ID if this is a subtask.
+    ///
+    /// # Returns
+    ///
+    /// The parent task ID, or None if this is not a subtask
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    ///
+    /// let task = Task::new(1, "Main task".to_string());
+    /// assert_eq!(task.get_parent_id(), None);
+    /// ```
+    pub fn get_parent_id(&self) -> Option<usize> {
+        self.parent_id
+    }
+
+    /// Checks if this task is a subtask (has a parent).
+    ///
+    /// # Returns
+    ///
+    /// `true` if this task has a parent, `false` otherwise
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    ///
+    /// let mut main_task = Task::new(1, "Main task".to_string());
+    /// assert!(!main_task.is_subtask());
+    ///
+    /// let mut subtask = Task::new(2, "Subtask".to_string());
+    /// subtask.set_parent_id(1);
+    /// assert!(subtask.is_subtask());
+    /// ```
+    pub fn is_subtask(&self) -> bool {
+        self.parent_id.is_some()
+    }
+
+    /// Clears the parent task ID, making this task a top-level task.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    ///
+    /// let mut task = Task::new(2, "Task".to_string());
+    /// task.set_parent_id(1);
+    /// assert!(task.is_subtask());
+    ///
+    /// task.clear_parent();
+    /// assert!(!task.is_subtask());
+    /// ```
+    pub fn clear_parent(&mut self) {
+        self.parent_id = None;
     }
 }
 

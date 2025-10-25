@@ -12,6 +12,9 @@ pub enum TaskCommand {
     /// Add a new task with the given description
     Add(String),
     
+    /// Add a subtask to a parent task
+    AddSubtask(usize, String),
+    
     /// List tasks with an optional filter
     List(Option<TaskFilter>),
     

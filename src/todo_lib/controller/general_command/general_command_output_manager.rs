@@ -39,6 +39,9 @@ impl<O: OutputWriter> GeneralCommandOutputManager<O> {
         self.output_writer.borrow_mut().write_line("");
         self.output_writer.borrow_mut().write_line(&MessageFormatter::command("add <description>", "Add a new task"));
         self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("add-subtask <parent_id> <description>", "Add a subtask to a parent task"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Alias:", "subtask"));
+        self.output_writer.borrow_mut().write_line("");
         self.output_writer.borrow_mut().write_line(&MessageFormatter::command("list [status] [priority]", "List tasks (filters can be combined)"));
         self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Status:", "completed/done, pending/todo, overdue"));
         self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Priority:", "high/h, medium/med/m, low/l"));

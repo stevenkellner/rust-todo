@@ -138,8 +138,8 @@ mod tests {
     
     #[test]
     fn test_calculate_max_id_width_single_digit() {
-        let task1 = Task { id: 1, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None };
-        let task2 = Task { id: 5, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None };
+        let task1 = Task { id: 1, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None, parent_id: None };
+        let task2 = Task { id: 5, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None, parent_id: None };
         let tasks = vec![&task1, &task2];
         
         assert_eq!(TaskFormatter::calculate_max_id_width(&tasks), 1);
@@ -147,9 +147,9 @@ mod tests {
     
     #[test]
     fn test_calculate_max_id_width_mixed() {
-        let task1 = Task { id: 9, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None };
-        let task2 = Task { id: 10, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None };
-        let task3 = Task { id: 100, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None };
+        let task1 = Task { id: 9, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None, parent_id: None };
+        let task2 = Task { id: 10, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None, parent_id: None };
+        let task3 = Task { id: 100, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None, parent_id: None };
         let tasks = vec![&task1, &task2, &task3];
         
         assert_eq!(TaskFormatter::calculate_max_id_width(&tasks), 3);

@@ -29,6 +29,11 @@ impl<O: OutputWriter> TaskCommandOutputManager<O> {
         self.output_writer.borrow_mut().show_success(&format!("Task added with ID {}: '{}'", id, description));
     }
 
+    /// Displays a success message after adding a subtask.
+    pub fn show_subtask_added(&mut self, subtask_id: usize, parent_id: usize, description: &str) {
+        self.output_writer.borrow_mut().show_success(&format!("Subtask added with ID {} under parent task {}: '{}'", subtask_id, parent_id, description));
+    }
+
     /// Displays a success message after removing a task.
     pub fn show_task_removed(&mut self, description: &str) {
         self.output_writer.borrow_mut().show_success(&format!("Task removed: '{}'", description));
@@ -376,6 +381,47 @@ impl<O: OutputWriter> TaskCommandOutputManager<O> {
         }
 
         self.show_task_list_internal("All Tasks", tasks.iter().collect());
+    }
+
+    /// Displays all tasks hierarchically with subtasks indented under their parents.
+    pub fn show_all_tasks_hierarchical(&mut self, todo_list: &TodoList) {
+        let tasks = todo_list.get_tasks();
+        
+        if tasks.is_empty() {
+            self.output_writer.borrow_mut().write_line(&MessageFormatter::warning("No tasks found. Use 'add <description>' to create a task."));
+            return;
+        }
+
+        let max_id_width = TaskFormatter::calculate_max_id_width(&tasks.iter().collect::<Vec<_>>());
+        
+        self.output_writer.borrow_mut().write_line(&format!("\n{}", MessageFormatter::section_title("All Tasks")));
+        
+        // Display only top-level tasks (tasks without a parent)
+        for task in tasks {
+            if !task.is_subtask() {
+                // Display parent task
+                let formatted_task = TaskFormatter::format_task(task, max_id_width);
+                
+                // Add subtask progress if task has subtasks
+                let subtask_count = todo_list.get_subtask_count(task.id);
+                if subtask_count > 0 {
+                    let completed_count = todo_list.get_completed_subtask_count(task.id);
+                    let progress = format!(" ({}/{} subtasks)", completed_count, subtask_count).bright_cyan();
+                    self.output_writer.borrow_mut().write_line(&format!("{}{}", formatted_task, progress));
+                } else {
+                    self.output_writer.borrow_mut().write_line(&formatted_task);
+                }
+                
+                // Display subtasks indented
+                let subtasks = todo_list.get_subtasks(task.id);
+                for subtask in subtasks {
+                    let formatted_subtask = TaskFormatter::format_task(subtask, max_id_width);
+                    self.output_writer.borrow_mut().write_line(&format!("  ↳ {}", formatted_subtask));
+                }
+            }
+        }
+        
+        self.output_writer.borrow_mut().write_line(&format!("{}\n", MessageFormatter::separator(18)));
     }
 
     /// Displays a list of completed tasks.

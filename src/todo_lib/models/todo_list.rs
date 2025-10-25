@@ -90,6 +90,48 @@ impl TodoList {
         task_id
     }
 
+    /// Adds a new subtask under a parent task.
+    ///
+    /// # Arguments
+    ///
+    /// * `parent_id` - The ID of the parent task
+    /// * `description` - The description for the new subtask
+    ///
+    /// # Returns
+    ///
+    /// * `Some(usize)` - The ID of the newly created subtask if parent exists
+    /// * `None` - If the parent task doesn't exist
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// let parent_id = list.add_task(TaskWithoutId::new("Main task".to_string()));
+    /// 
+    /// let subtask_id = list.add_subtask(parent_id, "Subtask 1".to_string());
+    /// assert!(subtask_id.is_some());
+    /// 
+    /// let invalid = list.add_subtask(999, "Invalid".to_string());
+    /// assert!(invalid.is_none());
+    /// ```
+    pub fn add_subtask(&mut self, parent_id: usize, description: String) -> Option<usize> {
+        // Check if parent exists
+        if !self.tasks.iter().any(|t| t.id == parent_id) {
+            return None;
+        }
+
+        let mut new_task = TaskWithoutId::new(description);
+        new_task.parent_id = Some(parent_id);
+        let task = new_task.to_task(self.next_id);
+        let task_id = task.id;
+        self.tasks.push(task);
+        self.next_id += 1;
+        Some(task_id)
+    }
+
     /// Returns a reference to the vector of all tasks.
     ///
     /// # Examples
@@ -106,6 +148,98 @@ impl TodoList {
     /// ```
     pub fn get_tasks(&self) -> &Vec<Task> {
         &self.tasks
+    }
+
+    /// Returns all subtasks of a given parent task.
+    ///
+    /// # Arguments
+    ///
+    /// * `parent_id` - The ID of the parent task
+    ///
+    /// # Returns
+    ///
+    /// A vector of references to subtasks
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// let parent_id = list.add_task(TaskWithoutId::new("Main task".to_string()));
+    /// list.add_subtask(parent_id, "Subtask 1".to_string());
+    /// list.add_subtask(parent_id, "Subtask 2".to_string());
+    /// 
+    /// let subtasks = list.get_subtasks(parent_id);
+    /// assert_eq!(subtasks.len(), 2);
+    /// ```
+    pub fn get_subtasks(&self, parent_id: usize) -> Vec<&Task> {
+        self.tasks
+            .iter()
+            .filter(|t| t.parent_id == Some(parent_id))
+            .collect()
+    }
+
+    /// Returns the total count of subtasks for a given parent task.
+    ///
+    /// # Arguments
+    ///
+    /// * `parent_id` - The ID of the parent task
+    ///
+    /// # Returns
+    ///
+    /// The number of subtasks
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// let parent_id = list.add_task(TaskWithoutId::new("Main task".to_string()));
+    /// list.add_subtask(parent_id, "Subtask 1".to_string());
+    /// list.add_subtask(parent_id, "Subtask 2".to_string());
+    /// 
+    /// assert_eq!(list.get_subtask_count(parent_id), 2);
+    /// ```
+    pub fn get_subtask_count(&self, parent_id: usize) -> usize {
+        self.tasks
+            .iter()
+            .filter(|t| t.parent_id == Some(parent_id))
+            .count()
+    }
+
+    /// Returns the count of completed subtasks for a given parent task.
+    ///
+    /// # Arguments
+    ///
+    /// * `parent_id` - The ID of the parent task
+    ///
+    /// # Returns
+    ///
+    /// The number of completed subtasks
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// let parent_id = list.add_task(TaskWithoutId::new("Main task".to_string()));
+    /// let sub1 = list.add_subtask(parent_id, "Subtask 1".to_string()).unwrap();
+    /// let sub2 = list.add_subtask(parent_id, "Subtask 2".to_string()).unwrap();
+    /// 
+    /// list.complete_task(sub1);
+    /// assert_eq!(list.get_completed_subtask_count(parent_id), 1);
+    /// ```
+    pub fn get_completed_subtask_count(&self, parent_id: usize) -> usize {
+        self.tasks
+            .iter()
+            .filter(|t| t.parent_id == Some(parent_id) && t.completed)
+            .count()
     }
 
     /// Returns `true` if the todo list contains no tasks.

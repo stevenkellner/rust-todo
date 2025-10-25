@@ -5,6 +5,7 @@ use rand::Rng;
 /// Generates random tasks for testing purposes
 pub struct RandomTaskGenerator {
     task_templates: Vec<&'static str>,
+    subtask_templates: Vec<&'static str>,
     priorities: Vec<Priority>,
     categories: Vec<&'static str>,
 }
@@ -35,6 +36,28 @@ impl RandomTaskGenerator {
                 "Backup database",
                 "Configure CI/CD pipeline",
             ],
+            subtask_templates: vec![
+                "Research requirements",
+                "Create outline",
+                "Draft initial version",
+                "Review and revise",
+                "Get feedback",
+                "Make final changes",
+                "Test thoroughly",
+                "Update documentation",
+                "Notify stakeholders",
+                "Archive old files",
+                "Create backup",
+                "Verify results",
+                "Clean up code",
+                "Add error handling",
+                "Write tests",
+                "Update changelog",
+                "Deploy changes",
+                "Monitor for issues",
+                "Document decisions",
+                "Schedule follow-up",
+            ],
             priorities: vec![Priority::High, Priority::Medium, Priority::Low],
             categories: vec![
                 "work",
@@ -56,6 +79,13 @@ impl RandomTaskGenerator {
         let mut rng = rand::rng();
         let template_idx = rng.random_range(0..self.task_templates.len());
         self.task_templates[template_idx].to_string()
+    }
+
+    /// Generates a random subtask description
+    pub fn generate_subtask_description(&self) -> String {
+        let mut rng = rand::rng();
+        let template_idx = rng.random_range(0..self.subtask_templates.len());
+        self.subtask_templates[template_idx].to_string()
     }
 
     /// Generates a random priority
@@ -137,6 +167,7 @@ impl RandomTaskGenerator {
             completed,
             due_date,
             category,
+            parent_id: None,
         }
     }
 
@@ -153,6 +184,51 @@ impl RandomTaskGenerator {
         (0..count)
             .map(|_| self.generate_single_task(0.3, 0.6, 0.7))
             .collect()
+    }
+
+    /// Generates a random number of subtasks for a given parent
+    ///
+    /// # Arguments
+    ///
+    /// * `subtask_probability` - Probability of generating subtasks (0.0 to 1.0)
+    ///
+    /// # Returns
+    ///
+    /// Number of subtasks to generate (0-5)
+    pub fn generate_subtask_count(&self, subtask_probability: f64) -> usize {
+        let mut rng = rand::rng();
+        if rng.random_bool(subtask_probability) {
+            rng.random_range(1..6) // 1 to 5 subtasks
+        } else {
+            0
+        }
+    }
+
+    /// Generates a single subtask for a parent task
+    ///
+    /// # Arguments
+    ///
+    /// * `complete_probability` - Probability of marking subtask as completed
+    ///
+    /// # Returns
+    ///
+    /// A `TaskWithoutId` configured as a subtask (parent_id will be set by caller)
+    pub fn generate_single_subtask(&self, complete_probability: f64) -> TaskWithoutId {
+        let mut rng = rand::rng();
+        
+        let description = self.generate_subtask_description();
+        let priority = self.generate_priority();
+        let completed = rng.random_bool(complete_probability);
+        
+        // Subtasks typically don't have due dates or categories - they inherit from parent
+        TaskWithoutId {
+            description,
+            priority,
+            completed,
+            due_date: None,
+            category: None,
+            parent_id: None, // Will be set when added to TodoList
+        }
     }
 
     /// Generates random tasks (legacy method for backward compatibility)
@@ -243,4 +319,48 @@ mod tests {
         assert!(matches!(priority, Priority::High | Priority::Medium | Priority::Low));
     }
 
+    #[test]
+    fn test_generate_subtask_description() {
+        let generator = RandomTaskGenerator::new();
+        
+        let description = generator.generate_subtask_description();
+        
+        assert!(!description.is_empty());
+        assert!(generator.subtask_templates.contains(&description.as_str()));
+    }
+
+    #[test]
+    fn test_generate_subtask_count_zero_probability() {
+        let generator = RandomTaskGenerator::new();
+        
+        // With 0.0 probability, should always return 0
+        let count = generator.generate_subtask_count(0.0);
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_generate_subtask_count_full_probability() {
+        let generator = RandomTaskGenerator::new();
+        
+        // With 1.0 probability, should return between 1 and 5
+        let count = generator.generate_subtask_count(1.0);
+        assert!((1..=5).contains(&count));
+    }
+
+    #[test]
+    fn test_generate_single_subtask() {
+        let generator = RandomTaskGenerator::new();
+        
+        let subtask = generator.generate_single_subtask(0.5);
+        
+        assert!(!subtask.description.is_empty());
+        assert!(matches!(subtask.priority, Priority::High | Priority::Medium | Priority::Low));
+        // Subtasks should not have due dates or categories
+        assert!(subtask.due_date.is_none());
+        assert!(subtask.category.is_none());
+        // parent_id should be None initially (will be set by TodoList.add_subtask)
+        assert!(subtask.parent_id.is_none());
+    }
+
 }
+

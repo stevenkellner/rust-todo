@@ -210,3 +210,104 @@ fn test_task_status_symbols() {
     task.toggle_completion();
     assert_eq!(task.get_status_symbol(), "✓");
 }
+
+/// Test subtask functionality
+#[test]
+fn test_subtask_workflow() {
+    let mut todo_list = TodoList::new();
+    
+    // Add a parent task
+    let parent_id = todo_list.add_task(TaskWithoutId::new("Complete project".to_string()));
+    assert_eq!(parent_id, 1);
+    
+    // Add subtasks
+    let subtask1_id = todo_list.add_subtask(parent_id, "Write code".to_string());
+    assert_eq!(subtask1_id, Some(2));
+    
+    let subtask2_id = todo_list.add_subtask(parent_id, "Write tests".to_string());
+    assert_eq!(subtask2_id, Some(3));
+    
+    let subtask3_id = todo_list.add_subtask(parent_id, "Write documentation".to_string());
+    assert_eq!(subtask3_id, Some(4));
+    
+    // Test subtask count
+    assert_eq!(todo_list.get_subtask_count(parent_id), 3);
+    
+    // Test completed subtask count (initially 0)
+    assert_eq!(todo_list.get_completed_subtask_count(parent_id), 0);
+    
+    // Complete one subtask
+    todo_list.toggle_task(subtask1_id.unwrap());
+    assert_eq!(todo_list.get_completed_subtask_count(parent_id), 1);
+    
+    // Complete another subtask
+    todo_list.toggle_task(subtask2_id.unwrap());
+    assert_eq!(todo_list.get_completed_subtask_count(parent_id), 2);
+    
+    // Get all subtasks
+    let subtasks = todo_list.get_subtasks(parent_id);
+    assert_eq!(subtasks.len(), 3);
+    assert_eq!(subtasks[0].description, "Write code");
+    assert_eq!(subtasks[1].description, "Write tests");
+    assert_eq!(subtasks[2].description, "Write documentation");
+    
+    // Verify subtasks have correct parent_id
+    for subtask in &subtasks {
+        assert_eq!(subtask.get_parent_id(), Some(parent_id));
+        assert!(subtask.is_subtask());
+    }
+    
+    // Verify parent task is not a subtask
+    let parent_task = todo_list.get_tasks().iter().find(|t| t.id == parent_id).unwrap();
+    assert!(!parent_task.is_subtask());
+    assert_eq!(parent_task.get_parent_id(), None);
+}
+
+/// Test adding subtask to non-existent parent
+#[test]
+fn test_add_subtask_invalid_parent() {
+    let mut todo_list = TodoList::new();
+    
+    // Try to add subtask to non-existent parent
+    let result = todo_list.add_subtask(999, "Invalid subtask".to_string());
+    assert_eq!(result, None);
+}
+
+/// Test subtask hierarchy with multiple parents
+#[test]
+fn test_multiple_parent_subtasks() {
+    let mut todo_list = TodoList::new();
+    
+    // Add two parent tasks
+    let parent1_id = todo_list.add_task(TaskWithoutId::new("Project A".to_string()));
+    let parent2_id = todo_list.add_task(TaskWithoutId::new("Project B".to_string()));
+    
+    // Add subtasks to first parent
+    todo_list.add_subtask(parent1_id, "Task A1".to_string());
+    todo_list.add_subtask(parent1_id, "Task A2".to_string());
+    
+    // Add subtasks to second parent
+    todo_list.add_subtask(parent2_id, "Task B1".to_string());
+    todo_list.add_subtask(parent2_id, "Task B2".to_string());
+    todo_list.add_subtask(parent2_id, "Task B3".to_string());
+    
+    // Verify counts
+    assert_eq!(todo_list.get_subtask_count(parent1_id), 2);
+    assert_eq!(todo_list.get_subtask_count(parent2_id), 3);
+    
+    // Verify subtask retrieval
+    let parent1_subtasks = todo_list.get_subtasks(parent1_id);
+    let parent2_subtasks = todo_list.get_subtasks(parent2_id);
+    
+    assert_eq!(parent1_subtasks.len(), 2);
+    assert_eq!(parent2_subtasks.len(), 3);
+    
+    // Verify subtasks belong to correct parent
+    for subtask in parent1_subtasks {
+        assert_eq!(subtask.get_parent_id(), Some(parent1_id));
+    }
+    
+    for subtask in parent2_subtasks {
+        assert_eq!(subtask.get_parent_id(), Some(parent2_id));
+    }
+}

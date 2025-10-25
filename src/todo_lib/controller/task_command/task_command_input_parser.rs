@@ -29,6 +29,7 @@ impl TaskCommandInputParser {
     pub fn try_parse(&self, command: &str, args: &[&str]) -> Option<Result<TaskCommand, ParseError>> {
         match command {
             "add" => Some(self.parse_add_command(args)),
+            "add-subtask" | "subtask" => Some(self.parse_add_subtask_command(args)),
             "list" => Some(self.parse_list_command(args)),
             "remove" | "delete" | "rm" => Some(self.parse_remove_command(args)),
             "complete" | "done" => Some(self.parse_complete_command(args)),
@@ -60,6 +61,37 @@ impl TaskCommandInputParser {
                 Ok(TaskCommand::Add(description))
             }
         }
+    }
+
+    /// Parses the 'add-subtask' command and validates parent ID and description.
+    fn parse_add_subtask_command(&self, args: &[&str]) -> Result<TaskCommand, ParseError> {
+        if args.is_empty() {
+            return Err(ParseError::MissingArguments { 
+                command: "add-subtask".to_string(), 
+                usage: "add-subtask <parent_id> <subtask description>".to_string() 
+            });
+        }
+        
+        if args.len() < 2 {
+            return Err(ParseError::MissingArguments { 
+                command: "add-subtask".to_string(), 
+                usage: "add-subtask <parent_id> <subtask description>".to_string() 
+            });
+        }
+        
+        let parent_id = args[0].parse::<usize>()
+            .map_err(|_| ParseError::InvalidFormat {
+                field: "parent_id".to_string(),
+                expected: "positive integer".to_string(),
+                actual: args[0].to_string(),
+            })?;
+        
+        let description = args[1..].join(" ");
+        if description.is_empty() {
+            return Err(ParseError::EmptyInput("Subtask description".to_string()));
+        }
+        
+        Ok(TaskCommand::AddSubtask(parent_id, description))
     }
 
     /// Parses the 'list' command with optional filter arguments.

@@ -39,6 +39,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
     fn handle_command(&mut self, command: &TaskCommand) -> CommandControllerResult {
         match command {
             TaskCommand::Add(description) => self.add_task(description),
+            TaskCommand::AddSubtask(parent_id, description) => self.add_subtask(*parent_id, description),
             TaskCommand::List(filter) => self.list_tasks(filter),
             TaskCommand::Remove(selection) => self.handle_remove(selection),
             TaskCommand::Complete(selection) => self.handle_complete(selection),
@@ -61,11 +62,24 @@ impl<O: OutputWriter> TaskCommandController<O> {
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
     }
 
+    fn add_subtask(&mut self, parent_id: usize, description: &str) -> CommandControllerResult {
+        match self.todo_list.borrow_mut().add_subtask(parent_id, description.to_string()) {
+            Some(subtask_id) => {
+                self.output_manager.show_subtask_added(subtask_id, parent_id, description);
+                CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+            }
+            None => {
+                self.output_manager.show_task_not_found(parent_id);
+                CommandControllerResult::default()
+            }
+        }
+    }
+
 
     /// Lists tasks with optional filtering
     fn list_tasks(&mut self, filter: &Option<TaskFilter>) -> CommandControllerResult {
         match filter {
-            None => self.output_manager.show_all_tasks(self.todo_list.borrow().get_tasks()),
+            None => self.output_manager.show_all_tasks_hierarchical(&self.todo_list.borrow()),
             Some(task_filter) => {
                 let todo_list_ref = self.todo_list.borrow();
                 let filtered_tasks = todo_list_ref.get_filtered_tasks(task_filter);

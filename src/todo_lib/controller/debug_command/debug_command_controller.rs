@@ -50,12 +50,34 @@ impl<O: OutputWriter> DebugCommandController<O> {
         // Generate random tasks
         let new_tasks = self.task_generator.generate(count);
         
+        let mut total_tasks = 0;
+        let mut total_subtasks = 0;
+        
         // Add each generated task to the todo list
         for new_task in new_tasks {
-            let _ = self.todo_list.borrow_mut().add_task(new_task);
+            let parent_id = self.todo_list.borrow_mut().add_task(new_task);
+            total_tasks += 1;
+            
+            // Generate subtasks for some tasks (50% probability)
+            let subtask_count = self.task_generator.generate_subtask_count(0.5);
+            for _ in 0..subtask_count {
+                let subtask = self.task_generator.generate_single_subtask(0.2);
+                if self.todo_list.borrow_mut().add_subtask(parent_id, subtask.description).is_some() {
+                    total_subtasks += 1;
+                }
+            }
         }
         
-        self.output_manager.show_success(&format!("Generated {} random tasks", count));
+        if total_subtasks > 0 {
+            self.output_manager.show_success(&format!(
+                "Generated {} random tasks with {} subtasks", 
+                total_tasks, 
+                total_subtasks
+            ));
+        } else {
+            self.output_manager.show_success(&format!("Generated {} random tasks", total_tasks));
+        }
+        
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
     }
     
@@ -109,7 +131,9 @@ mod tests {
 
         controller.generate_random_tasks(10);
 
-        assert_eq!(todo_list.borrow().get_tasks().len(), 10);
+        // Should have at least 10 tasks (parents), possibly more with subtasks
+        let total_tasks = todo_list.borrow().get_tasks().len();
+        assert!(total_tasks >= 10, "Expected at least 10 tasks, got {}", total_tasks);
     }
     
     #[test]
