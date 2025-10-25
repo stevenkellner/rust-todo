@@ -47,7 +47,8 @@
 //! let output_writer = FileOutputWriter::new(std::io::stdout());
 //! let mut manager = TodoManager::new(
 //!     Rc::new(RefCell::new(input_stream)),
-//!     Rc::new(RefCell::new(output_writer))
+//!     Rc::new(RefCell::new(output_writer)),
+//!     "tasks.json"
 //! );
 //! manager.run();  // Starts the interactive application
 //! ```
@@ -55,9 +56,11 @@
 // Module declarations
 pub mod controller;
 pub mod models;
+pub mod persistence;
 pub mod ui;
 
 // Re-export commonly used types for convenience
 pub use controller::TodoManager;
 pub use models::{LoopControl, Priority, Task, TaskFilter, TaskStatus, TodoList};
+pub use persistence::TodoListStorage;
 pub use ui::{InputStream, FileInputStream, OutputWriter, FileOutputWriter};

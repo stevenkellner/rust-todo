@@ -1,5 +1,6 @@
 use crate::controller::command_controller::CommandController;
 use crate::models::command_controller_result::CommandControllerResult;
+use crate::models::command_controller_result::CommandControllerResultAction;
 use crate::models::todo_list::TodoList;
 use crate::controller::task_command::TaskCommand;
 use crate::models::task::TaskWithoutId;
@@ -46,29 +47,23 @@ impl<O: OutputWriter> TaskCommandController<O> {
             TaskCommand::SetPriority(id, priority) => self.set_priority(*id, *priority),
             TaskCommand::SetDueDate(id, due_date) => self.set_due_date(*id, *due_date),
             TaskCommand::SetCategory(id, category) => self.set_category(*id, category.clone()),
-            TaskCommand::ListCategories => {
-                self.output_manager.show_categories(&self.todo_list.borrow());
-            }
+            TaskCommand::ListCategories => self.list_categories(),
             TaskCommand::Edit(id, new_description) => self.edit_task(*id, new_description),
-            TaskCommand::Search(keyword) => {
-                self.output_manager.show_search_results(&self.todo_list.borrow(), keyword);
-            }
-            TaskCommand::ShowStatistics => {
-                self.output_manager.show_statistics(&self.todo_list.borrow());
-            }
+            TaskCommand::Search(keyword) => self.search_tasks(keyword),
+            TaskCommand::ShowStatistics => self.show_statistics(),
         }
-        CommandControllerResult::Continue
     }
 
-    fn add_task(&mut self, description: &str) {
+    fn add_task(&mut self, description: &str) -> CommandControllerResult {
         let new_task = TaskWithoutId::new(description.to_string());
         let task_id = self.todo_list.borrow_mut().add_task(new_task);
         self.output_manager.show_task_added(task_id, description);
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
     }
 
 
     /// Lists tasks with optional filtering
-    fn list_tasks(&mut self, filter: &Option<TaskFilter>) {
+    fn list_tasks(&mut self, filter: &Option<TaskFilter>) -> CommandControllerResult {
         match filter {
             None => self.output_manager.show_all_tasks(self.todo_list.borrow().get_tasks()),
             Some(task_filter) => {
@@ -86,19 +81,21 @@ impl<O: OutputWriter> TaskCommandController<O> {
                 }
             }
         }
+        CommandControllerResult::empty()
     }
 
     /// Removes a task by ID.
-    fn remove_task(&mut self, id: usize) {
+    fn remove_task(&mut self, id: usize) -> CommandControllerResult {
         if let Some(task) = self.todo_list.borrow_mut().remove_task(id) {
             self.output_manager.show_task_removed(&task.description);
         } else {
             self.output_manager.show_task_not_found(id);
         }
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
     }
 
     /// Marks a task as completed.
-    fn complete_task(&mut self, id: usize) {
+    fn complete_task(&mut self, id: usize) -> CommandControllerResult {
         if let Some(task) = self.todo_list.borrow_mut().complete_task(id) {
             if task.is_completed() {
                 self.output_manager.show_task_completed(&task.description);
@@ -106,10 +103,11 @@ impl<O: OutputWriter> TaskCommandController<O> {
         } else {
             self.output_manager.show_task_not_found(id);
         }
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
     }
 
     /// Marks a task as not completed.
-    fn uncomplete_task(&mut self, id: usize) {
+    fn uncomplete_task(&mut self, id: usize) -> CommandControllerResult {
         if let Some(task) = self.todo_list.borrow_mut().uncomplete_task(id) {
             if !task.is_completed() {
                 self.output_manager.show_task_uncompleted(&task.description);
@@ -117,49 +115,59 @@ impl<O: OutputWriter> TaskCommandController<O> {
         } else {
             self.output_manager.show_task_not_found(id);
         }
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
     }
 
     /// Toggles a task's completion status.
-    fn toggle_task(&mut self, id: usize) {
+    fn toggle_task(&mut self, id: usize) -> CommandControllerResult {
         if let Some(task) = self.todo_list.borrow_mut().toggle_task(id) {
             self.output_manager.show_task_toggled(&task.description, task.is_completed());
         } else {
             self.output_manager.show_task_not_found(id);
         }
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
     }
 
     /// Sets the priority of a task.
-    fn set_priority(&mut self, id: usize, priority: Priority) {
+    fn set_priority(&mut self, id: usize, priority: Priority) -> CommandControllerResult {
         if let Some(task) = self.todo_list.borrow_mut().set_task_priority(id, priority) {
             self.output_manager.show_priority_set(&task.description, priority);
         } else {
             self.output_manager.show_task_not_found(id);
         }
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
     }
 
     /// Sets the due date of a task.
-    fn set_due_date(&mut self, id: usize, due_date: Option<NaiveDate>) {
+    fn set_due_date(&mut self, id: usize, due_date: Option<NaiveDate>) -> CommandControllerResult {
         if let Some(task) = self.todo_list.borrow_mut().set_due_date(id, due_date) {
             self.output_manager.show_due_date_set(&task.description, due_date);
         } else {
             self.output_manager.show_task_not_found(id);
         }
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
     }
 
     /// Sets the category of a task.
-    fn set_category(&mut self, id: usize, category: Option<String>) {
+    fn set_category(&mut self, id: usize, category: Option<String>) -> CommandControllerResult {
         if let Some(task) = self.todo_list.borrow_mut().set_task_category(id, category.clone()) {
             self.output_manager.show_category_set(&task.description, category);
         } else {
             self.output_manager.show_task_not_found(id);
         }
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+    }
+
+    fn list_categories(&mut self) -> CommandControllerResult {
+        self.output_manager.show_categories(&self.todo_list.borrow());
+        CommandControllerResult::empty()
     }
 
     /// Edits a task's description.
-    fn edit_task(&mut self, id: usize, new_description: &str) {
+    fn edit_task(&mut self, id: usize, new_description: &str) -> CommandControllerResult {
         if new_description.trim().is_empty() {
             self.output_manager.show_error("Task description cannot be empty.");
-            return;
+            return CommandControllerResult::empty();
         }
 
         // Get the old description before editing
@@ -175,6 +183,17 @@ impl<O: OutputWriter> TaskCommandController<O> {
         } else {
             self.output_manager.show_task_not_found(id);
         }
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+    }
+
+    fn search_tasks(&mut self, keyword: &str) -> CommandControllerResult {
+        self.output_manager.show_search_results(&self.todo_list.borrow(), keyword);
+        CommandControllerResult::empty()
+    }
+
+    fn show_statistics(&mut self) -> CommandControllerResult {
+        self.output_manager.show_statistics(&self.todo_list.borrow());
+        CommandControllerResult::empty()
     }
 }
 

@@ -13,6 +13,7 @@ pub mod task;
 pub mod task_filter;
 pub mod task_status;
 pub mod todo_list;
+pub mod task_statistics;
 
 // Re-export commonly used types
 pub use filter_builder::FilterBuilder;
@@ -22,4 +23,5 @@ pub use priority::Priority;
 pub use task::Task;
 pub use task_filter::TaskFilter;
 pub use task_status::TaskStatus;
-pub use todo_list::{TodoList, TaskStatistics};
+pub use todo_list::TodoList;
+pub use task_statistics::TaskStatistics;

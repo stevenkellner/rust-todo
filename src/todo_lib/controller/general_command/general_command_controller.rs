@@ -1,6 +1,7 @@
 use crate::controller::command_controller::CommandController;
 use crate::controller::general_command::GeneralCommand;
 use crate::models::command_controller_result::CommandControllerResult;
+use crate::models::command_controller_result::CommandControllerResultAction;
 use crate::models::ParseError;
 use crate::controller::general_command::GeneralCommandInputParser;
 use crate::controller::general_command::GeneralCommandOutputManager;
@@ -35,7 +36,7 @@ impl<O: OutputWriter> GeneralCommandController<O> {
             GeneralCommand::Quit => return self.handle_quit(),
             GeneralCommand::ToggleDebug => return self.handle_toggle_debug(),
         }
-        CommandControllerResult::Continue
+        CommandControllerResult::empty()
     }
 
     /// Shows the help message.
@@ -54,7 +55,7 @@ impl<O: OutputWriter> GeneralCommandController<O> {
     /// * `CommandControllerResult::ExitMainLoop` - Always exits after quit command
     fn handle_quit(&mut self) -> CommandControllerResult {
         self.output_manager.show_goodbye();
-        CommandControllerResult::ExitMainLoop
+        CommandControllerResult::with_action(CommandControllerResultAction::ExitMainLoop)
     }
 
     /// Handles the toggle debug command.
@@ -67,10 +68,10 @@ impl<O: OutputWriter> GeneralCommandController<O> {
         self.debug_mode = !self.debug_mode;
         if self.debug_mode {
             self.output_manager.show_debug_enabled();
-            CommandControllerResult::EnableDebugMode
+            CommandControllerResult::with_action(CommandControllerResultAction::EnableDebugMode)
         } else {
             self.output_manager.show_debug_disabled();
-            CommandControllerResult::DisableDebugMode
+            CommandControllerResult::with_action(CommandControllerResultAction::DisableDebugMode)
         }
     }
 }
@@ -117,7 +118,7 @@ mod tests {
         let output_writer = FileOutputWriter::new(buffer);
         let mut handler = GeneralCommandController::new(Rc::new(RefCell::new(output_writer)));
         let result = handler.handle_command(&GeneralCommand::ShowHelp);
-        assert_eq!(result, CommandControllerResult::Continue);
+        assert!(result.actions.is_empty());
     }
 
     #[test]
@@ -126,7 +127,7 @@ mod tests {
         let output_writer = FileOutputWriter::new(buffer);
         let mut handler = GeneralCommandController::new(Rc::new(RefCell::new(output_writer)));
         let result = handler.handle_command(&GeneralCommand::Quit);
-        assert_eq!(result, CommandControllerResult::ExitMainLoop);
+        assert_eq!(result.actions().collect::<Vec<_>>(), vec![&CommandControllerResultAction::ExitMainLoop]);
     }
 
     #[test]
@@ -135,8 +136,8 @@ mod tests {
         let output_writer = FileOutputWriter::new(buffer);
         let mut handler = GeneralCommandController::new(Rc::new(RefCell::new(output_writer)));
         let result = handler.handle_command(&GeneralCommand::ToggleDebug);
-        assert_eq!(result, CommandControllerResult::EnableDebugMode);
+        assert_eq!(result.actions().collect::<Vec<_>>(), vec![&CommandControllerResultAction::EnableDebugMode]);
         let result = handler.handle_command(&GeneralCommand::ToggleDebug);
-        assert_eq!(result, CommandControllerResult::DisableDebugMode);
+        assert_eq!(result.actions().collect::<Vec<_>>(), vec![&CommandControllerResultAction::DisableDebugMode]);
     }
 }

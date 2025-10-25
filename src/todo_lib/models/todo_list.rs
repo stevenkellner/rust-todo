@@ -3,25 +3,8 @@ use super::priority::Priority;
 use super::task_filter::TaskFilter;
 use super::task_status::TaskStatus;
 use super::overdue_filter::OverdueFilter;
-
-/// Statistics about the tasks in a todo list.
-#[derive(Debug, Clone, PartialEq)]
-pub struct TaskStatistics {
-    /// Total number of tasks
-    pub total: usize,
-    /// Number of completed tasks
-    pub completed: usize,
-    /// Number of pending tasks
-    pub pending: usize,
-    /// Completion percentage (0.0 to 100.0)
-    pub completion_percentage: f64,
-    /// Number of high priority tasks
-    pub high_priority: usize,
-    /// Number of medium priority tasks
-    pub medium_priority: usize,
-    /// Number of low priority tasks
-    pub low_priority: usize,
-}
+use super::task_statistics::TaskStatistics;
+use serde::{Serialize, Deserialize};
 
 /// A collection of tasks with methods to manage them.
 ///
@@ -39,6 +22,7 @@ pub struct TaskStatistics {
 /// assert_eq!(list.is_empty(), false);
 /// assert_eq!(list.get_tasks().len(), 1);
 /// ```
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TodoList {
     /// The collection of tasks managed by this todo list.
     tasks: Vec<Task>,

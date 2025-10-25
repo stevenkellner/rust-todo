@@ -1,5 +1,6 @@
 use super::priority::Priority;
 use chrono::NaiveDate;
+use serde::{Serialize, Deserialize};
 
 /// Represents task data without an ID.
 ///
@@ -15,7 +16,7 @@ use chrono::NaiveDate;
 /// assert_eq!(task.description, "Write documentation");
 /// assert_eq!(task.completed, false);
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TaskWithoutId {
     /// A textual description of the task
     pub description: String,
@@ -99,7 +100,7 @@ impl TaskWithoutId {
 /// assert_eq!(task.id, 1);
 /// assert_eq!(task.is_completed(), false);
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Task {
     /// The unique identifier for this task
     pub id: usize,

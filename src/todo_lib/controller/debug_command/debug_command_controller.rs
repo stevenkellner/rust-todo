@@ -1,5 +1,6 @@
 use crate::controller::CommandController;
 use crate::models::command_controller_result::CommandControllerResult;
+use crate::models::command_controller_result::CommandControllerResultAction;
 use crate::models::todo_list::TodoList;
 use crate::controller::debug_command::DebugCommand;
 use crate::controller::debug_command::RandomTaskGenerator;
@@ -37,7 +38,6 @@ impl<O: OutputWriter> DebugCommandController<O> {
             DebugCommand::GenerateTasks(count) => self.generate_random_tasks(*count),
             DebugCommand::ClearAll => self.clear_all_tasks(),
         }
-        CommandControllerResult::Continue
     }
     
     /// Generates random tasks for testing
@@ -46,7 +46,7 @@ impl<O: OutputWriter> DebugCommandController<O> {
     ///
     /// * `count` - Number of random tasks to generate
     /// * `todo_list` - The todo list to add tasks to
-    fn generate_random_tasks(        &mut self,        count: usize      ) {
+    fn generate_random_tasks(&mut self, count: usize) -> CommandControllerResult {
         // Generate random tasks
         let new_tasks = self.task_generator.generate(count);
         
@@ -56,6 +56,7 @@ impl<O: OutputWriter> DebugCommandController<O> {
         }
         
         self.output_manager.show_success(&format!("Generated {} random tasks", count));
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
     }
     
     /// Clears all tasks from the todo list
@@ -63,10 +64,11 @@ impl<O: OutputWriter> DebugCommandController<O> {
     /// # Arguments
     ///
     /// * `todo_list` - The todo list to clear
-    fn clear_all_tasks(&mut self) {
+    fn clear_all_tasks(&mut self) -> CommandControllerResult {
         let count = self.todo_list.borrow().get_tasks().len();
         self.todo_list.borrow_mut().clear_all();
         self.output_manager.show_success(&format!("Cleared {} tasks", count));
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
     }
 }
 
