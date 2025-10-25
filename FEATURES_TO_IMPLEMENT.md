@@ -431,32 +431,6 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 ---
 
-### 15. Time Tracking
-
-**Status:** Pending  
-**Complexity:** Advanced  
-**Description:**
-
-- Log time spent on tasks
-- Time estimates vs actual time
-- Start/stop timer for tasks
-- View time statistics
-
-**Implementation Details:**
-
-- Add fields to Task:
-  - `estimated_minutes: Option<u32>`
-  - `actual_minutes: u32`
-  - `time_entries: Vec<TimeEntry>`
-- Add `start-timer <id>` command
-- Add `stop-timer <id>` command
-- Add `log-time <id> <minutes>` command
-- Add `estimate <id> <minutes>` command
-- Display time in task list
-- Show total time in statistics
-
----
-
 ### 16. Multiple Lists/Projects
 
 **Status:** Pending  
@@ -667,8 +641,7 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 1. Recurring Tasks (#13)
 2. Task Dependencies (#14)
-3. Time Tracking (#15)
-4. Multiple Projects (#16)
+3. Multiple Projects (#16)
 
 ### Phase 5: UI & Integration (Weeks 10-12)
 
