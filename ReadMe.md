@@ -14,7 +14,7 @@ A command-line todo list application built in Rust with a clean, layered archite
 - 📝 Edit task descriptions
 - 📊 View task statistics (completion rate, priority breakdown, category breakdown)
 - 🔍 Search tasks by keyword
-- �️ Remove tasks by ID
+- 🗑️ Remove tasks by ID
 - 🎨 Intuitive command-line interface with colored output
 - 📋 Combined filtering (e.g., "list pending high category:work")
 - 🐛 Debug mode for testing and development

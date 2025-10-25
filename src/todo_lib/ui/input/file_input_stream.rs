@@ -8,7 +8,7 @@ use super::input_stream::InputStream;
 /// # Examples
 ///
 /// ```no_run
-/// use todo_manager::ui::input::{FileInputStream, InputStream};
+/// use todo_manager::{FileInputStream, InputStream};
 ///
 /// let mut input = FileInputStream::new(std::io::stdin());
 /// let line = input.get_next_input();
@@ -40,7 +40,7 @@ impl<R: Read> InputStream for FileInputStream<R> {
     /// # Examples
     ///
     /// ```no_run
-    /// use todo_manager::ui::input::{FileInputStream, InputStream};
+    /// use todo_manager::{FileInputStream, InputStream};
     ///
     /// let mut input = FileInputStream::new(std::io::stdin());
     /// let user_input = input.get_next_input();

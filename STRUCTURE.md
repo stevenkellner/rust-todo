@@ -29,10 +29,14 @@ src/
     │       ├── task_formatter.rs    # Task display formatting
     │       └── message_formatter.rs # Message and UI element formatting
     │
-    └── controller/                  # Controller Layer
-        ├── mod.rs                   # Controller module definition
-        ├── todo_controller.rs       # Main application controller
-        └── debug_controller.rs      # Debug mode functionality
+  └── controller/                  # Controller Layer
+    ├── mod.rs                       # Controller module definition
+    ├── command_controller.rs        # Trait and implementations for single-command controllers
+    ├── command_controller_registry.rs # Registry to route commands to the correct controller
+    ├── todo_manager.rs              # Top-level application manager (TodoManager)
+    ├── debug_command/               # Debug-mode command controllers
+    ├── general_command/             # General command controllers (help, quit, etc.)
+    └── task_command/                # Task-specific command controllers (add, remove, complete, etc.)
 
 tests/
 ├── integration_tests.rs             # Integration tests for workflows
@@ -109,15 +113,14 @@ Handles all user interaction and terminal I/O.
 
 Coordinates between UI and model layers.
 
-- **`todo_controller.rs`** - Main controller:
-  - Processes UI events
-  - Updates TodoList based on events
-  - Delegates output to OutputWriter
-  - Main application loop
+- **`todo_manager.rs`** - Top-level application manager (`TodoManager`):
+  - Coordinates specialized command controllers
+  - Processes commands by delegating to the registry of command controllers
+  - Manages the main application loop and I/O via `OutputManager`
 
-- **`debug_controller.rs`** - Debug functionality:
-  - Debug mode toggle and state management
-  - Random task generation for testing
+- **`debug_command/`** - Debug command controllers:
+  - Debug-mode commands (generate, clear, toggle)
+  - Implementations live under `controller/debug_command/`
   - Bulk operations (clear all tasks)
   - Isolated from production code
 

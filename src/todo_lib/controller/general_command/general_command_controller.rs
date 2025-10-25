@@ -1,8 +1,8 @@
 use crate::controller::command_controller::CommandController;
-use crate::controller::general_command::general_command::GeneralCommand;
+use crate::controller::general_command::GeneralCommand;
 use crate::models::command_controller_result::CommandControllerResult;
 use crate::models::ParseError;
-use crate::controller::general_command::general_command_input_parser::GeneralCommandInputParser;
+use crate::controller::general_command::GeneralCommandInputParser;
 use crate::controller::general_command::GeneralCommandOutputManager;
 use crate::OutputWriter;
 use std::rc::Rc;

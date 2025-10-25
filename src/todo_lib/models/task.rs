@@ -347,19 +347,19 @@ mod tests {
         let task = Task::new(1, "Test task".to_string());
         assert_eq!(task.id, 1);
         assert_eq!(task.description, "Test task");
-        assert_eq!(task.completed, false);
+        assert!(!task.completed);
     }
 
     #[test]
     fn test_toggle_completion() {
         let mut task = Task::new(1, "Test task".to_string());
-        assert_eq!(task.is_completed(), false);
+        assert!(!task.is_completed());
         
         task.toggle_completion();
-        assert_eq!(task.is_completed(), true);
+        assert!(task.is_completed());
         
         task.toggle_completion();
-        assert_eq!(task.is_completed(), false);
+        assert!(!task.is_completed());
     }
 
     #[test]

@@ -1,10 +1,10 @@
 use crate::controller::CommandController;
 use crate::models::command_controller_result::CommandControllerResult;
 use crate::models::todo_list::TodoList;
-use crate::controller::debug_command::debug_command::DebugCommand;
+use crate::controller::debug_command::DebugCommand;
 use crate::controller::debug_command::RandomTaskGenerator;
 use crate::models::ParseError;
-use crate::controller::debug_command::debug_command_input_parser::DebugCommandInputParser;
+use crate::controller::debug_command::DebugCommandInputParser;
 use crate::controller::debug_command::DebugCommandOutputManager;
 use crate::OutputWriter;
 use std::rc::Rc;

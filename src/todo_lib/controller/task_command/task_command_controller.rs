@@ -1,13 +1,13 @@
 use crate::controller::command_controller::CommandController;
 use crate::models::command_controller_result::CommandControllerResult;
 use crate::models::todo_list::TodoList;
-use crate::controller::task_command::task_command::TaskCommand;
+use crate::controller::task_command::TaskCommand;
 use crate::models::task::TaskWithoutId;
 use crate::models::priority::Priority;
 use crate::models::task_filter::TaskFilter;
 use crate::models::task_status::TaskStatus;
 use crate::models::ParseError;
-use crate::controller::task_command::task_command_input_parser::TaskCommandInputParser;
+use crate::controller::task_command::TaskCommandInputParser;
 use crate::controller::task_command::TaskCommandOutputManager;
 use crate::OutputWriter;
 use chrono::NaiveDate;
@@ -213,8 +213,8 @@ mod tests {
         let mut handler = TaskCommandController::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output_writer)));
         
         handler.remove_task(id);
-        
-        assert!(todo_list.borrow().get_tasks().iter().find(|t| t.id == id).is_none());
+
+        assert!(!todo_list.borrow().get_tasks().iter().any(|t| t.id == id));
     }
 
     #[test]

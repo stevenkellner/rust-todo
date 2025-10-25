@@ -2,11 +2,12 @@
 ///
 /// Tasks can be assigned different priority levels to help organize
 /// and focus on what's most important.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum Priority {
     /// Low priority - can be done later
     Low,
     /// Medium priority - normal importance (default)
+    #[default]
     Medium,
     /// High priority - important and urgent
     High,
@@ -22,13 +23,9 @@ impl Priority {
     /// # Returns
     ///
     /// `Some(Priority)` if the string is valid, `None` otherwise
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
-        match s.to_lowercase().as_str() {
-            "low" | "l" => Some(Priority::Low),
-            "medium" | "med" | "m" => Some(Priority::Medium),
-            "high" | "h" => Some(Priority::High),
-            _ => None,
-        }
+        s.parse().ok()
     }
 
     /// Returns a string representation of the priority.
@@ -50,8 +47,15 @@ impl Priority {
     }
 }
 
-impl Default for Priority {
-    fn default() -> Self {
-        Priority::Medium
+impl std::str::FromStr for Priority {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "low" | "l" => Ok(Priority::Low),
+            "medium" | "med" | "m" => Ok(Priority::Medium),
+            "high" | "h" => Ok(Priority::High),
+            _ => Err(()),
+        }
     }
 }

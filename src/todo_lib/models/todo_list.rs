@@ -66,6 +66,11 @@ impl TodoList {
         }
     }
 
+}
+
+impl TodoList {
+    // (methods continue)
+
     /// Adds a task to the list.
     ///
     /// Creates a Task from the provided TaskWithoutId data and assigns it the next available ID.
@@ -687,6 +692,12 @@ impl TodoList {
     }
 }
 
+impl Default for TodoList {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -709,7 +720,7 @@ mod tests {
         
         let task = &todo_list.get_tasks()[0];
         assert_eq!(task.description, "Test task");
-        assert_eq!(task.completed, false);
+        assert!(!task.completed);
     }
 
     #[test]

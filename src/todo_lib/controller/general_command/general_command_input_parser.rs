@@ -1,4 +1,4 @@
-use crate::controller::general_command::general_command::GeneralCommand;
+use crate::controller::general_command::GeneralCommand;
 use crate::models::parse_error::ParseError;
 
 /// Parser for general application commands.

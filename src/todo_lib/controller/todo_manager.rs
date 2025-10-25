@@ -14,9 +14,9 @@ use std::cell::RefCell;
 /// # Examples
 ///
 /// ```no_run
-/// use todo_manager::controller::todo_manager::TodoManager;
-/// use todo_manager::ui::input::FileInputStream;
-/// use todo_manager::ui::output::FileOutputWriter;
+/// use todo_manager::TodoManager;
+/// use todo_manager::FileInputStream;
+/// use todo_manager::FileOutputWriter;
 /// use std::rc::Rc;
 /// use std::cell::RefCell;
 ///
@@ -43,9 +43,9 @@ impl<I: InputStream, O: OutputWriter> TodoManager<I, O> {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::controller::todo_manager::TodoManager;
-    /// use todo_manager::ui::input::FileInputStream;
-    /// use todo_manager::ui::output::FileOutputWriter;
+    /// use todo_manager::TodoManager;
+    /// use todo_manager::FileInputStream;
+    /// use todo_manager::FileOutputWriter;
     /// use std::rc::Rc;
     /// use std::cell::RefCell;
     ///
@@ -75,9 +75,9 @@ impl<I: InputStream, O: OutputWriter> TodoManager<I, O> {
     /// # Examples
     ///
     /// ```no_run
-    /// use todo_manager::controller::todo_manager::TodoManager;
-    /// use todo_manager::ui::input::FileInputStream;
-    /// use todo_manager::ui::output::FileOutputWriter;
+    /// use todo_manager::TodoManager;
+    /// use todo_manager::FileInputStream;
+    /// use todo_manager::FileOutputWriter;
     /// use std::rc::Rc;
     /// use std::cell::RefCell;
     ///

@@ -10,6 +10,8 @@ To enable debug mode, type:
 > debug
 ```
 
+Start the application with `cargo run` from the project root, then enter `debug` at the prompt to enable debug mode.
+
 You'll see:
 
 ```text

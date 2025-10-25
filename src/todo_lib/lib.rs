@@ -31,13 +31,15 @@
 //!
 //! ### Controller Layer (`controller`)
 //! - `todo_controller`: Orchestrates UI events with model operations
+//! ### Controller Layer (`controller`)
+//! - `todo_manager` / `TodoManager`: Coordinates specialized command controllers and the main application loop
 //!
 //! ## Examples
 //!
 //! ```no_run
-//! use todo_manager::controller::TodoManager;
-//! use todo_manager::ui::input::FileInputStream;
-//! use todo_manager::ui::output::FileOutputWriter;
+//! use todo_manager::TodoManager;
+//! use todo_manager::FileInputStream;
+//! use todo_manager::FileOutputWriter;
 //! use std::rc::Rc;
 //! use std::cell::RefCell;
 //!

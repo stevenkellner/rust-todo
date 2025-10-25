@@ -1,10 +1,10 @@
-pub mod debug_command;
+pub mod debug;
 pub mod debug_command_controller;
 pub mod debug_command_output_manager;
 pub mod debug_command_input_parser;
 pub mod random_task_generator;
 
-pub use debug_command::DebugCommand;
+pub use debug::DebugCommand;
 pub use debug_command_controller::DebugCommandController;
 pub use debug_command_output_manager::DebugCommandOutputManager;
 pub use debug_command_input_parser::DebugCommandInputParser;

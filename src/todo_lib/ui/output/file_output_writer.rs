@@ -11,7 +11,7 @@ use super::output_writer::OutputWriter;
 /// # Examples
 ///
 /// ```
-/// use todo_manager::ui::output::{FileOutputWriter, OutputWriter};
+/// use todo_manager::{FileOutputWriter, OutputWriter};
 ///
 /// let mut output = FileOutputWriter::new(std::io::stdout());
 /// output.write_line("Hello, World!");
@@ -55,7 +55,7 @@ impl<W: Write> OutputWriter for FileOutputWriter<W> {
     /// # Examples
     ///
     /// ```
-    /// use todo_manager::ui::output::{FileOutputWriter, OutputWriter};
+    /// use todo_manager::{FileOutputWriter, OutputWriter};
     ///
     /// let mut output = FileOutputWriter::new(std::io::stdout());
     /// output.write_line("Task added successfully!");
@@ -69,7 +69,7 @@ impl<W: Write> OutputWriter for FileOutputWriter<W> {
     /// # Examples
     ///
     /// ```no_run
-    /// use todo_manager::ui::output::{FileOutputWriter, OutputWriter};
+    /// use todo_manager::{FileOutputWriter, OutputWriter};
     ///
     /// let mut output = FileOutputWriter::new(std::io::stdout());
     /// output.write_prompt();
