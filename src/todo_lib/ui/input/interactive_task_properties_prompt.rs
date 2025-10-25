@@ -31,7 +31,7 @@ impl<I: InputStream, O: OutputWriter> InteractiveTaskPropertiesPrompt<I, O> {
 
     /// Prompts for all task properties (priority, due date, category).
     ///
-    /// Returns a tuple of (Option<Priority>, Option<NaiveDate>, Option<String>)
+    /// Returns a tuple of (`Option<Priority>`, `Option<NaiveDate>`, `Option<String>`)
     pub fn prompt_task_properties(&mut self) -> (Option<Priority>, Option<NaiveDate>, Option<String>) {
         self.output_writer.borrow_mut().write_line("");
         self.output_writer.borrow_mut().write_line(&"Set additional properties (press Enter to skip):".bright_cyan().bold().to_string());
