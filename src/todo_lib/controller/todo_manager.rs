@@ -1,5 +1,5 @@
 use crate::controller::CommandControllerRegistry;
-use crate::models::todo_list::TodoList;
+use crate::controller::project_command::ProjectManager;
 use crate::models::command_controller_result::{CommandControllerResult, CommandControllerResultAction};
 use crate::models::loop_control::LoopControl;
 use crate::persistence::TodoListStorage;
@@ -31,7 +31,7 @@ use std::cell::RefCell;
 /// manager.run();
 /// ```
 pub struct TodoManager<I: InputStream, O: OutputWriter> {
-    todo_list: Rc<RefCell<TodoList>>,
+    project_manager: Rc<RefCell<ProjectManager>>,
     input_stream: Rc<RefCell<I>>,
     output_manager: OutputManager<O>,
     command_controller_registry: CommandControllerRegistry<O>,
@@ -68,21 +68,24 @@ impl<I: InputStream, O: OutputWriter> TodoManager<I, O> {
     pub fn new<P: AsRef<std::path::Path>>(input_stream: Rc<RefCell<I>>, output_writer: Rc<RefCell<O>>, storage_path: P) -> Self {
         let storage = TodoListStorage::new(storage_path);
 
-        // During tests we prefer a fresh in-memory list to avoid interfering with
-        // local developer/state files. When not testing, try to load persisted tasks.
-        let todo_list_inner = if cfg!(test) {
-            TodoList::new()
+        // During tests we prefer a fresh in-memory ProjectManager to avoid interfering with
+        // local developer/state files. When not testing, try to load persisted projects.
+        let project_manager_inner = if cfg!(test) {
+            ProjectManager::new()
         } else {
-            storage.load().unwrap_or_default()
+            storage.load_projects().unwrap_or_else(|_| ProjectManager::new())
         };
 
-        let todo_list = Rc::new(RefCell::new(todo_list_inner));
+        let project_manager = Rc::new(RefCell::new(project_manager_inner));
 
         Self {
-            todo_list: Rc::clone(&todo_list),
+            project_manager: Rc::clone(&project_manager),
             input_stream,
             output_manager: OutputManager::new(Rc::clone(&output_writer)),
-            command_controller_registry: CommandControllerRegistry::new(Rc::clone(&todo_list), Rc::clone(&output_writer)),
+            command_controller_registry: CommandControllerRegistry::new(
+                Rc::clone(&project_manager),
+                Rc::clone(&output_writer)
+            ),
             storage,
         }
     }
@@ -202,7 +205,7 @@ impl<I: InputStream, O: OutputWriter> TodoManager<I, O> {
     }
 
     fn save_tasks_to_disk(&self) -> Result<(), String> {
-        self.storage.save(&self.todo_list.borrow())
+        self.storage.save_projects(&self.project_manager.borrow())
     }
 }
 
@@ -224,7 +227,7 @@ mod tests {
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("new_controller");
         let manager = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        assert!(manager.todo_list.borrow().is_empty());
+        assert!(manager.project_manager.borrow().get_current_todo_list().is_empty());
     }
 
     #[test]
@@ -235,8 +238,8 @@ mod tests {
         let mut manager = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
         manager.handle_input("add Test task");
         
-        assert_eq!(manager.todo_list.borrow().get_tasks().len(), 1);
-        assert_eq!(manager.todo_list.borrow().get_tasks()[0].description, "Test task");
+        assert_eq!(manager.project_manager.borrow().get_current_todo_list().get_tasks().len(), 1);
+        assert_eq!(manager.project_manager.borrow().get_current_todo_list().get_tasks()[0].description, "Test task");
     }
 
     #[test]
@@ -250,7 +253,7 @@ mod tests {
         controller.handle_input("add Task 2");
         controller.handle_input("add Task 3");
         
-        assert_eq!(controller.todo_list.borrow().get_tasks().len(), 3);
+        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_tasks().len(), 3);
     }
 
     #[test]
@@ -261,11 +264,11 @@ mod tests {
          let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
         
         controller.handle_input("add Task to remove");
-        let task_id = controller.todo_list.borrow().get_tasks()[0].id;
+        let task_id = controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].id;
         
         controller.handle_input(&format!("remove {}", task_id));
         
-        assert!(controller.todo_list.borrow().is_empty());
+        assert!(controller.project_manager.borrow().get_current_todo_list().is_empty());
     }
 
     #[test]
@@ -278,7 +281,7 @@ mod tests {
         controller.handle_input("add Test task");
         controller.handle_input("remove 999");
         
-        assert_eq!(controller.todo_list.borrow().get_tasks().len(), 1);
+        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_tasks().len(), 1);
     }
 
     #[test]
@@ -289,12 +292,12 @@ mod tests {
          let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
         
         controller.handle_input("add Task to complete");
-        let task_id = controller.todo_list.borrow().get_tasks()[0].id;
+        let task_id = controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].id;
         
         controller.handle_input(&format!("complete {}", task_id));
         
-        assert!(controller.todo_list.borrow().get_tasks()[0].is_completed());
-        assert_eq!(controller.todo_list.borrow().get_completed_tasks().len(), 1);
+        assert!(controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
+        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_completed_tasks().len(), 1);
     }
 
     #[test]
@@ -307,7 +310,7 @@ mod tests {
         controller.handle_input("add Test task");
         controller.handle_input("complete 999");
         
-        assert!(!controller.todo_list.borrow().get_tasks()[0].is_completed());
+        assert!(!controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
     }
 
     #[test]
@@ -318,14 +321,14 @@ mod tests {
          let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
         
         controller.handle_input("add Task to uncomplete");
-        let task_id = controller.todo_list.borrow().get_tasks()[0].id;
+        let task_id = controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].id;
         
         controller.handle_input(&format!("complete {}", task_id));
-        assert!(controller.todo_list.borrow().get_tasks()[0].is_completed());
+        assert!(controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
         
         controller.handle_input(&format!("uncomplete {}", task_id));
-        assert!(!controller.todo_list.borrow().get_tasks()[0].is_completed());
-        assert_eq!(controller.todo_list.borrow().get_pending_tasks().len(), 1);
+        assert!(!controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
+        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_pending_tasks().len(), 1);
     }
 
     #[test]
@@ -338,7 +341,7 @@ mod tests {
         controller.handle_input("add Test task");
         controller.handle_input("uncomplete 999");
         
-        assert!(!controller.todo_list.borrow().get_tasks()[0].is_completed());
+        assert!(!controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
     }
 
     #[test]
@@ -349,15 +352,15 @@ mod tests {
          let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
         
         controller.handle_input("add Task to toggle");
-        let task_id = controller.todo_list.borrow().get_tasks()[0].id;
+        let task_id = controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].id;
         
-        assert!(!controller.todo_list.borrow().get_tasks()[0].is_completed());
-        
-        controller.handle_input(&format!("toggle {}", task_id));
-        assert!(controller.todo_list.borrow().get_tasks()[0].is_completed());
+        assert!(!controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
         
         controller.handle_input(&format!("toggle {}", task_id));
-        assert!(!controller.todo_list.borrow().get_tasks()[0].is_completed());
+        assert!(controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
+        
+        controller.handle_input(&format!("toggle {}", task_id));
+        assert!(!controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
     }
 
     #[test]
@@ -368,11 +371,11 @@ mod tests {
         let mut controller = TodoManager::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
         
         controller.handle_input("add Test task");
-        let initial_status = controller.todo_list.borrow().get_tasks()[0].is_completed();
+        let initial_status = controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed();
         
         controller.handle_input("toggle 999");
         
-        assert_eq!(controller.todo_list.borrow().get_tasks()[0].is_completed(), initial_status);
+        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed(), initial_status);
     }
 
     #[test]
@@ -388,7 +391,7 @@ mod tests {
         
         controller.handle_input("list");
         
-        assert_eq!(controller.todo_list.borrow().get_tasks().len(), 2);
+        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_tasks().len(), 2);
     }
 
     #[test]
@@ -404,7 +407,7 @@ mod tests {
         
         controller.handle_input("list completed");
         
-        assert_eq!(controller.todo_list.borrow().get_completed_tasks().len(), 1);
+        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_completed_tasks().len(), 1);
     }
 
     #[test]
@@ -420,7 +423,7 @@ mod tests {
         
         controller.handle_input("list pending");
         
-        assert_eq!(controller.todo_list.borrow().get_pending_tasks().len(), 1);
+        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_pending_tasks().len(), 1);
     }
 
     #[test]
@@ -457,7 +460,7 @@ mod tests {
         let control = controller.handle_input("add New task");
         
         assert_eq!(control, LoopControl::Continue);
-        assert_eq!(controller.todo_list.borrow().get_tasks().len(), 1);
+        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_tasks().len(), 1);
     }
 
     #[test]
@@ -496,25 +499,25 @@ mod tests {
         controller.handle_input("add Task 2");
         controller.handle_input("add Task 3");
         
-        assert_eq!(controller.todo_list.borrow().get_tasks().len(), 3);
+        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_tasks().len(), 3);
         
         // Complete some tasks
         controller.handle_input("complete 1");
         controller.handle_input("complete 2");
         
-        assert_eq!(controller.todo_list.borrow().get_completed_tasks().len(), 2);
-        assert_eq!(controller.todo_list.borrow().get_pending_tasks().len(), 1);
+        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_completed_tasks().len(), 2);
+        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_pending_tasks().len(), 1);
         
         // Remove a task
         controller.handle_input("remove 3");
         
-        assert_eq!(controller.todo_list.borrow().get_tasks().len(), 2);
+        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_tasks().len(), 2);
         
         // Toggle a task
         controller.handle_input("toggle 1");
         
-        assert_eq!(controller.todo_list.borrow().get_completed_tasks().len(), 1);
-        assert_eq!(controller.todo_list.borrow().get_pending_tasks().len(), 1);
+        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_completed_tasks().len(), 1);
+        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_pending_tasks().len(), 1);
     }
 
     #[test]

@@ -10,6 +10,7 @@ pub mod loop_control;
 pub mod overdue_filter;
 pub mod parse_error;
 pub mod priority;
+pub mod project;
 pub mod recurrence;
 pub mod task;
 pub mod task_filter;

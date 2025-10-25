@@ -1,7 +1,7 @@
 use crate::controller::command_controller::CommandController;
+use crate::controller::project_command::ProjectManager;
 use crate::models::command_controller_result::CommandControllerResult;
 use crate::models::command_controller_result::CommandControllerResultAction;
-use crate::models::todo_list::TodoList;
 use crate::controller::task_command::{TaskCommand, TaskSelection};
 use crate::controller::task_command::recurring_task_handler::RecurringTaskHandler;
 use crate::models::task::TaskWithoutId;
@@ -21,7 +21,7 @@ use std::cell::RefCell;
 /// `TaskCommandController` encapsulates all operations related to individual tasks
 /// such as completing, editing, setting priority, due date, and category.
 pub struct TaskCommandController<O: OutputWriter> {
-    todo_list: Rc<RefCell<TodoList>>,
+    project_manager: Rc<RefCell<ProjectManager>>,
     input_parser: TaskCommandInputParser,
     output_manager: TaskCommandOutputManager<O>,
     recurring_task_handler: RecurringTaskHandler,
@@ -29,10 +29,10 @@ pub struct TaskCommandController<O: OutputWriter> {
 
 impl<O: OutputWriter> TaskCommandController<O> {
     /// Creates a new task command handler with a custom output writer.
-    pub fn new(todo_list: Rc<RefCell<TodoList>>, output_writer: Rc<RefCell<O>>) -> Self {
-        let recurring_task_handler = RecurringTaskHandler::new(Rc::clone(&todo_list));
+    pub fn new(project_manager: Rc<RefCell<ProjectManager>>, output_writer: Rc<RefCell<O>>) -> Self {
+        let recurring_task_handler = RecurringTaskHandler::new(Rc::clone(&project_manager));
         Self {
-            todo_list,
+            project_manager,
             input_parser: TaskCommandInputParser::new(),
             output_manager: TaskCommandOutputManager::new(output_writer),
             recurring_task_handler,
@@ -65,13 +65,13 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     fn add_task(&mut self, description: &str) -> CommandControllerResult {
         let new_task = TaskWithoutId::new(description.to_string());
-        let task_id = self.todo_list.borrow_mut().add_task(new_task);
+        let task_id = self.project_manager.borrow_mut().get_current_todo_list_mut().add_task(new_task);
         self.output_manager.show_task_added(task_id, description);
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
     }
 
     fn add_subtask(&mut self, parent_id: usize, description: &str) -> CommandControllerResult {
-        match self.todo_list.borrow_mut().add_subtask(parent_id, description.to_string()) {
+        match self.project_manager.borrow_mut().get_current_todo_list_mut().add_subtask(parent_id, description.to_string()) {
             Some(subtask_id) => {
                 self.output_manager.show_subtask_added(subtask_id, parent_id, description);
                 CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
@@ -85,21 +85,30 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
 
     fn add_dependency(&mut self, task_id: usize, depends_on_id: usize) -> CommandControllerResult {
-        match self.todo_list.borrow_mut().add_task_dependency(task_id, depends_on_id) {
+        match self.project_manager.borrow_mut().get_current_todo_list_mut().add_task_dependency(task_id, depends_on_id) {
             Some(()) => {
                 self.output_manager.show_dependency_added(task_id, depends_on_id);
                 CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
             }
             None => {
                 // Check why it failed
-                let todo_list = self.todo_list.borrow();
+                let project_manager = self.project_manager.borrow();
+                let todo_list = project_manager.get_current_todo_list();
                 if todo_list.get_tasks().iter().all(|t| t.id != task_id) {
+                    let _ = todo_list;
+                    let _ = project_manager;
                     self.output_manager.show_task_not_found(task_id);
                 } else if todo_list.get_tasks().iter().all(|t| t.id != depends_on_id) {
+                    let _ = todo_list;
+                    let _ = project_manager;
                     self.output_manager.show_task_not_found(depends_on_id);
                 } else if task_id == depends_on_id {
+                    let _ = todo_list;
+                    let _ = project_manager;
                     self.output_manager.show_error("A task cannot depend on itself");
                 } else {
+                    let _ = todo_list;
+                    let _ = project_manager;
                     self.output_manager.show_error("Adding this dependency would create a circular dependency");
                 }
                 CommandControllerResult::default()
@@ -108,7 +117,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
     }
 
     fn remove_dependency(&mut self, task_id: usize, depends_on_id: usize) -> CommandControllerResult {
-        match self.todo_list.borrow_mut().remove_task_dependency(task_id, depends_on_id) {
+        match self.project_manager.borrow_mut().get_current_todo_list_mut().remove_task_dependency(task_id, depends_on_id) {
             Some(()) => {
                 self.output_manager.show_dependency_removed(task_id, depends_on_id);
                 CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
@@ -121,13 +130,15 @@ impl<O: OutputWriter> TaskCommandController<O> {
     }
 
     fn show_dependency_graph(&mut self, task_id: usize) -> CommandControllerResult {
-        let todo_list_ref = self.todo_list.borrow();
+        let project_manager = self.project_manager.borrow();
+        let todo_list_ref = project_manager.get_current_todo_list();
         
         // Check if task exists
         let task = match todo_list_ref.get_tasks().iter().find(|t| t.id == task_id) {
             Some(t) => t,
             None => {
-                drop(todo_list_ref);
+                let _ = todo_list_ref;
+                let _ = project_manager;
                 self.output_manager.show_task_not_found(task_id);
                 return CommandControllerResult::default();
             }
@@ -155,7 +166,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
         let task_description = task.description.clone();
         let task_completed = task.is_completed();
         
-        drop(todo_list_ref);
+        let _ = todo_list_ref;
         
         self.output_manager.show_dependency_graph(
             task_id,
@@ -172,9 +183,10 @@ impl<O: OutputWriter> TaskCommandController<O> {
     /// Lists tasks with optional filtering
     fn list_tasks(&mut self, filter: &Option<TaskFilter>) -> CommandControllerResult {
         match filter {
-            None => self.output_manager.show_all_tasks_hierarchical(&self.todo_list.borrow()),
+            None => self.output_manager.show_all_tasks_hierarchical(self.project_manager.borrow().get_current_todo_list()),
             Some(task_filter) => {
-                let todo_list_ref = self.todo_list.borrow();
+                let project_manager = self.project_manager.borrow();
+                let todo_list_ref = project_manager.get_current_todo_list();
                 let filtered_tasks = todo_list_ref.get_filtered_tasks(task_filter);
                 
                 if task_filter.status == Some(TaskStatus::Completed) && task_filter.priority.is_none() {
@@ -193,7 +205,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Removes a task by ID.
     fn remove_task(&mut self, id: usize) -> CommandControllerResult {
-        if let Some(task) = self.todo_list.borrow_mut().remove_task(id) {
+        if let Some(task) = self.project_manager.borrow_mut().get_current_todo_list_mut().remove_task(id) {
             self.output_manager.show_task_removed(&task.description);
         } else {
             self.output_manager.show_task_not_found(id);
@@ -204,7 +216,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
     /// Marks a task as completed.
     fn complete_task(&mut self, id: usize) -> CommandControllerResult {
         // Check if dependencies are completed
-        let incomplete_deps = self.todo_list.borrow().get_incomplete_dependencies(id);
+        let incomplete_deps = self.project_manager.borrow().get_current_todo_list().get_incomplete_dependencies(id);
         if !incomplete_deps.is_empty() {
             let deps_str = incomplete_deps.iter()
                 .map(|id| id.to_string())
@@ -222,7 +234,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
         let recurring_data = self.recurring_task_handler.collect_recurring_task_data(id);
         
         // Complete the task
-        if let Some(task) = self.todo_list.borrow_mut().complete_task(id) {
+        if let Some(task) = self.project_manager.borrow_mut().get_current_todo_list_mut().complete_task(id) {
             if task.is_completed() {
                 self.output_manager.show_task_completed(&task.description);
             }
@@ -242,7 +254,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Marks a task as not completed.
     fn uncomplete_task(&mut self, id: usize) -> CommandControllerResult {
-        if let Some(task) = self.todo_list.borrow_mut().uncomplete_task(id) {
+        if let Some(task) = self.project_manager.borrow_mut().get_current_todo_list_mut().uncomplete_task(id) {
             if !task.is_completed() {
                 self.output_manager.show_task_uncompleted(&task.description);
             }
@@ -257,7 +269,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
         // Collect recurring task data before completing
         let recurring_tasks_data = self.recurring_task_handler.collect_multiple_recurring_tasks(ids);
         
-        let (completed_count, not_found) = self.todo_list.borrow_mut().complete_tasks(ids);
+        let (completed_count, not_found) = self.project_manager.borrow_mut().get_current_todo_list_mut().complete_tasks(ids);
         
         self.output_manager.show_multiple_tasks_completed(completed_count, &not_found);
         
@@ -275,7 +287,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
         // Collect recurring task data before completing
         let recurring_tasks_data = self.recurring_task_handler.collect_all_pending_recurring_tasks();
         
-        let count = self.todo_list.borrow_mut().complete_all_tasks();
+        let count = self.project_manager.borrow_mut().get_current_todo_list_mut().complete_all_tasks();
         
         self.output_manager.show_all_tasks_completed(count);
         
@@ -290,7 +302,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Removes multiple tasks by their IDs.
     fn remove_multiple_tasks(&mut self, ids: &[usize]) -> CommandControllerResult {
-        let (removed_count, not_found) = self.todo_list.borrow_mut().remove_tasks(ids);
+        let (removed_count, not_found) = self.project_manager.borrow_mut().get_current_todo_list_mut().remove_tasks(ids);
         
         self.output_manager.show_multiple_tasks_removed(removed_count, &not_found);
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
@@ -298,7 +310,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Removes all tasks.
     fn remove_all_tasks(&mut self) -> CommandControllerResult {
-        let count = self.todo_list.borrow_mut().remove_all_tasks();
+        let count = self.project_manager.borrow_mut().get_current_todo_list_mut().remove_all_tasks();
         
         self.output_manager.show_all_tasks_removed(count);
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
@@ -306,7 +318,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Marks multiple tasks as pending (incomplete) by their IDs.
     fn uncomplete_multiple_tasks(&mut self, ids: &[usize]) -> CommandControllerResult {
-        let (uncompleted_count, not_found) = self.todo_list.borrow_mut().uncomplete_tasks(ids);
+        let (uncompleted_count, not_found) = self.project_manager.borrow_mut().get_current_todo_list_mut().uncomplete_tasks(ids);
         
         self.output_manager.show_multiple_tasks_uncompleted(uncompleted_count, &not_found);
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
@@ -314,7 +326,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Marks all tasks as pending (incomplete).
     fn uncomplete_all_tasks(&mut self) -> CommandControllerResult {
-        let count = self.todo_list.borrow_mut().uncomplete_all_tasks();
+        let count = self.project_manager.borrow_mut().get_current_todo_list_mut().uncomplete_all_tasks();
         
         self.output_manager.show_all_tasks_uncompleted(count);
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
@@ -322,7 +334,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Toggles multiple tasks' completion status by their IDs.
     fn toggle_multiple_tasks(&mut self, ids: &[usize]) -> CommandControllerResult {
-        let (toggled_count, not_found) = self.todo_list.borrow_mut().toggle_tasks(ids);
+        let (toggled_count, not_found) = self.project_manager.borrow_mut().get_current_todo_list_mut().toggle_tasks(ids);
         
         self.output_manager.show_multiple_tasks_toggled(toggled_count, &not_found);
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
@@ -330,7 +342,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Toggles all tasks' completion status.
     fn toggle_all_tasks(&mut self) -> CommandControllerResult {
-        let count = self.todo_list.borrow_mut().toggle_all_tasks();
+        let count = self.project_manager.borrow_mut().get_current_todo_list_mut().toggle_all_tasks();
         
         self.output_manager.show_all_tasks_toggled(count);
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
@@ -338,7 +350,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Sets the priority of multiple tasks by their IDs.
     fn set_priority_multiple(&mut self, ids: &[usize], priority: Priority) -> CommandControllerResult {
-        let (updated_count, not_found) = self.todo_list.borrow_mut().set_priority_multiple(ids, priority);
+        let (updated_count, not_found) = self.project_manager.borrow_mut().get_current_todo_list_mut().set_priority_multiple(ids, priority);
         
         self.output_manager.show_multiple_priorities_set(updated_count, priority, &not_found);
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
@@ -346,7 +358,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Sets the category of multiple tasks by their IDs.
     fn set_category_multiple(&mut self, ids: &[usize], category: Option<String>) -> CommandControllerResult {
-        let (updated_count, not_found) = self.todo_list.borrow_mut().set_category_multiple(ids, category.clone());
+        let (updated_count, not_found) = self.project_manager.borrow_mut().get_current_todo_list_mut().set_category_multiple(ids, category.clone());
         
         self.output_manager.show_multiple_categories_set(updated_count, category.as_deref(), &not_found);
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
@@ -354,7 +366,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Toggles a task's completion status.
     fn toggle_task(&mut self, id: usize) -> CommandControllerResult {
-        if let Some(task) = self.todo_list.borrow_mut().toggle_task(id) {
+        if let Some(task) = self.project_manager.borrow_mut().get_current_todo_list_mut().toggle_task(id) {
             self.output_manager.show_task_toggled(&task.description, task.is_completed());
         } else {
             self.output_manager.show_task_not_found(id);
@@ -364,7 +376,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Sets the priority of a task.
     fn set_priority(&mut self, id: usize, priority: Priority) -> CommandControllerResult {
-        if let Some(task) = self.todo_list.borrow_mut().set_task_priority(id, priority) {
+        if let Some(task) = self.project_manager.borrow_mut().get_current_todo_list_mut().set_task_priority(id, priority) {
             self.output_manager.show_priority_set(&task.description, priority);
         } else {
             self.output_manager.show_task_not_found(id);
@@ -374,7 +386,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Sets the due date of a task.
     fn set_due_date(&mut self, id: usize, due_date: Option<NaiveDate>) -> CommandControllerResult {
-        if let Some(task) = self.todo_list.borrow_mut().set_due_date(id, due_date) {
+        if let Some(task) = self.project_manager.borrow_mut().get_current_todo_list_mut().set_due_date(id, due_date) {
             self.output_manager.show_due_date_set(&task.description, due_date);
         } else {
             self.output_manager.show_task_not_found(id);
@@ -384,7 +396,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Sets the category of a task.
     fn set_category(&mut self, id: usize, category: Option<String>) -> CommandControllerResult {
-        if let Some(task) = self.todo_list.borrow_mut().set_task_category(id, category.clone()) {
+        if let Some(task) = self.project_manager.borrow_mut().get_current_todo_list_mut().set_task_category(id, category.clone()) {
             self.output_manager.show_category_set(&task.description, category);
         } else {
             self.output_manager.show_task_not_found(id);
@@ -394,7 +406,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Sets the recurrence pattern of a task.
     fn set_recurring(&mut self, id: usize, recurrence: Option<crate::models::recurrence::Recurrence>) -> CommandControllerResult {
-        if let Some(task) = self.todo_list.borrow_mut().set_task_recurrence(id, recurrence) {
+        if let Some(task) = self.project_manager.borrow_mut().get_current_todo_list_mut().set_task_recurrence(id, recurrence) {
             self.output_manager.show_recurrence_set(&task.description, recurrence);
         } else {
             self.output_manager.show_task_not_found(id);
@@ -404,7 +416,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Sets the recurrence pattern of multiple tasks by their IDs.
     fn set_recurring_multiple(&mut self, ids: &[usize], recurrence: Option<crate::models::recurrence::Recurrence>) -> CommandControllerResult {
-        let (updated_count, not_found) = self.todo_list.borrow_mut().set_recurrence_multiple(ids, recurrence);
+        let (updated_count, not_found) = self.project_manager.borrow_mut().get_current_todo_list_mut().set_recurrence_multiple(ids, recurrence);
         
         self.output_manager.show_multiple_recurrences_set(updated_count, recurrence, &not_found);
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
@@ -452,7 +464,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
             TaskSelection::Single(id) => self.set_priority(*id, priority),
             TaskSelection::Multiple(ids) => self.set_priority_multiple(ids, priority),
             TaskSelection::All => {
-                let all_ids: Vec<usize> = self.todo_list.borrow().get_tasks().iter().map(|t| t.id).collect();
+                let all_ids: Vec<usize> = self.project_manager.borrow().get_current_todo_list().get_tasks().iter().map(|t| t.id).collect();
                 self.set_priority_multiple(&all_ids, priority)
             }
         }
@@ -464,7 +476,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
             TaskSelection::Single(id) => self.set_category(*id, category),
             TaskSelection::Multiple(ids) => self.set_category_multiple(ids, category),
             TaskSelection::All => {
-                let all_ids: Vec<usize> = self.todo_list.borrow().get_tasks().iter().map(|t| t.id).collect();
+                let all_ids: Vec<usize> = self.project_manager.borrow().get_current_todo_list().get_tasks().iter().map(|t| t.id).collect();
                 self.set_category_multiple(&all_ids, category)
             }
         }
@@ -475,14 +487,14 @@ impl<O: OutputWriter> TaskCommandController<O> {
             TaskSelection::Single(id) => self.set_recurring(*id, recurrence),
             TaskSelection::Multiple(ids) => self.set_recurring_multiple(ids, recurrence),
             TaskSelection::All => {
-                let all_ids: Vec<usize> = self.todo_list.borrow().get_tasks().iter().map(|t| t.id).collect();
+                let all_ids: Vec<usize> = self.project_manager.borrow().get_current_todo_list().get_tasks().iter().map(|t| t.id).collect();
                 self.set_recurring_multiple(&all_ids, recurrence)
             }
         }
     }
 
     fn list_categories(&mut self) -> CommandControllerResult {
-        self.output_manager.show_categories(&self.todo_list.borrow());
+        self.output_manager.show_categories(self.project_manager.borrow().get_current_todo_list());
         CommandControllerResult::empty()
     }
 
@@ -494,12 +506,12 @@ impl<O: OutputWriter> TaskCommandController<O> {
         }
 
         // Get the old description before editing
-        let old_description = self.todo_list.borrow().get_tasks()
+        let old_description = self.project_manager.borrow().get_current_todo_list().get_tasks()
             .iter()
             .find(|task| task.id == id)
             .map(|task| task.description.clone());
 
-        if let Some(_task) = self.todo_list.borrow_mut().edit_task(id, new_description.to_string()) {
+        if let Some(_task) = self.project_manager.borrow_mut().get_current_todo_list_mut().edit_task(id, new_description.to_string()) {
             if let Some(old_desc) = old_description {
                 self.output_manager.show_task_edited(&old_desc, new_description);
             }
@@ -510,12 +522,12 @@ impl<O: OutputWriter> TaskCommandController<O> {
     }
 
     fn search_tasks(&mut self, keyword: &str) -> CommandControllerResult {
-        self.output_manager.show_search_results(&self.todo_list.borrow(), keyword);
+        self.output_manager.show_search_results(self.project_manager.borrow().get_current_todo_list(), keyword);
         CommandControllerResult::empty()
     }
 
     fn show_statistics(&mut self) -> CommandControllerResult {
-        self.output_manager.show_statistics(&self.todo_list.borrow());
+        self.output_manager.show_statistics(self.project_manager.borrow().get_current_todo_list());
         CommandControllerResult::empty()
     }
 }
@@ -548,53 +560,53 @@ mod tests {
 
     #[test]
     fn test_remove_task_existing() {
-        let todo_list = Rc::new(RefCell::new(TodoList::new()));
-        let id = todo_list.borrow_mut().add_task(TaskWithoutId::new("Test task".to_string()));
+        let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
+        let id = project_manager.borrow_mut().get_current_todo_list_mut().add_task(TaskWithoutId::new("Test task".to_string()));
         let buffer = Vec::new();
         let output_writer = crate::ui::output::FileOutputWriter::new(buffer);
-        let mut handler = TaskCommandController::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output_writer)));
+        let mut handler = TaskCommandController::new(Rc::clone(&project_manager), Rc::new(RefCell::new(output_writer)));
         
         handler.remove_task(id);
 
-        assert!(!todo_list.borrow().get_tasks().iter().any(|t| t.id == id));
+        assert!(!project_manager.borrow().get_current_todo_list().get_tasks().iter().any(|t| t.id == id));
     }
 
     #[test]
     fn test_complete_task() {
-        let todo_list = Rc::new(RefCell::new(TodoList::new()));
-        let id = todo_list.borrow_mut().add_task(TaskWithoutId::new("Test task".to_string()));
+        let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
+        let id = project_manager.borrow_mut().get_current_todo_list_mut().add_task(TaskWithoutId::new("Test task".to_string()));
         let buffer = Vec::new();
         let output_writer = crate::ui::output::FileOutputWriter::new(buffer);
-        let mut handler = TaskCommandController::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output_writer)));
+        let mut handler = TaskCommandController::new(Rc::clone(&project_manager), Rc::new(RefCell::new(output_writer)));
         
         handler.complete_task(id);
         
-        assert!(todo_list.borrow().get_tasks().iter().find(|t| t.id == id).unwrap().is_completed());
+        assert!(project_manager.borrow().get_current_todo_list().get_tasks().iter().find(|t| t.id == id).unwrap().is_completed());
     }
 
     #[test]
     fn test_set_priority() {
-        let todo_list = Rc::new(RefCell::new(TodoList::new()));
-        let id = todo_list.borrow_mut().add_task(TaskWithoutId::new("Test task".to_string()));
+        let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
+        let id = project_manager.borrow_mut().get_current_todo_list_mut().add_task(TaskWithoutId::new("Test task".to_string()));
         let buffer = Vec::new();
         let output_writer = crate::ui::output::FileOutputWriter::new(buffer);
-        let mut handler = TaskCommandController::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output_writer)));
+        let mut handler = TaskCommandController::new(Rc::clone(&project_manager), Rc::new(RefCell::new(output_writer)));
         
         handler.set_priority(id, Priority::High);
         
-        assert_eq!(todo_list.borrow().get_tasks().iter().find(|t| t.id == id).unwrap().priority, Priority::High);
+        assert_eq!(project_manager.borrow().get_current_todo_list().get_tasks().iter().find(|t| t.id == id).unwrap().priority, Priority::High);
     }
 
     #[test]
     fn test_edit_task() {
-        let todo_list = Rc::new(RefCell::new(TodoList::new()));
-        let id = todo_list.borrow_mut().add_task(TaskWithoutId::new("Old description".to_string()));
+        let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
+        let id = project_manager.borrow_mut().get_current_todo_list_mut().add_task(TaskWithoutId::new("Old description".to_string()));
         let buffer = Vec::new();
         let output_writer = crate::ui::output::FileOutputWriter::new(buffer);
-        let mut handler = TaskCommandController::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output_writer)));
+        let mut handler = TaskCommandController::new(Rc::clone(&project_manager), Rc::new(RefCell::new(output_writer)));
         
         handler.edit_task(id, "New description");
         
-        assert_eq!(todo_list.borrow().get_tasks().iter().find(|t| t.id == id).unwrap().description, "New description");
+        assert_eq!(project_manager.borrow().get_current_todo_list().get_tasks().iter().find(|t| t.id == id).unwrap().description, "New description");
     }
 }

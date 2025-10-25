@@ -1,4 +1,4 @@
-use crate::models::todo_list::TodoList;
+use crate::controller::project_command::ProjectManager;
 use crate::models::task::{Task, TaskWithoutId};
 use crate::models::priority::Priority;
 use crate::models::recurrence::Recurrence;
@@ -26,17 +26,18 @@ pub struct SubtaskData {
 
 /// Handles recurring task logic including data collection, recreation, and subtask management
 pub struct RecurringTaskHandler {
-    todo_list: Rc<RefCell<TodoList>>,
+    project_manager: Rc<RefCell<ProjectManager>>,
 }
 
 impl RecurringTaskHandler {
-    pub fn new(todo_list: Rc<RefCell<TodoList>>) -> Self {
-        Self { todo_list }
+    pub fn new(project_manager: Rc<RefCell<ProjectManager>>) -> Self {
+        Self { project_manager }
     }
 
     /// Collects data from a single recurring task by ID
     pub fn collect_recurring_task_data(&self, id: usize) -> Option<RecurringTaskData> {
-        let todo_list = self.todo_list.borrow();
+        let project_manager = self.project_manager.borrow();
+        let todo_list = project_manager.get_current_todo_list();
         let task = todo_list.get_tasks().iter().find(|t| t.id == id)?;
         
         if !task.is_recurring() {
@@ -48,7 +49,8 @@ impl RecurringTaskHandler {
 
     /// Collects data from multiple recurring tasks by IDs
     pub fn collect_multiple_recurring_tasks(&self, ids: &[usize]) -> Vec<RecurringTaskData> {
-        let todo_list = self.todo_list.borrow();
+        let project_manager = self.project_manager.borrow();
+        let todo_list = project_manager.get_current_todo_list();
         
         // First pass: collect task info (without subtasks) to avoid nested borrows
         let recurring_task_ids_and_info: Vec<_> = todo_list
@@ -68,7 +70,8 @@ impl RecurringTaskHandler {
             })
             .collect();
         
-        drop(todo_list); // Explicitly release borrow
+        let _ = todo_list; // Explicitly release borrow
+        let _ = project_manager;
         
         // Second pass: collect subtasks for each recurring task
         recurring_task_ids_and_info
@@ -90,7 +93,8 @@ impl RecurringTaskHandler {
 
     /// Collects data from all pending recurring tasks
     pub fn collect_all_pending_recurring_tasks(&self) -> Vec<RecurringTaskData> {
-        let todo_list = self.todo_list.borrow();
+        let project_manager = self.project_manager.borrow();
+        let todo_list = project_manager.get_current_todo_list();
         
         // First pass: collect task info (without subtasks)
         let recurring_task_ids_and_info: Vec<_> = todo_list
@@ -110,7 +114,8 @@ impl RecurringTaskHandler {
             })
             .collect();
         
-        drop(todo_list); // Explicitly release borrow
+        let _ = todo_list; // Explicitly release borrow
+        let _ = project_manager;
         
         // Second pass: collect subtasks
         recurring_task_ids_and_info
@@ -140,7 +145,7 @@ impl RecurringTaskHandler {
         new_task.recurrence = data.recurrence;
         new_task.due_date = data.next_due_date;
         
-        let new_id = self.todo_list.borrow_mut().add_task(new_task);
+        let new_id = self.project_manager.borrow_mut().get_current_todo_list_mut().add_task(new_task);
         
         // Recreate subtasks
         self.recreate_subtasks(new_id, &data.subtasks);
@@ -170,8 +175,9 @@ impl RecurringTaskHandler {
     }
 
     fn collect_subtasks(&self, parent_id: usize) -> Vec<SubtaskData> {
-        self.todo_list
+        self.project_manager
             .borrow()
+            .get_current_todo_list()
             .get_subtasks(parent_id)
             .iter()
             .map(|subtask| SubtaskData {
@@ -188,10 +194,10 @@ impl RecurringTaskHandler {
             new_subtask.completed = false; // Ensure subtask is pending
             
             // Add subtask and get its ID, releasing the borrow before setting priority
-            let subtask_id = self.todo_list.borrow_mut().add_subtask(parent_id, new_subtask.description);
+            let subtask_id = self.project_manager.borrow_mut().get_current_todo_list_mut().add_subtask(parent_id, new_subtask.description);
             if let Some(subtask_id) = subtask_id {
                 // Set the priority of the newly created subtask
-                self.todo_list.borrow_mut().set_task_priority(subtask_id, subtask_data.priority);
+                self.project_manager.borrow_mut().get_current_todo_list_mut().set_task_priority(subtask_id, subtask_data.priority);
             }
         }
     }
@@ -204,13 +210,13 @@ mod tests {
 
     #[test]
     fn test_collect_recurring_task_data() {
-        let todo_list = Rc::new(RefCell::new(TodoList::new()));
-        let handler = RecurringTaskHandler::new(Rc::clone(&todo_list));
+        let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
+        let handler = RecurringTaskHandler::new(Rc::clone(&project_manager));
         
         // Add a recurring task
         let mut task = TaskWithoutId::new("Daily task".to_string());
         task.recurrence = Some(Recurrence::Daily);
-        let task_id = todo_list.borrow_mut().add_task(task);
+        let task_id = project_manager.borrow_mut().get_current_todo_list_mut().add_task(task);
         
         // Collect data
         let data = handler.collect_recurring_task_data(task_id);
@@ -220,12 +226,12 @@ mod tests {
 
     #[test]
     fn test_collect_non_recurring_returns_none() {
-        let todo_list = Rc::new(RefCell::new(TodoList::new()));
-        let handler = RecurringTaskHandler::new(Rc::clone(&todo_list));
+        let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
+        let handler = RecurringTaskHandler::new(Rc::clone(&project_manager));
         
         // Add a non-recurring task
         let task = TaskWithoutId::new("Normal task".to_string());
-        let task_id = todo_list.borrow_mut().add_task(task);
+        let task_id = project_manager.borrow_mut().get_current_todo_list_mut().add_task(task);
         
         // Collect data should return None
         let data = handler.collect_recurring_task_data(task_id);
@@ -234,8 +240,8 @@ mod tests {
 
     #[test]
     fn test_recreate_recurring_task() {
-        let todo_list = Rc::new(RefCell::new(TodoList::new()));
-        let handler = RecurringTaskHandler::new(Rc::clone(&todo_list));
+        let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
+        let handler = RecurringTaskHandler::new(Rc::clone(&project_manager));
         
         let data = RecurringTaskData {
             description: "Weekly task".to_string(),
@@ -249,8 +255,9 @@ mod tests {
         
         let new_id = handler.recreate_recurring_task(&data);
         
-        let binding = todo_list.borrow();
-        let task = &binding.get_tasks()[0];
+        let binding = project_manager.borrow();
+        let tasks = binding.get_current_todo_list().get_tasks();
+        let task = &tasks[0];
         assert_eq!(task.id, new_id);
         assert_eq!(task.description, "Weekly task");
         assert_eq!(task.priority, Priority::High);
@@ -258,8 +265,8 @@ mod tests {
 
     #[test]
     fn test_recreate_with_subtasks() {
-        let todo_list = Rc::new(RefCell::new(TodoList::new()));
-        let handler = RecurringTaskHandler::new(Rc::clone(&todo_list));
+        let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
+        let handler = RecurringTaskHandler::new(Rc::clone(&project_manager));
         
         let data = RecurringTaskData {
             description: "Parent task".to_string(),
@@ -282,8 +289,8 @@ mod tests {
         
         let new_id = handler.recreate_recurring_task(&data);
         
-        let binding = todo_list.borrow();
-        let subtasks = binding.get_subtasks(new_id);
+        let binding = project_manager.borrow();
+        let subtasks = binding.get_current_todo_list().get_subtasks(new_id);
         assert_eq!(subtasks.len(), 2);
         assert_eq!(subtasks[0].description, "Subtask 1");
         assert_eq!(subtasks[1].description, "Subtask 2");

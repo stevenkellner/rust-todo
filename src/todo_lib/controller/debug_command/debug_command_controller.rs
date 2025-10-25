@@ -1,7 +1,7 @@
 use crate::controller::CommandController;
 use crate::models::command_controller_result::CommandControllerResult;
 use crate::models::command_controller_result::CommandControllerResultAction;
-use crate::models::todo_list::TodoList;
+use crate::controller::project_command::ProjectManager;
 use crate::controller::debug_command::DebugCommand;
 use crate::controller::debug_command::RandomTaskGenerator;
 use crate::models::ParseError;
@@ -14,7 +14,7 @@ use rand::Rng;
 
 /// Handler for debug commands and operations
 pub struct DebugCommandController<O: OutputWriter> {
-    todo_list: Rc<RefCell<TodoList>>,
+    project_manager: Rc<RefCell<ProjectManager>>,
     input_parser: DebugCommandInputParser,
     /// Output writer for displaying results
     output_manager: DebugCommandOutputManager<O>,
@@ -24,9 +24,9 @@ pub struct DebugCommandController<O: OutputWriter> {
 
 impl<O: OutputWriter> DebugCommandController<O> {
     /// Creates a new DebugCommandController with a custom output writer
-    pub fn new(todo_list: Rc<RefCell<TodoList>>, output_writer: Rc<RefCell<O>>) -> Self {
+    pub fn new(project_manager: Rc<RefCell<ProjectManager>>, output_writer: Rc<RefCell<O>>) -> Self {
         Self {
-            todo_list,
+            project_manager,
             input_parser: DebugCommandInputParser::new(),
             output_manager: DebugCommandOutputManager::new(output_writer),
             task_generator: RandomTaskGenerator::new(), 
@@ -57,7 +57,7 @@ impl<O: OutputWriter> DebugCommandController<O> {
         
         // Add each generated task to the todo list
         for new_task in new_tasks {
-            let parent_id = self.todo_list.borrow_mut().add_task(new_task);
+            let parent_id = self.project_manager.borrow_mut().get_current_todo_list_mut().add_task(new_task);
             task_ids.push(parent_id);
             total_tasks += 1;
             
@@ -65,7 +65,7 @@ impl<O: OutputWriter> DebugCommandController<O> {
             let subtask_count = self.task_generator.generate_subtask_count(0.5);
             for _ in 0..subtask_count {
                 let subtask = self.task_generator.generate_single_subtask(0.2);
-                if self.todo_list.borrow_mut().add_subtask(parent_id, subtask.description).is_some() {
+                if self.project_manager.borrow_mut().get_current_todo_list_mut().add_subtask(parent_id, subtask.description).is_some() {
                     total_subtasks += 1;
                 }
             }
@@ -80,7 +80,7 @@ impl<O: OutputWriter> DebugCommandController<O> {
                 // Pick a random earlier task to depend on
                 let depends_on_idx = rng.random_range(0..idx);
                 let depends_on_id = task_ids[depends_on_idx];
-                if self.todo_list.borrow_mut().add_task_dependency(task_id, depends_on_id).is_some() {
+                if self.project_manager.borrow_mut().get_current_todo_list_mut().add_task_dependency(task_id, depends_on_id).is_some() {
                     dependencies_added += 1;
                 }
             }
@@ -88,9 +88,9 @@ impl<O: OutputWriter> DebugCommandController<O> {
         
         // Uncomplete tasks that have incomplete dependencies
         for &task_id in &task_ids {
-            let has_incomplete_deps = !self.todo_list.borrow().are_dependencies_completed(task_id);
+            let has_incomplete_deps = !self.project_manager.borrow().get_current_todo_list().are_dependencies_completed(task_id);
             if has_incomplete_deps {
-                self.todo_list.borrow_mut().uncomplete_task(task_id);
+                self.project_manager.borrow_mut().get_current_todo_list_mut().uncomplete_task(task_id);
             }
         }
         
@@ -115,8 +115,8 @@ impl<O: OutputWriter> DebugCommandController<O> {
     ///
     /// * `todo_list` - The todo list to clear
     fn clear_all_tasks(&mut self) -> CommandControllerResult {
-        let count = self.todo_list.borrow().get_tasks().len();
-        self.todo_list.borrow_mut().clear_all();
+        let count = self.project_manager.borrow().get_current_todo_list().get_tasks().len();
+        self.project_manager.borrow_mut().get_current_todo_list_mut().clear_all();
         self.output_manager.show_success(&format!("Cleared {} tasks", count));
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
     }
@@ -152,29 +152,29 @@ mod tests {
     
     #[test]
     fn test_generate_random_tasks() {
-        let todo_list = Rc::new(RefCell::new(TodoList::new()));
+        let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
         let buffer = Vec::new();
         let output_writer = FileOutputWriter::new(buffer);
-        let mut controller = DebugCommandController::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output_writer)));
+        let mut controller = DebugCommandController::new(Rc::clone(&project_manager), Rc::new(RefCell::new(output_writer)));
 
         controller.generate_random_tasks(10);
 
         // Should have at least 10 tasks (parents), possibly more with subtasks
-        let total_tasks = todo_list.borrow().get_tasks().len();
+        let total_tasks = project_manager.borrow().get_current_todo_list().get_tasks().len();
         assert!(total_tasks >= 10, "Expected at least 10 tasks, got {}", total_tasks);
     }
     
     #[test]
     fn test_clear_all_tasks() {
-        let todo_list = Rc::new(RefCell::new(TodoList::new()));
-        todo_list.borrow_mut().add_task(TaskWithoutId::new("Test task 1".to_string()));
-        todo_list.borrow_mut().add_task(TaskWithoutId::new("Test task 2".to_string()));
+        let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
+        project_manager.borrow_mut().get_current_todo_list_mut().add_task(TaskWithoutId::new("Test task 1".to_string()));
+        project_manager.borrow_mut().get_current_todo_list_mut().add_task(TaskWithoutId::new("Test task 2".to_string()));
         let buffer = Vec::new();
         let output_writer = FileOutputWriter::new(buffer);
-        let mut controller = DebugCommandController::new(Rc::clone(&todo_list), Rc::new(RefCell::new(output_writer)));
+        let mut controller = DebugCommandController::new(Rc::clone(&project_manager), Rc::new(RefCell::new(output_writer)));
 
         controller.clear_all_tasks();
         
-        assert_eq!(todo_list.borrow().get_tasks().len(), 0);
+        assert_eq!(project_manager.borrow().get_current_todo_list().get_tasks().len(), 0);
     }
 }

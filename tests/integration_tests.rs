@@ -311,3 +311,112 @@ fn test_multiple_parent_subtasks() {
         assert_eq!(subtask.get_parent_id(), Some(parent2_id));
     }
 }
+
+/// Test complete project workflow: create multiple projects, switch between them,
+/// add tasks to each, verify isolation
+#[test]
+fn test_complete_project_workflow() {
+    use todo_manager::controller::project_command::ProjectManager;
+    
+    let mut project_manager = ProjectManager::new();
+    
+    // Verify we start with the default project
+    assert_eq!(project_manager.project_count(), 1);
+    assert_eq!(project_manager.get_current_project_name(), "default");
+    
+    // Add tasks to default project
+    let _default_task1 = project_manager.get_current_todo_list_mut()
+        .add_task(TaskWithoutId::new("Default task 1".to_string()));
+    let _default_task2 = project_manager.get_current_todo_list_mut()
+        .add_task(TaskWithoutId::new("Default task 2".to_string()));
+    
+    assert_eq!(project_manager.get_current_todo_list().get_tasks().len(), 2);
+    
+    // Create Work project
+    assert!(project_manager.create_project("Work".to_string()).is_some());
+    assert_eq!(project_manager.project_count(), 2);
+    
+    // Switch to Work project
+    assert!(project_manager.switch_project("Work".to_string()).is_some());
+    assert_eq!(project_manager.get_current_project_name(), "Work");
+    
+    // Work project should be empty
+    assert_eq!(project_manager.get_current_todo_list().get_tasks().len(), 0);
+    
+    // Add tasks to Work project
+    let _work_task1 = project_manager.get_current_todo_list_mut()
+        .add_task(TaskWithoutId::new("Work task 1".to_string()));
+    let work_task2 = project_manager.get_current_todo_list_mut()
+        .add_task(TaskWithoutId::new("Work task 2".to_string()));
+    let _work_task3 = project_manager.get_current_todo_list_mut()
+        .add_task(TaskWithoutId::new("Work task 3".to_string()));
+    
+    assert_eq!(project_manager.get_current_todo_list().get_tasks().len(), 3);
+    assert_eq!(project_manager.get_current_todo_list().get_tasks()[0].description, "Work task 1");
+    
+    // Create Personal project
+    assert!(project_manager.create_project("Personal".to_string()).is_some());
+    assert_eq!(project_manager.project_count(), 3);
+    
+    // Switch to Personal project
+    assert!(project_manager.switch_project("Personal".to_string()).is_some());
+    assert_eq!(project_manager.get_current_project_name(), "Personal");
+    
+    // Personal project should be empty
+    assert_eq!(project_manager.get_current_todo_list().get_tasks().len(), 0);
+    
+    // Add tasks to Personal project
+    let personal_task1 = project_manager.get_current_todo_list_mut()
+        .add_task(TaskWithoutId::new("Personal task 1".to_string()));
+    project_manager.get_current_todo_list_mut()
+        .toggle_task(personal_task1);
+    
+    assert_eq!(project_manager.get_current_todo_list().get_tasks().len(), 1);
+    assert!(project_manager.get_current_todo_list().get_tasks()[0].is_completed());
+    
+    // Switch back to default and verify tasks are still there
+    assert!(project_manager.switch_project("default".to_string()).is_some());
+    assert_eq!(project_manager.get_current_todo_list().get_tasks().len(), 2);
+    assert_eq!(project_manager.get_current_todo_list().get_tasks()[0].description, "Default task 1");
+    assert_eq!(project_manager.get_current_todo_list().get_tasks()[1].description, "Default task 2");
+    
+    // Switch back to Work and verify tasks are still there
+    assert!(project_manager.switch_project("Work".to_string()).is_some());
+    assert_eq!(project_manager.get_current_todo_list().get_tasks().len(), 3);
+    assert_eq!(project_manager.get_current_todo_list().get_tasks()[0].description, "Work task 1");
+    assert_eq!(project_manager.get_current_todo_list().get_tasks()[2].description, "Work task 3");
+    
+    // Verify all Work tasks are pending (not completed)
+    for task in project_manager.get_current_todo_list().get_tasks() {
+        assert!(!task.is_completed());
+    }
+    
+    // Complete a Work task
+    project_manager.get_current_todo_list_mut().toggle_task(work_task2);
+    assert_eq!(project_manager.get_current_todo_list().get_completed_tasks().len(), 1);
+    assert_eq!(project_manager.get_current_todo_list().get_pending_tasks().len(), 2);
+    
+    // We're currently on Work project, delete Personal project
+    assert_eq!(project_manager.get_current_project_name(), "Work");
+    assert!(project_manager.delete_project("Personal".to_string()).is_some());
+    assert_eq!(project_manager.project_count(), 2);
+    
+    // Should still be on Work after deletion (we didn't delete current project)
+    assert_eq!(project_manager.get_current_project_name(), "Work");
+    
+    // Rename Work project
+    assert!(project_manager.rename_project("Work".to_string(), "Office".to_string()).is_some());
+    
+    // Switch to renamed project
+    assert!(project_manager.switch_project("Office".to_string()).is_some());
+    assert_eq!(project_manager.get_current_todo_list().get_tasks().len(), 3);
+    
+    // Verify we can't delete current project
+    assert!(project_manager.delete_project("Office".to_string()).is_none());
+    
+    // List all projects
+    let projects = project_manager.list_projects();
+    assert_eq!(projects.len(), 2);
+    assert!(projects.contains(&"default".to_string()));
+    assert!(projects.contains(&"Office".to_string()));
+}
