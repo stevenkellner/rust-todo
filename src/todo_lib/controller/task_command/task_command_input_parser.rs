@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::controller::task_command::{TaskCommand, TaskSelection};
 use crate::models::filter_builder::FilterBuilder;
 use crate::models::priority::Priority;
@@ -38,6 +40,7 @@ impl TaskCommandInputParser {
             "priority" | "pri" => Some(self.parse_priority_command(args)),
             "set-due" | "due" => Some(self.parse_set_due_command(args)),
             "set-category" | "category" | "cat" => Some(self.parse_set_category_command(args)),
+            "set-recurring" | "recurring" | "recur" => Some(self.parse_set_recurring_command(args)),
             "categories" | "list-categories" => Some(Ok(TaskCommand::ListCategories)),
             "edit" => Some(self.parse_edit_command(args)),
             "search" | "find" => Some(self.parse_search_command(args)),
@@ -251,6 +254,36 @@ impl TaskCommandInputParser {
 
             let selection = self.parse_task_selection(&args[0..1], "set-category")?;
             Ok(TaskCommand::SetCategory(selection, category))
+        }
+    }
+
+    /// Parses the 'set-recurring' command.
+    /// Supports single ID, ID ranges (1-5), lists (1,3,5), combined (1-3,7), or "all"
+    fn parse_set_recurring_command(&self, args: &[&str]) -> Result<TaskCommand, ParseError> {
+        use crate::models::recurrence::Recurrence;
+        
+        if args.len() < 2 {
+            Err(ParseError::MissingArguments { 
+                command: "set-recurring".to_string(), 
+                usage: "set-recurring <task id|range|all> <daily|weekly|monthly|none>".to_string() 
+            })
+        } else {
+            let recurrence_str = args[1].to_lowercase();
+            let recurrence = if recurrence_str == "none" {
+                None
+            } else {
+                match Recurrence::from_str(&recurrence_str) {
+                    Ok(r) => Some(r),
+                    Err(()) => return Err(ParseError::InvalidFormat {
+                        field: "recurrence".to_string(),
+                        expected: "daily, weekly, monthly, or none".to_string(),
+                        actual: args[1].to_string(),
+                    }),
+                }
+            };
+
+            let selection = self.parse_task_selection(&args[0..1], "set-recurring")?;
+            Ok(TaskCommand::SetRecurring(selection, recurrence))
         }
     }
 

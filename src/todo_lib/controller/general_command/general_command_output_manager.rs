@@ -79,6 +79,11 @@ impl<O: OutputWriter> GeneralCommandOutputManager<O> {
         self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Format:", "<name> or 'none' to clear"));
         self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Aliases:", "category, cat"));
         self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("set-recurring <id|range|all> <frequency>", "Set task(s) recurrence"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Examples:", "1 daily, 1-5 weekly, all none"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Frequency:", "daily/d, weekly/w, monthly/m, none"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Aliases:", "recurring, recur"));
+        self.output_writer.borrow_mut().write_line("");
         self.output_writer.borrow_mut().write_line(&MessageFormatter::command("categories", "List all categories"));
         self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Alias:", "list-categories"));
         self.output_writer.borrow_mut().write_line("");

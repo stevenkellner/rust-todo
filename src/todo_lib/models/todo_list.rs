@@ -639,6 +639,83 @@ impl TodoList {
         }
     }
 
+    /// Sets the recurrence pattern of a task with the given ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID of the task to update
+    /// * `recurrence` - The new recurrence pattern (or None to clear)
+    ///
+    /// # Returns
+    ///
+    /// A reference to the updated task, or `None` if the task doesn't exist
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    /// use todo_manager::models::recurrence::Recurrence;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id = list.add_task(TaskWithoutId::new("Daily task".to_string()));
+    /// 
+    /// list.set_task_recurrence(id, Some(Recurrence::Daily));
+    /// assert_eq!(list.get_tasks()[0].get_recurrence(), Some(Recurrence::Daily));
+    /// 
+    /// list.set_task_recurrence(id, None);
+    /// assert_eq!(list.get_tasks()[0].get_recurrence(), None);
+    /// ```
+    pub fn set_task_recurrence(&mut self, id: usize, recurrence: Option<crate::models::recurrence::Recurrence>) -> Option<&Task> {
+        if let Some(task) = self.tasks.iter_mut().find(|task| task.id == id) {
+            task.set_recurrence(recurrence);
+            Some(task)
+        } else {
+            None
+        }
+    }
+
+    /// Sets the recurrence pattern for multiple tasks by their IDs.
+    ///
+    /// # Arguments
+    ///
+    /// * `ids` - The IDs of the tasks to update
+    /// * `recurrence` - The recurrence pattern to set (or None to clear)
+    ///
+    /// # Returns
+    ///
+    /// A tuple with (number of tasks updated, vector of IDs not found)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    /// use todo_manager::models::recurrence::Recurrence;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// 
+    /// let (updated, not_found) = list.set_recurrence_multiple(&[id1, id2, 999], Some(Recurrence::Weekly));
+    /// assert_eq!(updated, 2);
+    /// assert_eq!(not_found, vec![999]);
+    /// ```
+    pub fn set_recurrence_multiple(&mut self, ids: &[usize], recurrence: Option<crate::models::recurrence::Recurrence>) -> (usize, Vec<usize>) {
+        let mut updated_count = 0;
+        let mut not_found = Vec::new();
+        
+        for &id in ids {
+            if self.set_task_recurrence(id, recurrence).is_some() {
+                updated_count += 1;
+            } else {
+                not_found.push(id);
+            }
+        }
+        
+        (updated_count, not_found)
+    }
+
     /// Gets all unique categories from all tasks.
     ///
     /// # Returns

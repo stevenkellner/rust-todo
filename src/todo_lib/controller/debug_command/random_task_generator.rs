@@ -1,4 +1,5 @@
 use crate::models::priority::Priority;
+use crate::models::recurrence::Recurrence;
 use crate::models::task::TaskWithoutId;
 use rand::Rng;
 
@@ -135,6 +136,26 @@ impl RandomTaskGenerator {
         }
     }
 
+    /// Generates an optional random recurrence pattern
+    /// 
+    /// # Arguments
+    /// 
+    /// * `probability` - Probability of generating a recurrence (0.0 to 1.0)
+    /// 
+    /// # Returns
+    /// 
+    /// `Some(Recurrence)` with the given probability, `None` otherwise
+    pub fn generate_recurrence(&self, probability: f64) -> Option<Recurrence> {
+        let mut rng = rand::rng();
+        if rng.random_bool(probability) {
+            let recurrence_patterns = [Recurrence::Daily, Recurrence::Weekly, Recurrence::Monthly];
+            let pattern_idx = rng.random_range(0..recurrence_patterns.len());
+            Some(recurrence_patterns[pattern_idx])
+        } else {
+            None
+        }
+    }
+
     /// Generates a single random task with all properties
     ///
     /// # Arguments
@@ -142,6 +163,7 @@ impl RandomTaskGenerator {
     /// * `complete_probability` - Probability of marking task as completed (default: 0.3)
     /// * `due_date_probability` - Probability of adding due date (default: 0.6)
     /// * `category_probability` - Probability of adding category (default: 0.7)
+    /// * `recurrence_probability` - Probability of adding recurrence (default: 0.2)
     ///
     /// # Returns
     ///
@@ -151,6 +173,7 @@ impl RandomTaskGenerator {
         complete_probability: f64,
         due_date_probability: f64,
         category_probability: f64,
+        recurrence_probability: f64,
     ) -> TaskWithoutId {
         let mut rng = rand::rng();
         
@@ -160,6 +183,7 @@ impl RandomTaskGenerator {
         let completed = rng.random_bool(complete_probability);
         let due_date = self.generate_due_date(due_date_probability);
         let category = self.generate_category(category_probability);
+        let recurrence = self.generate_recurrence(recurrence_probability);
         
         TaskWithoutId {
             description,
@@ -168,6 +192,7 @@ impl RandomTaskGenerator {
             due_date,
             category,
             parent_id: None,
+            recurrence,
         }
     }
 
@@ -182,7 +207,7 @@ impl RandomTaskGenerator {
     /// A vector of `TaskWithoutId` objects
     pub fn generate_tasks(&self, count: usize) -> Vec<TaskWithoutId> {
         (0..count)
-            .map(|_| self.generate_single_task(0.3, 0.6, 0.7))
+            .map(|_| self.generate_single_task(0.3, 0.6, 0.7, 0.2))
             .collect()
     }
 
@@ -228,6 +253,7 @@ impl RandomTaskGenerator {
             due_date: None,
             category: None,
             parent_id: None, // Will be set when added to TodoList
+            recurrence: None, // Subtasks typically don't recur independently
         }
     }
 
@@ -294,7 +320,7 @@ mod tests {
     fn test_generate_single_task() {
         let generator = RandomTaskGenerator::new();
         
-        let task = generator.generate_single_task(0.5, 0.5, 0.5);
+        let task = generator.generate_single_task(0.5, 0.5, 0.5, 0.5);
         
         assert!(!task.description.is_empty());
         assert!(matches!(task.priority, Priority::High | Priority::Medium | Priority::Low));
@@ -360,6 +386,26 @@ mod tests {
         assert!(subtask.category.is_none());
         // parent_id should be None initially (will be set by TodoList.add_subtask)
         assert!(subtask.parent_id.is_none());
+    }
+
+    #[test]
+    fn test_generate_recurrence_zero_probability() {
+        let generator = RandomTaskGenerator::new();
+        
+        // With 0.0 probability, should always return None
+        let recurrence = generator.generate_recurrence(0.0);
+        assert!(recurrence.is_none());
+    }
+
+    #[test]
+    fn test_generate_recurrence_full_probability() {
+        let generator = RandomTaskGenerator::new();
+        
+        // With 1.0 probability, should return a valid recurrence pattern
+        let recurrence = generator.generate_recurrence(1.0);
+        assert!(recurrence.is_some());
+        let pattern = recurrence.unwrap();
+        assert!(matches!(pattern, Recurrence::Daily | Recurrence::Weekly | Recurrence::Monthly));
     }
 
 }

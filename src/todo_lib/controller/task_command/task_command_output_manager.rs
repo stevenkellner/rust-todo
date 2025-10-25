@@ -44,6 +44,11 @@ impl<O: OutputWriter> TaskCommandOutputManager<O> {
         self.output_writer.borrow_mut().show_success(&format!("Task '{}' marked as completed.", description));
     }
 
+    /// Displays a success message after creating a recurring task instance.
+    pub fn show_recurring_task_created(&mut self, id: usize, description: &str) {
+        self.output_writer.borrow_mut().show_success(&format!("Created recurring task with ID {}: '{}'", id, description));
+    }
+
     /// Displays a success message after uncompleting a task.
     pub fn show_task_uncompleted(&mut self, description: &str) {
         self.output_writer.borrow_mut().show_success(&format!("Task '{}' marked as pending.", description));
@@ -312,6 +317,46 @@ impl<O: OutputWriter> TaskCommandOutputManager<O> {
     /// Displays a success message after clearing category.
     pub fn show_category_cleared(&mut self, description: &str) {
         self.show_category_set(description, None);
+    }
+
+    /// Displays a success message after setting recurrence.
+    pub fn show_recurrence_set(&mut self, description: &str, recurrence: Option<crate::models::Recurrence>) {
+        let message = if let Some(rec) = recurrence {
+            format!("Recurrence set to '{}' for task: '{}'", rec.as_str(), description)
+        } else {
+            format!("Recurrence cleared for task: '{}'", description)
+        };
+        self.output_writer.borrow_mut().show_success(&message);
+    }
+
+    /// Displays a success message after setting recurrence for multiple tasks.
+    pub fn show_multiple_recurrences_set(&mut self, updated_count: usize, recurrence: Option<crate::models::Recurrence>, not_found: &[usize]) {
+        if updated_count > 0 {
+            let message = if let Some(rec) = recurrence {
+                if updated_count == 1 {
+                    format!("Set recurrence to '{}' for 1 task.", rec.as_str())
+                } else {
+                    format!("Set recurrence to '{}' for {} tasks.", rec.as_str(), updated_count)
+                }
+            } else if updated_count == 1 {
+                "Cleared recurrence for 1 task.".to_string()
+            } else {
+                format!("Cleared recurrence for {} tasks.", updated_count)
+            };
+            self.output_writer.borrow_mut().show_success(&message);
+        }
+        
+        if !not_found.is_empty() {
+            let ids = not_found.iter()
+                .map(|id| id.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            self.output_writer.borrow_mut().show_error(&format!("Tasks with IDs {} not found.", ids));
+        }
+        
+        if updated_count == 0 && not_found.is_empty() {
+            self.output_writer.borrow_mut().show_error("No tasks to update.");
+        }
     }
 
     /// Displays an error when a task is not found.

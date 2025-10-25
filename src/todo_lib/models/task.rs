@@ -1,5 +1,6 @@
 use super::priority::Priority;
-use chrono::NaiveDate;
+use super::recurrence::Recurrence;
+use chrono::{NaiveDate, Datelike};
 use serde::{Serialize, Deserialize};
 
 /// Represents task data without an ID.
@@ -30,6 +31,8 @@ pub struct TaskWithoutId {
     pub category: Option<String>,
     /// The optional parent task ID for subtasks
     pub parent_id: Option<usize>,
+    /// The optional recurrence pattern for the task
+    pub recurrence: Option<Recurrence>,
 }
 
 impl TaskWithoutId {
@@ -58,6 +61,7 @@ impl TaskWithoutId {
             due_date: None,
             category: None,
             parent_id: None,
+            recurrence: None,
         }
     }
 
@@ -86,6 +90,7 @@ impl TaskWithoutId {
             due_date: self.due_date,
             category: self.category,
             parent_id: self.parent_id,
+            recurrence: self.recurrence,
         }
     }
 }
@@ -120,6 +125,8 @@ pub struct Task {
     pub category: Option<String>,
     /// The optional parent task ID for subtasks
     pub parent_id: Option<usize>,
+    /// The optional recurrence pattern for the task
+    pub recurrence: Option<Recurrence>,
 }
 
 impl Task {
@@ -151,6 +158,7 @@ impl Task {
             due_date: None,
             category: None,
             parent_id: None,
+            recurrence: None,
         }
     }
 
@@ -421,6 +429,121 @@ impl Task {
     /// ```
     pub fn clear_parent(&mut self) {
         self.parent_id = None;
+    }
+
+    /// Sets the recurrence pattern for this task.
+    ///
+    /// # Arguments
+    ///
+    /// * `recurrence` - The recurrence pattern (Daily, Weekly, or Monthly), or None to clear
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    /// use todo_manager::models::recurrence::Recurrence;
+    ///
+    /// let mut task = Task::new(1, "Recurring task".to_string());
+    /// task.set_recurrence(Some(Recurrence::Daily));
+    /// assert_eq!(task.get_recurrence(), Some(Recurrence::Daily));
+    /// assert!(task.is_recurring());
+    /// ```
+    pub fn set_recurrence(&mut self, recurrence: Option<Recurrence>) {
+        self.recurrence = recurrence;
+    }
+
+    /// Gets the recurrence pattern for this task.
+    ///
+    /// # Returns
+    ///
+    /// The recurrence pattern, or None if the task is not recurring
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    /// use todo_manager::models::recurrence::Recurrence;
+    ///
+    /// let mut task = Task::new(1, "Recurring task".to_string());
+    /// assert_eq!(task.get_recurrence(), None);
+    ///
+    /// task.set_recurrence(Some(Recurrence::Weekly));
+    /// assert_eq!(task.get_recurrence(), Some(Recurrence::Weekly));
+    /// ```
+    pub fn get_recurrence(&self) -> Option<Recurrence> {
+        self.recurrence
+    }
+
+    /// Checks if this task is recurring.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the task has a recurrence pattern, `false` otherwise
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    /// use todo_manager::models::recurrence::Recurrence;
+    ///
+    /// let mut task = Task::new(1, "Task".to_string());
+    /// assert!(!task.is_recurring());
+    ///
+    /// task.set_recurrence(Some(Recurrence::Monthly));
+    /// assert!(task.is_recurring());
+    /// ```
+    pub fn is_recurring(&self) -> bool {
+        self.recurrence.is_some()
+    }
+
+    /// Calculates the next due date based on the recurrence pattern.
+    ///
+    /// # Returns
+    ///
+    /// The next due date, or None if the task has no due date or no recurrence pattern
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    /// use todo_manager::models::recurrence::Recurrence;
+    /// use chrono::NaiveDate;
+    ///
+    /// let mut task = Task::new(1, "Recurring task".to_string());
+    /// task.set_due_date(Some(NaiveDate::from_ymd_opt(2025, 10, 25).unwrap()));
+    /// task.set_recurrence(Some(Recurrence::Daily));
+    ///
+    /// let next_date = task.calculate_next_due_date();
+    /// assert_eq!(next_date, Some(NaiveDate::from_ymd_opt(2025, 10, 26).unwrap()));
+    /// ```
+    pub fn calculate_next_due_date(&self) -> Option<NaiveDate> {
+        match (self.due_date, self.recurrence) {
+            (Some(due_date), Some(recurrence)) => {
+                match recurrence {
+                    Recurrence::Daily => Some(due_date + chrono::Duration::days(1)),
+                    Recurrence::Weekly => Some(due_date + chrono::Duration::weeks(1)),
+                    Recurrence::Monthly => {
+                        // Add one month, handling month-end edge cases
+                        let mut year = due_date.year();
+                        let mut month = due_date.month() + 1;
+                        if month > 12 {
+                            month = 1;
+                            year += 1;
+                        }
+                        // Handle day-of-month edge cases (e.g., Jan 31 -> Feb 28/29)
+                        let day = due_date.day();
+                        let max_day = match month {
+                            2 => if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) { 29 } else { 28 },
+                            4 | 6 | 9 | 11 => 30,
+                            _ => 31,
+                        };
+                        let actual_day = day.min(max_day);
+                        NaiveDate::from_ymd_opt(year, month, actual_day)
+                    }
+                }
+            }
+            _ => None,
+        }
     }
 }
 

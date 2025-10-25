@@ -1,5 +1,6 @@
 use crate::models::task_filter::TaskFilter;
 use crate::models::priority::Priority;
+use crate::models::recurrence::Recurrence;
 use chrono::NaiveDate;
 use super::TaskSelection;
 
@@ -41,6 +42,9 @@ pub enum TaskCommand {
     
     /// Set the category of task(s)
     SetCategory(TaskSelection, Option<String>),
+    
+    /// Set the recurrence pattern for task(s)
+    SetRecurring(TaskSelection, Option<Recurrence>),
     
     /// List all categories
     ListCategories,
