@@ -183,7 +183,9 @@ impl<O: OutputWriter> TaskCommandController<O> {
                 new_subtask.priority = subtask_priority;
                 new_subtask.completed = false; // Ensure subtask is pending
                 
-                if let Some(subtask_id) = self.todo_list.borrow_mut().add_subtask(new_id, new_subtask.description) {
+                // Add subtask and get its ID, releasing the borrow before setting priority
+                let subtask_id = self.todo_list.borrow_mut().add_subtask(new_id, new_subtask.description);
+                if let Some(subtask_id) = subtask_id {
                     // Set the priority of the newly created subtask
                     self.todo_list.borrow_mut().set_task_priority(subtask_id, subtask_priority);
                 }
@@ -208,13 +210,33 @@ impl<O: OutputWriter> TaskCommandController<O> {
     /// Completes multiple tasks by their IDs.
     fn complete_multiple_tasks(&mut self, ids: &[usize]) -> CommandControllerResult {
         // Collect recurring task data before completing
-        let recurring_tasks_data: Vec<_> = self.todo_list.borrow()
-            .get_tasks()
-            .iter()
-            .filter(|t| ids.contains(&t.id) && t.is_recurring())
-            .map(|task| {
+        // First pass: collect task info (without subtasks) to avoid nested borrows
+        let recurring_task_ids_and_info: Vec<_> = {
+            let todo_list = self.todo_list.borrow();
+            todo_list
+                .get_tasks()
+                .iter()
+                .filter(|t| ids.contains(&t.id) && t.is_recurring())
+                .map(|task| {
+                    (
+                        task.id,
+                        task.description.clone(),
+                        task.priority,
+                        task.category.clone(),
+                        task.parent_id,
+                        task.recurrence,
+                        task.calculate_next_due_date(),
+                    )
+                })
+                .collect()
+        };
+        
+        // Second pass: collect subtasks for each recurring task
+        let recurring_tasks_data: Vec<_> = recurring_task_ids_and_info
+            .into_iter()
+            .map(|(task_id, description, priority, category, parent_id, recurrence, next_due_date)| {
                 let subtasks: Vec<_> = self.todo_list.borrow()
-                    .get_subtasks(task.id)
+                    .get_subtasks(task_id)
                     .iter()
                     .map(|subtask| {
                         (
@@ -224,15 +246,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
                     })
                     .collect();
                 
-                (
-                    task.description.clone(),
-                    task.priority,
-                    task.category.clone(),
-                    task.parent_id,
-                    task.recurrence,
-                    task.calculate_next_due_date(),
-                    subtasks,
-                )
+                (description, priority, category, parent_id, recurrence, next_due_date, subtasks)
             })
             .collect();
         
@@ -258,7 +272,9 @@ impl<O: OutputWriter> TaskCommandController<O> {
                 new_subtask.priority = subtask_priority;
                 new_subtask.completed = false; // Ensure subtask is pending
                 
-                if let Some(subtask_id) = self.todo_list.borrow_mut().add_subtask(new_id, new_subtask.description) {
+                // Add subtask and get its ID, releasing the borrow before setting priority
+                let subtask_id = self.todo_list.borrow_mut().add_subtask(new_id, new_subtask.description);
+                if let Some(subtask_id) = subtask_id {
                     // Set the priority of the newly created subtask
                     self.todo_list.borrow_mut().set_task_priority(subtask_id, subtask_priority);
                 }
@@ -271,13 +287,33 @@ impl<O: OutputWriter> TaskCommandController<O> {
     /// Completes all tasks.
     fn complete_all_tasks(&mut self) -> CommandControllerResult {
         // Collect recurring task data before completing
-        let recurring_tasks_data: Vec<_> = self.todo_list.borrow()
-            .get_tasks()
-            .iter()
-            .filter(|t| !t.is_completed() && t.is_recurring())
-            .map(|task| {
+        // First pass: collect task info (without subtasks) to avoid nested borrows
+        let recurring_task_ids_and_info: Vec<_> = {
+            let todo_list = self.todo_list.borrow();
+            todo_list
+                .get_tasks()
+                .iter()
+                .filter(|t| !t.is_completed() && t.is_recurring())
+                .map(|task| {
+                    (
+                        task.id,
+                        task.description.clone(),
+                        task.priority,
+                        task.category.clone(),
+                        task.parent_id,
+                        task.recurrence,
+                        task.calculate_next_due_date(),
+                    )
+                })
+                .collect()
+        };
+        
+        // Second pass: collect subtasks for each recurring task
+        let recurring_tasks_data: Vec<_> = recurring_task_ids_and_info
+            .into_iter()
+            .map(|(task_id, description, priority, category, parent_id, recurrence, next_due_date)| {
                 let subtasks: Vec<_> = self.todo_list.borrow()
-                    .get_subtasks(task.id)
+                    .get_subtasks(task_id)
                     .iter()
                     .map(|subtask| {
                         (
@@ -287,15 +323,7 @@ impl<O: OutputWriter> TaskCommandController<O> {
                     })
                     .collect();
                 
-                (
-                    task.description.clone(),
-                    task.priority,
-                    task.category.clone(),
-                    task.parent_id,
-                    task.recurrence,
-                    task.calculate_next_due_date(),
-                    subtasks,
-                )
+                (description, priority, category, parent_id, recurrence, next_due_date, subtasks)
             })
             .collect();
         
@@ -321,7 +349,9 @@ impl<O: OutputWriter> TaskCommandController<O> {
                 new_subtask.priority = subtask_priority;
                 new_subtask.completed = false; // Ensure subtask is pending
                 
-                if let Some(subtask_id) = self.todo_list.borrow_mut().add_subtask(new_id, new_subtask.description) {
+                // Add subtask and get its ID, releasing the borrow before setting priority
+                let subtask_id = self.todo_list.borrow_mut().add_subtask(new_id, new_subtask.description);
+                if let Some(subtask_id) = subtask_id {
                     // Set the priority of the newly created subtask
                     self.todo_list.borrow_mut().set_task_priority(subtask_id, subtask_priority);
                 }
