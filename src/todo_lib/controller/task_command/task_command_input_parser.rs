@@ -41,6 +41,9 @@ impl TaskCommandInputParser {
             "set-due" | "due" => Some(self.parse_set_due_command(args)),
             "set-category" | "category" | "cat" => Some(self.parse_set_category_command(args)),
             "set-recurring" | "recurring" | "recur" => Some(self.parse_set_recurring_command(args)),
+            "add-dependency" | "add-dep" | "depends-on" => Some(self.parse_add_dependency_command(args)),
+            "remove-dependency" | "remove-dep" | "rm-dep" => Some(self.parse_remove_dependency_command(args)),
+            "show-dependencies" | "dependencies" | "deps" | "dep-graph" | "dependency-graph" => Some(self.parse_show_dependency_graph_command(args)),
             "categories" | "list-categories" => Some(Ok(TaskCommand::ListCategories)),
             "edit" => Some(self.parse_edit_command(args)),
             "search" | "find" => Some(self.parse_search_command(args)),
@@ -285,6 +288,77 @@ impl TaskCommandInputParser {
             let selection = self.parse_task_selection(&args[0..1], "set-recurring")?;
             Ok(TaskCommand::SetRecurring(selection, recurrence))
         }
+    }
+
+    /// Parses the 'add-dependency' command.
+    fn parse_add_dependency_command(&self, args: &[&str]) -> Result<TaskCommand, ParseError> {
+        if args.len() < 2 {
+            return Err(ParseError::MissingArguments { 
+                command: "add-dependency".to_string(), 
+                usage: "add-dependency <task_id> <depends_on_id>".to_string() 
+            });
+        }
+
+        let task_id = args[0].parse::<usize>()
+            .map_err(|_| ParseError::InvalidFormat { 
+                field: "task ID".to_string(), 
+                expected: "positive integer".to_string(), 
+                actual: args[0].to_string() 
+            })?;
+
+        let depends_on_id = args[1].parse::<usize>()
+            .map_err(|_| ParseError::InvalidFormat { 
+                field: "dependency ID".to_string(), 
+                expected: "positive integer".to_string(), 
+                actual: args[1].to_string() 
+            })?;
+
+        Ok(TaskCommand::AddDependency(task_id, depends_on_id))
+    }
+
+    /// Parses the 'remove-dependency' command.
+    fn parse_remove_dependency_command(&self, args: &[&str]) -> Result<TaskCommand, ParseError> {
+        if args.len() < 2 {
+            return Err(ParseError::MissingArguments { 
+                command: "remove-dependency".to_string(), 
+                usage: "remove-dependency <task_id> <depends_on_id>".to_string() 
+            });
+        }
+
+        let task_id = args[0].parse::<usize>()
+            .map_err(|_| ParseError::InvalidFormat { 
+                field: "task ID".to_string(), 
+                expected: "positive integer".to_string(), 
+                actual: args[0].to_string() 
+            })?;
+
+        let depends_on_id = args[1].parse::<usize>()
+            .map_err(|_| ParseError::InvalidFormat { 
+                field: "dependency ID".to_string(), 
+                expected: "positive integer".to_string(), 
+                actual: args[1].to_string() 
+            })?;
+
+        Ok(TaskCommand::RemoveDependency(task_id, depends_on_id))
+    }
+
+    /// Parses the 'show-dependencies' command.
+    fn parse_show_dependency_graph_command(&self, args: &[&str]) -> Result<TaskCommand, ParseError> {
+        if args.is_empty() {
+            return Err(ParseError::MissingArguments { 
+                command: "show-dependencies".to_string(), 
+                usage: "show-dependencies <task_id>".to_string() 
+            });
+        }
+
+        let task_id = args[0].parse::<usize>()
+            .map_err(|_| ParseError::InvalidFormat { 
+                field: "task ID".to_string(), 
+                expected: "positive integer".to_string(), 
+                actual: args[0].to_string() 
+            })?;
+
+        Ok(TaskCommand::ShowDependencyGraph(task_id))
     }
 
     /// Parses the 'search' command.

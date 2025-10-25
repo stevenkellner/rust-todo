@@ -752,6 +752,292 @@ impl TodoList {
         categories
     }
 
+    /// Adds a dependency relationship between two tasks.
+    ///
+    /// Makes `task_id` depend on `depends_on_id`. This means `task_id` cannot be completed
+    /// until `depends_on_id` is completed.
+    ///
+    /// # Arguments
+    ///
+    /// * `task_id` - The ID of the task that will depend on another task
+    /// * `depends_on_id` - The ID of the task that must be completed first
+    ///
+    /// # Returns
+    ///
+    /// `Some(())` if the dependency was added successfully, or `None` if:
+    /// - Either task doesn't exist
+    /// - The dependency would create a circular dependency
+    /// - The task is trying to depend on itself
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// 
+    /// let result = list.add_task_dependency(id2, id1);
+    /// assert!(result.is_some());
+    /// ```
+    pub fn add_task_dependency(&mut self, task_id: usize, depends_on_id: usize) -> Option<()> {
+        // Can't depend on itself
+        if task_id == depends_on_id {
+            return None;
+        }
+
+        // Check both tasks exist
+        if !self.tasks.iter().any(|t| t.id == task_id) || 
+           !self.tasks.iter().any(|t| t.id == depends_on_id) {
+            return None;
+        }
+
+        // Check for circular dependency
+        if self.would_create_circular_dependency(task_id, depends_on_id) {
+            return None;
+        }
+
+        // Add the dependency
+        if let Some(task) = self.tasks.iter_mut().find(|t| t.id == task_id) {
+            task.add_dependency(depends_on_id);
+            Some(())
+        } else {
+            None
+        }
+    }
+
+    /// Removes a dependency relationship between two tasks.
+    ///
+    /// # Arguments
+    ///
+    /// * `task_id` - The ID of the task with the dependency
+    /// * `depends_on_id` - The ID of the dependency to remove
+    ///
+    /// # Returns
+    ///
+    /// `Some(())` if the dependency was removed successfully, or `None` if the task doesn't exist.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// 
+    /// list.add_task_dependency(id2, id1);
+    /// let result = list.remove_task_dependency(id2, id1);
+    /// assert!(result.is_some());
+    /// ```
+    pub fn remove_task_dependency(&mut self, task_id: usize, depends_on_id: usize) -> Option<()> {
+        if let Some(task) = self.tasks.iter_mut().find(|t| t.id == task_id) {
+            task.remove_dependency(depends_on_id);
+            Some(())
+        } else {
+            None
+        }
+    }
+
+    /// Checks if adding a dependency would create a circular dependency chain.
+    ///
+    /// This method detects if making `task_id` depend on `depends_on_id` would create
+    /// a circular dependency (e.g., A depends on B, B depends on C, C depends on A).
+    ///
+    /// # Arguments
+    ///
+    /// * `task_id` - The ID of the task that would get the new dependency
+    /// * `depends_on_id` - The ID of the proposed dependency
+    ///
+    /// # Returns
+    ///
+    /// `true` if adding the dependency would create a circular dependency, `false` otherwise.
+    fn would_create_circular_dependency(&self, task_id: usize, depends_on_id: usize) -> bool {
+        // If depends_on_id already depends (directly or indirectly) on task_id,
+        // then adding this dependency would create a cycle
+        self.has_transitive_dependency(depends_on_id, task_id)
+    }
+
+    /// Checks if a task has a transitive dependency on another task.
+    ///
+    /// This performs a depth-first search to check if `task_id` depends on `target_id`
+    /// either directly or through a chain of dependencies.
+    ///
+    /// # Arguments
+    ///
+    /// * `task_id` - The task to check dependencies for
+    /// * `target_id` - The target task to look for in the dependency chain
+    ///
+    /// # Returns
+    ///
+    /// `true` if `task_id` depends on `target_id` (directly or indirectly), `false` otherwise.
+    fn has_transitive_dependency(&self, task_id: usize, target_id: usize) -> bool {
+        if task_id == target_id {
+            return true;
+        }
+
+        let task = match self.tasks.iter().find(|t| t.id == task_id) {
+            Some(t) => t,
+            None => return false,
+        };
+
+        // Check all direct dependencies recursively
+        for &dep_id in task.get_dependencies() {
+            if self.has_transitive_dependency(dep_id, target_id) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Checks if all dependencies of a task are completed.
+    ///
+    /// # Arguments
+    ///
+    /// * `task_id` - The ID of the task to check
+    ///
+    /// # Returns
+    ///
+    /// `true` if all dependencies are completed, `false` if any dependency is incomplete
+    /// or if the task doesn't exist.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// 
+    /// list.add_task_dependency(id2, id1);
+    /// assert!(!list.are_dependencies_completed(id2));
+    /// 
+    /// list.complete_task(id1);
+    /// assert!(list.are_dependencies_completed(id2));
+    /// ```
+    pub fn are_dependencies_completed(&self, task_id: usize) -> bool {
+        let task = match self.tasks.iter().find(|t| t.id == task_id) {
+            Some(t) => t,
+            None => return false,
+        };
+
+        // Check if all dependencies are completed
+        for &dep_id in task.get_dependencies() {
+            if let Some(dep_task) = self.tasks.iter().find(|t| t.id == dep_id) {
+                if !dep_task.is_completed() {
+                    return false;
+                }
+            } else {
+                // Dependency task doesn't exist, consider it as not completed
+                return false;
+            }
+        }
+
+        true
+    }
+
+    /// Gets the IDs of incomplete dependencies for a task.
+    ///
+    /// # Arguments
+    ///
+    /// * `task_id` - The ID of the task to check
+    ///
+    /// # Returns
+    ///
+    /// A vector of task IDs that are dependencies of this task and are not completed.
+    /// Returns an empty vector if the task doesn't exist or has no incomplete dependencies.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// let id3 = list.add_task(TaskWithoutId::new("Task 3".to_string()));
+    /// 
+    /// list.add_task_dependency(id3, id1);
+    /// list.add_task_dependency(id3, id2);
+    /// 
+    /// let incomplete = list.get_incomplete_dependencies(id3);
+    /// assert_eq!(incomplete.len(), 2);
+    /// 
+    /// list.complete_task(id1);
+    /// let incomplete = list.get_incomplete_dependencies(id3);
+    /// assert_eq!(incomplete.len(), 1);
+    /// assert_eq!(incomplete[0], id2);
+    /// ```
+    pub fn get_incomplete_dependencies(&self, task_id: usize) -> Vec<usize> {
+        let task = match self.tasks.iter().find(|t| t.id == task_id) {
+            Some(t) => t,
+            None => return Vec::new(),
+        };
+
+        let mut incomplete = Vec::new();
+        
+        // Check each dependency
+        for &dep_id in task.get_dependencies() {
+            if let Some(dep_task) = self.tasks.iter().find(|t| t.id == dep_id) {
+                if !dep_task.is_completed() {
+                    incomplete.push(dep_id);
+                }
+            } else {
+                // Dependency task doesn't exist, consider it as incomplete
+                incomplete.push(dep_id);
+            }
+        }
+
+        incomplete
+    }
+
+    /// Gets all tasks that depend on the given task (reverse dependencies).
+    ///
+    /// Returns a vector of task IDs that have the given task as a dependency.
+    ///
+    /// # Arguments
+    ///
+    /// * `task_id` - The ID of the task to find dependents for
+    ///
+    /// # Returns
+    ///
+    /// A vector of task IDs that depend on the given task. Returns an empty vector
+    /// if the task doesn't exist or no tasks depend on it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// let id3 = list.add_task(TaskWithoutId::new("Task 3".to_string()));
+    /// 
+    /// list.add_task_dependency(id2, id1);
+    /// list.add_task_dependency(id3, id1);
+    /// 
+    /// let dependents = list.get_dependent_tasks(id1);
+    /// assert_eq!(dependents.len(), 2);
+    /// assert!(dependents.contains(&id2));
+    /// assert!(dependents.contains(&id3));
+    /// ```
+    pub fn get_dependent_tasks(&self, task_id: usize) -> Vec<usize> {
+        self.tasks
+            .iter()
+            .filter(|task| task.get_dependencies().contains(&task_id))
+            .map(|task| task.id)
+            .collect()
+    }
+
     /// Marks a task as completed by its ID.
     ///
     /// If the task is already completed, this method has no effect but still returns the task.

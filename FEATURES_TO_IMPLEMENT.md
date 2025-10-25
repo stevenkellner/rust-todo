@@ -351,7 +351,7 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 ### 13. Recurring Tasks
 
-**Status:** Pending  
+**Status:** ✅ Completed  
 **Complexity:** Advanced  
 **Description:**
 
@@ -373,7 +373,7 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 ### 14. Task Dependencies
 
-**Status:** Pending  
+**Status:** ✅ Complete  
 **Complexity:** Advanced  
 **Description:**
 
@@ -390,6 +390,44 @@ This document tracks the 19 features selected for implementation in the TODO man
 - Display blocked tasks differently
 - Add `dependencies <id>` command to show chain
 - Detect circular dependencies
+- Show dependencies with the list command
+- RandomTaskGenerator also generate dependencies
+
+**Implementation Notes:**
+
+- Added `depends_on: Vec<usize>` field to both `Task` and `TaskWithoutId` structs
+- Implemented dependency management methods in Task:
+  - `add_dependency(dependency_id)` - Adds a dependency (prevents duplicates)
+  - `remove_dependency(dependency_id)` - Removes a dependency
+  - `get_dependencies()` - Returns the dependencies vector
+  - `has_dependency(id)` - Checks if task has specific dependency
+  - `has_dependencies()` - Checks if task has any dependencies
+- Implemented TodoList methods for dependency management:
+  - `add_task_dependency(task_id, depends_on_id)` - Adds dependency with validation
+  - `remove_task_dependency(task_id, depends_on_id)` - Removes a dependency
+  - `are_dependencies_completed(task_id)` - Checks if all dependencies are completed
+  - `would_create_circular_dependency()` - Detects circular dependencies
+  - `has_transitive_dependency()` - Performs depth-first search for transitive dependencies
+- Added command variants:
+  - `TaskCommand::AddDependency(task_id, depends_on_id)`
+  - `TaskCommand::RemoveDependency(task_id, depends_on_id)`
+- Implemented command parsers with aliases:
+  - `add-dependency`, `add-dep`, `depends-on`
+  - `remove-dependency`, `remove-dep`, `rm-dep`
+- Updated `complete_task()` to validate dependencies before allowing completion
+- Added dependency indicators in task display:
+  - Shows "🔒 depends on: [ids]" in yellow for tasks with dependencies
+  - Format: "🔒 depends on: 1" or "🔒 depends on: 1, 2, 3" for multiple
+- Updated `RandomTaskGenerator`:
+  - 30% probability for each task (after first) to depend on a random earlier task
+  - Displays dependency count in generation message
+- Updated help text with dependency commands and examples
+- Validation features:
+  - Prevents self-dependencies (task depending on itself)
+  - Detects and prevents circular dependencies
+  - Prevents completion of tasks with incomplete dependencies
+  - Shows appropriate error messages for each validation failure
+- All 297 tests passing (194 unit + 6 filtering + 11 integration + 86 doc tests)
 
 ---
 

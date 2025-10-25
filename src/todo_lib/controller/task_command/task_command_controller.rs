@@ -53,6 +53,9 @@ impl<O: OutputWriter> TaskCommandController<O> {
             TaskCommand::SetDueDate(id, due_date) => self.set_due_date(*id, *due_date),
             TaskCommand::SetCategory(selection, category) => self.handle_set_category(selection, category.clone()),
             TaskCommand::SetRecurring(selection, recurrence) => self.handle_set_recurring(selection, *recurrence),
+            TaskCommand::AddDependency(task_id, depends_on_id) => self.add_dependency(*task_id, *depends_on_id),
+            TaskCommand::RemoveDependency(task_id, depends_on_id) => self.remove_dependency(*task_id, *depends_on_id),
+            TaskCommand::ShowDependencyGraph(task_id) => self.show_dependency_graph(*task_id),
             TaskCommand::ListCategories => self.list_categories(),
             TaskCommand::Edit(id, new_description) => self.edit_task(*id, new_description),
             TaskCommand::Search(keyword) => self.search_tasks(keyword),
@@ -78,6 +81,91 @@ impl<O: OutputWriter> TaskCommandController<O> {
                 CommandControllerResult::default()
             }
         }
+    }
+
+
+    fn add_dependency(&mut self, task_id: usize, depends_on_id: usize) -> CommandControllerResult {
+        match self.todo_list.borrow_mut().add_task_dependency(task_id, depends_on_id) {
+            Some(()) => {
+                self.output_manager.show_dependency_added(task_id, depends_on_id);
+                CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+            }
+            None => {
+                // Check why it failed
+                let todo_list = self.todo_list.borrow();
+                if todo_list.get_tasks().iter().all(|t| t.id != task_id) {
+                    self.output_manager.show_task_not_found(task_id);
+                } else if todo_list.get_tasks().iter().all(|t| t.id != depends_on_id) {
+                    self.output_manager.show_task_not_found(depends_on_id);
+                } else if task_id == depends_on_id {
+                    self.output_manager.show_error("A task cannot depend on itself");
+                } else {
+                    self.output_manager.show_error("Adding this dependency would create a circular dependency");
+                }
+                CommandControllerResult::default()
+            }
+        }
+    }
+
+    fn remove_dependency(&mut self, task_id: usize, depends_on_id: usize) -> CommandControllerResult {
+        match self.todo_list.borrow_mut().remove_task_dependency(task_id, depends_on_id) {
+            Some(()) => {
+                self.output_manager.show_dependency_removed(task_id, depends_on_id);
+                CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+            }
+            None => {
+                self.output_manager.show_task_not_found(task_id);
+                CommandControllerResult::default()
+            }
+        }
+    }
+
+    fn show_dependency_graph(&mut self, task_id: usize) -> CommandControllerResult {
+        let todo_list_ref = self.todo_list.borrow();
+        
+        // Check if task exists
+        let task = match todo_list_ref.get_tasks().iter().find(|t| t.id == task_id) {
+            Some(t) => t,
+            None => {
+                drop(todo_list_ref);
+                self.output_manager.show_task_not_found(task_id);
+                return CommandControllerResult::default();
+            }
+        };
+
+        // Get dependencies (tasks this task depends on)
+        let dependencies: Vec<(usize, String, bool)> = task.get_dependencies()
+            .iter()
+            .filter_map(|&dep_id| {
+                todo_list_ref.get_tasks().iter().find(|t| t.id == dep_id)
+                    .map(|t| (t.id, t.description.clone(), t.is_completed()))
+            })
+            .collect();
+
+        // Get dependents (tasks that depend on this task)
+        let dependent_ids = todo_list_ref.get_dependent_tasks(task_id);
+        let dependents: Vec<(usize, String, bool)> = dependent_ids
+            .iter()
+            .filter_map(|&dep_id| {
+                todo_list_ref.get_tasks().iter().find(|t| t.id == dep_id)
+                    .map(|t| (t.id, t.description.clone(), t.is_completed()))
+            })
+            .collect();
+
+        let task_description = task.description.clone();
+        let task_completed = task.is_completed();
+        
+        drop(todo_list_ref);
+        
+        self.output_manager.show_dependency_graph(
+            task_id,
+            &task_description,
+            task_completed,
+            &dependencies,
+            &dependents
+        );
+        
+        CommandControllerResult::default()
     }
 
 
@@ -115,6 +203,21 @@ impl<O: OutputWriter> TaskCommandController<O> {
 
     /// Marks a task as completed.
     fn complete_task(&mut self, id: usize) -> CommandControllerResult {
+        // Check if dependencies are completed
+        let incomplete_deps = self.todo_list.borrow().get_incomplete_dependencies(id);
+        if !incomplete_deps.is_empty() {
+            let deps_str = incomplete_deps.iter()
+                .map(|id| id.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            self.output_manager.show_error(&format!(
+                "Cannot complete task {}: it depends on incomplete task(s): {}", 
+                id, 
+                deps_str
+            ));
+            return CommandControllerResult::default();
+        }
+
         // Collect recurring task data before completing
         let recurring_data = self.recurring_task_handler.collect_recurring_task_data(id);
         

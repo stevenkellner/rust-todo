@@ -46,14 +46,31 @@ impl TaskFormatter {
             String::new()
         };
         
-        format!("{}. {} {} {}{}{}{}", 
+        let dependency_str = if !task.depends_on.is_empty() {
+            format!(" {}", Self::format_dependencies(&task.depends_on))
+        } else {
+            String::new()
+        };
+        
+        format!("{}. {} {} {}{}{}{}{}", 
             task_id_formatted.bright_blue(), 
             status_symbol, 
             colored_priority,
             description_color,
             due_date_str,
             category_str,
-            recurrence_str)
+            recurrence_str,
+            dependency_str)
+    }
+    
+    /// Formats dependency information for display
+    fn format_dependencies(dependencies: &[usize]) -> ColoredString {
+        let dep_str = if dependencies.len() == 1 {
+            format!("🔒 depends on: {}", dependencies[0])
+        } else {
+            format!("🔒 depends on: {}", dependencies.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", "))
+        };
+        dep_str.bright_yellow()
     }
     
     /// Formats a category badge for display
@@ -150,8 +167,8 @@ mod tests {
     
     #[test]
     fn test_calculate_max_id_width_single_digit() {
-        let task1 = Task { id: 1, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None, parent_id: None, recurrence: None };
-        let task2 = Task { id: 5, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None, parent_id: None, recurrence: None };
+        let task1 = Task { id: 1, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None, parent_id: None, recurrence: None, depends_on: Vec::new() };
+        let task2 = Task { id: 5, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None, parent_id: None, recurrence: None, depends_on: Vec::new() };
         let tasks = vec![&task1, &task2];
         
         assert_eq!(TaskFormatter::calculate_max_id_width(&tasks), 1);
@@ -159,9 +176,9 @@ mod tests {
     
     #[test]
     fn test_calculate_max_id_width_mixed() {
-        let task1 = Task { id: 9, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None, parent_id: None, recurrence: None };
-        let task2 = Task { id: 10, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None, parent_id: None, recurrence: None };
-        let task3 = Task { id: 100, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None, parent_id: None, recurrence: None };
+        let task1 = Task { id: 9, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None, parent_id: None, recurrence: None, depends_on: Vec::new() };
+        let task2 = Task { id: 10, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None, parent_id: None, recurrence: None, depends_on: Vec::new() };
+        let task3 = Task { id: 100, description: "Test".to_string(), completed: false, priority: Priority::Medium, due_date: None, category: None, parent_id: None, recurrence: None, depends_on: Vec::new() };
         let tasks = vec![&task1, &task2, &task3];
         
         assert_eq!(TaskFormatter::calculate_max_id_width(&tasks), 3);

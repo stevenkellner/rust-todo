@@ -34,6 +34,67 @@ impl<O: OutputWriter> TaskCommandOutputManager<O> {
         self.output_writer.borrow_mut().show_success(&format!("Subtask added with ID {} under parent task {}: '{}'", subtask_id, parent_id, description));
     }
 
+    /// Displays a success message after adding a dependency.
+    pub fn show_dependency_added(&mut self, task_id: usize, depends_on_id: usize) {
+        self.output_writer.borrow_mut().show_success(&format!("Task {} now depends on task {}", task_id, depends_on_id));
+    }
+
+    /// Displays a success message after removing a dependency.
+    pub fn show_dependency_removed(&mut self, task_id: usize, depends_on_id: usize) {
+        self.output_writer.borrow_mut().show_success(&format!("Removed dependency: task {} no longer depends on task {}", task_id, depends_on_id));
+    }
+
+    /// Displays the dependency graph for a task.
+    pub fn show_dependency_graph(
+        &mut self,
+        task_id: usize,
+        task_description: &str,
+        task_completed: bool,
+        dependencies: &[(usize, String, bool)],
+        dependents: &[(usize, String, bool)]
+    ) {
+        let mut output = self.output_writer.borrow_mut();
+        
+        output.write_line("");
+        output.write_line(&format!("--- Dependency Graph for Task {} ---", task_id));
+        output.write_line("");
+        
+        // Show the task itself
+        let status = if task_completed { "[✓]" } else { "[ ]" };
+        output.write_line(&format!("  {} {}. {}", status, task_id, task_description));
+        output.write_line("");
+        
+        // Show dependencies (tasks this task depends on)
+        if dependencies.is_empty() {
+            output.write_line("  Dependencies: None");
+        } else {
+            output.write_line(&format!("  Dependencies ({}):", dependencies.len()));
+            for (id, desc, completed) in dependencies {
+                let status = if *completed { "[✓]" } else { "[ ]" };
+                let indicator = if *completed { "✓" } else { "⬆" };
+                output.write_line(&format!("    {} {} {}. {}", indicator, status, id, desc));
+            }
+        }
+        
+        output.write_line("");
+        
+        // Show dependents (tasks that depend on this task)
+        if dependents.is_empty() {
+            output.write_line("  Dependents: None");
+        } else {
+            output.write_line(&format!("  Dependents ({}):", dependents.len()));
+            for (id, desc, completed) in dependents {
+                let status = if *completed { "[✓]" } else { "[ ]" };
+                let indicator = if *completed { "✓" } else { "⬇" };
+                output.write_line(&format!("    {} {} {}. {}", indicator, status, id, desc));
+            }
+        }
+        
+        output.write_line("");
+        output.write_line(&"-".repeat(40));
+        output.write_line("");
+    }
+
     /// Displays a success message after removing a task.
     pub fn show_task_removed(&mut self, description: &str) {
         self.output_writer.borrow_mut().show_success(&format!("Task removed: '{}'", description));

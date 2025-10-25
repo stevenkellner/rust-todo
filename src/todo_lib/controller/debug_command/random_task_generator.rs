@@ -193,6 +193,7 @@ impl RandomTaskGenerator {
             category,
             parent_id: None,
             recurrence,
+            depends_on: Vec::new(),
         }
     }
 
@@ -254,6 +255,7 @@ impl RandomTaskGenerator {
             category: None,
             parent_id: None, // Will be set when added to TodoList
             recurrence: None, // Subtasks typically don't recur independently
+            depends_on: Vec::new(),
         }
     }
 

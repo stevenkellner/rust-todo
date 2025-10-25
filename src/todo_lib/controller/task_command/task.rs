@@ -46,6 +46,15 @@ pub enum TaskCommand {
     /// Set the recurrence pattern for task(s)
     SetRecurring(TaskSelection, Option<Recurrence>),
     
+    /// Add a dependency to a task
+    AddDependency(usize, usize),
+    
+    /// Remove a dependency from a task
+    RemoveDependency(usize, usize),
+    
+    /// Show the dependency graph for a task
+    ShowDependencyGraph(usize),
+    
     /// List all categories
     ListCategories,
     

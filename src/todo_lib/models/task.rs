@@ -33,6 +33,8 @@ pub struct TaskWithoutId {
     pub parent_id: Option<usize>,
     /// The optional recurrence pattern for the task
     pub recurrence: Option<Recurrence>,
+    /// The list of task IDs that this task depends on
+    pub depends_on: Vec<usize>,
 }
 
 impl TaskWithoutId {
@@ -62,6 +64,7 @@ impl TaskWithoutId {
             category: None,
             parent_id: None,
             recurrence: None,
+            depends_on: Vec::new(),
         }
     }
 
@@ -91,6 +94,7 @@ impl TaskWithoutId {
             category: self.category,
             parent_id: self.parent_id,
             recurrence: self.recurrence,
+            depends_on: self.depends_on,
         }
     }
 }
@@ -127,6 +131,8 @@ pub struct Task {
     pub parent_id: Option<usize>,
     /// The optional recurrence pattern for the task
     pub recurrence: Option<Recurrence>,
+    /// The list of task IDs that this task depends on
+    pub depends_on: Vec<usize>,
 }
 
 impl Task {
@@ -159,6 +165,7 @@ impl Task {
             category: None,
             parent_id: None,
             recurrence: None,
+            depends_on: Vec::new(),
         }
     }
 
@@ -544,6 +551,110 @@ impl Task {
             }
             _ => None,
         }
+    }
+
+    /// Adds a dependency to this task.
+    ///
+    /// # Arguments
+    ///
+    /// * `dependency_id` - The ID of the task that this task depends on
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    ///
+    /// let mut task = Task::new(2, "Complete report".to_string());
+    /// task.add_dependency(1);
+    /// assert!(task.has_dependency(1));
+    /// ```
+    pub fn add_dependency(&mut self, dependency_id: usize) {
+        if !self.depends_on.contains(&dependency_id) {
+            self.depends_on.push(dependency_id);
+        }
+    }
+
+    /// Removes a dependency from this task.
+    ///
+    /// # Arguments
+    ///
+    /// * `dependency_id` - The ID of the dependency to remove
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    ///
+    /// let mut task = Task::new(2, "Complete report".to_string());
+    /// task.add_dependency(1);
+    /// task.remove_dependency(1);
+    /// assert!(!task.has_dependency(1));
+    /// ```
+    pub fn remove_dependency(&mut self, dependency_id: usize) {
+        self.depends_on.retain(|&id| id != dependency_id);
+    }
+
+    /// Gets the list of task IDs that this task depends on.
+    ///
+    /// # Returns
+    ///
+    /// A reference to the vector of dependency IDs
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    ///
+    /// let mut task = Task::new(2, "Complete report".to_string());
+    /// task.add_dependency(1);
+    /// assert_eq!(task.get_dependencies(), &vec![1]);
+    /// ```
+    pub fn get_dependencies(&self) -> &Vec<usize> {
+        &self.depends_on
+    }
+
+    /// Checks if this task has a specific dependency.
+    ///
+    /// # Arguments
+    ///
+    /// * `dependency_id` - The ID of the dependency to check
+    ///
+    /// # Returns
+    ///
+    /// `true` if the task depends on the specified task, `false` otherwise
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    ///
+    /// let mut task = Task::new(2, "Complete report".to_string());
+    /// task.add_dependency(1);
+    /// assert!(task.has_dependency(1));
+    /// assert!(!task.has_dependency(3));
+    /// ```
+    pub fn has_dependency(&self, dependency_id: usize) -> bool {
+        self.depends_on.contains(&dependency_id)
+    }
+
+    /// Checks if this task has any dependencies.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the task has at least one dependency, `false` otherwise
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::task::Task;
+    ///
+    /// let mut task = Task::new(2, "Complete report".to_string());
+    /// assert!(!task.has_dependencies());
+    /// task.add_dependency(1);
+    /// assert!(task.has_dependencies());
+    /// ```
+    pub fn has_dependencies(&self) -> bool {
+        !self.depends_on.is_empty()
     }
 }
 

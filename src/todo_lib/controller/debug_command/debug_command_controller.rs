@@ -10,6 +10,7 @@ use crate::controller::debug_command::DebugCommandOutputManager;
 use crate::OutputWriter;
 use std::rc::Rc;
 use std::cell::RefCell;
+use rand::Rng;
 
 /// Handler for debug commands and operations
 pub struct DebugCommandController<O: OutputWriter> {
@@ -52,10 +53,12 @@ impl<O: OutputWriter> DebugCommandController<O> {
         
         let mut total_tasks = 0;
         let mut total_subtasks = 0;
+        let mut task_ids = Vec::new();
         
         // Add each generated task to the todo list
         for new_task in new_tasks {
             let parent_id = self.todo_list.borrow_mut().add_task(new_task);
+            task_ids.push(parent_id);
             total_tasks += 1;
             
             // Generate subtasks for some tasks (50% probability)
@@ -68,15 +71,40 @@ impl<O: OutputWriter> DebugCommandController<O> {
             }
         }
         
-        if total_subtasks > 0 {
-            self.output_manager.show_success(&format!(
-                "Generated {} random tasks with {} subtasks", 
-                total_tasks, 
-                total_subtasks
-            ));
-        } else {
-            self.output_manager.show_success(&format!("Generated {} random tasks", total_tasks));
+        // Add random dependencies (30% chance for each task)
+        let mut rng = rand::rng();
+        let mut dependencies_added = 0;
+        for (idx, &task_id) in task_ids.iter().enumerate() {
+            // 30% chance to add a dependency
+            if rng.random_bool(0.3) && idx > 0 {
+                // Pick a random earlier task to depend on
+                let depends_on_idx = rng.random_range(0..idx);
+                let depends_on_id = task_ids[depends_on_idx];
+                if self.todo_list.borrow_mut().add_task_dependency(task_id, depends_on_id).is_some() {
+                    dependencies_added += 1;
+                }
+            }
         }
+        
+        // Uncomplete tasks that have incomplete dependencies
+        for &task_id in &task_ids {
+            let has_incomplete_deps = !self.todo_list.borrow().are_dependencies_completed(task_id);
+            if has_incomplete_deps {
+                self.todo_list.borrow_mut().uncomplete_task(task_id);
+            }
+        }
+        
+        let mut message = if total_subtasks > 0 {
+            format!("Generated {} random tasks with {} subtasks", total_tasks, total_subtasks)
+        } else {
+            format!("Generated {} random tasks", total_tasks)
+        };
+        
+        if dependencies_added > 0 {
+            message.push_str(&format!(" and {} dependencies", dependencies_added));
+        }
+        
+        self.output_manager.show_success(&message);
         
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
     }

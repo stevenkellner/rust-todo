@@ -84,6 +84,18 @@ impl<O: OutputWriter> GeneralCommandOutputManager<O> {
         self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Frequency:", "daily/d, weekly/w, monthly/m, none"));
         self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Aliases:", "recurring, recur"));
         self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("add-dependency <task_id> <depends_on_id>", "Add a dependency to a task"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Examples:", "2 1 (task 2 depends on task 1)"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Aliases:", "add-dep, depends-on"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("remove-dependency <task_id> <depends_on_id>", "Remove a dependency from a task"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Examples:", "2 1 (remove dependency of task 2 on task 1)"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Aliases:", "remove-dep, rm-dep"));
+        self.output_writer.borrow_mut().write_line("");
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::command("show-dependencies <task_id>", "Show dependency graph for a task"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::subinfo("Examples:", "1 (show all dependencies and dependents for task 1)"));
+        self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Aliases:", "dependencies, deps, dep-graph, dependency-graph"));
+        self.output_writer.borrow_mut().write_line("");
         self.output_writer.borrow_mut().write_line(&MessageFormatter::command("categories", "List all categories"));
         self.output_writer.borrow_mut().write_line(&MessageFormatter::label("Alias:", "list-categories"));
         self.output_writer.borrow_mut().write_line("");
