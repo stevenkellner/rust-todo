@@ -2,7 +2,7 @@
 ///
 /// Tasks can be assigned different priority levels to help organize
 /// and focus on what's most important.
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
 pub enum Priority {

@@ -1,7 +1,7 @@
-use std::io::Write;
-use colored::*;
-use crate::ui::formatters::MessageFormatter;
 use super::output_writer::OutputWriter;
+use crate::ui::formatters::MessageFormatter;
+use colored::*;
+use std::io::Write;
 
 /// File-based implementation of OutputWriter for the command-line interface.
 ///

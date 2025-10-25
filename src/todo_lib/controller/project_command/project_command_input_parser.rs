@@ -22,12 +22,22 @@ impl ProjectCommandInputParser {
     /// * `Some(Ok(ProjectCommand))` - Successfully parsed project command
     /// * `Some(Err(ParseError))` - Recognized as project command but has errors
     /// * `None` - Not a project command
-    pub fn try_parse(&self, command: &str, args: &[&str]) -> Option<Result<ProjectCommand, ParseError>> {
+    pub fn try_parse(
+        &self,
+        command: &str,
+        args: &[&str],
+    ) -> Option<Result<ProjectCommand, ParseError>> {
         match command {
-            "new-project" | "new-proj" | "create-project" => Some(self.parse_new_project_command(args)),
-            "switch-project" | "switch" | "use-project" => Some(self.parse_switch_project_command(args)),
+            "new-project" | "new-proj" | "create-project" => {
+                Some(self.parse_new_project_command(args))
+            }
+            "switch-project" | "switch" | "use-project" => {
+                Some(self.parse_switch_project_command(args))
+            }
             "list-projects" | "projects" => Some(Ok(ProjectCommand::ListProjects)),
-            "delete-project" | "remove-project" | "rm-project" => Some(self.parse_delete_project_command(args)),
+            "delete-project" | "remove-project" | "rm-project" => {
+                Some(self.parse_delete_project_command(args))
+            }
             "rename-project" | "mv-project" => Some(self.parse_rename_project_command(args)),
             _ => None,
         }
@@ -36,9 +46,9 @@ impl ProjectCommandInputParser {
     /// Parses the 'new-project' command.
     fn parse_new_project_command(&self, args: &[&str]) -> Result<ProjectCommand, ParseError> {
         if args.is_empty() {
-            Err(ParseError::MissingArguments { 
-                command: "new-project".to_string(), 
-                usage: "new-project <name>".to_string() 
+            Err(ParseError::MissingArguments {
+                command: "new-project".to_string(),
+                usage: "new-project <name>".to_string(),
             })
         } else {
             let name = args.join(" ");
@@ -53,9 +63,9 @@ impl ProjectCommandInputParser {
     /// Parses the 'switch-project' command.
     fn parse_switch_project_command(&self, args: &[&str]) -> Result<ProjectCommand, ParseError> {
         if args.is_empty() {
-            Err(ParseError::MissingArguments { 
-                command: "switch-project".to_string(), 
-                usage: "switch-project <name>".to_string() 
+            Err(ParseError::MissingArguments {
+                command: "switch-project".to_string(),
+                usage: "switch-project <name>".to_string(),
             })
         } else {
             let name = args.join(" ");
@@ -70,9 +80,9 @@ impl ProjectCommandInputParser {
     /// Parses the 'delete-project' command.
     fn parse_delete_project_command(&self, args: &[&str]) -> Result<ProjectCommand, ParseError> {
         if args.is_empty() {
-            Err(ParseError::MissingArguments { 
-                command: "delete-project".to_string(), 
-                usage: "delete-project <name>".to_string() 
+            Err(ParseError::MissingArguments {
+                command: "delete-project".to_string(),
+                usage: "delete-project <name>".to_string(),
             })
         } else {
             let name = args.join(" ");
@@ -87,9 +97,9 @@ impl ProjectCommandInputParser {
     /// Parses the 'rename-project' command.
     fn parse_rename_project_command(&self, args: &[&str]) -> Result<ProjectCommand, ParseError> {
         if args.len() < 2 {
-            return Err(ParseError::MissingArguments { 
-                command: "rename-project".to_string(), 
-                usage: "rename-project <old_name> <new_name>".to_string() 
+            return Err(ParseError::MissingArguments {
+                command: "rename-project".to_string(),
+                usage: "rename-project <old_name> <new_name>".to_string(),
             });
         }
 

@@ -9,7 +9,7 @@ impl GeneralCommandInputParser {
     pub fn new() -> Self {
         GeneralCommandInputParser
     }
-    
+
     /// Tries to parse a general command from the given command string.
     ///
     /// # Arguments
@@ -20,7 +20,11 @@ impl GeneralCommandInputParser {
     ///
     /// * `Some(GeneralCommand)` - Successfully parsed general command
     /// * `None` - Not a general command
-    pub fn try_parse(&self, command: &str, _args: &[&str]) -> Option<Result<GeneralCommand, ParseError>> {
+    pub fn try_parse(
+        &self,
+        command: &str,
+        _args: &[&str],
+    ) -> Option<Result<GeneralCommand, ParseError>> {
         match command {
             "help" | "h" => Some(Ok(GeneralCommand::ShowHelp)),
             "quit" | "exit" | "q" => Some(Ok(GeneralCommand::Quit)),

@@ -1,14 +1,14 @@
 use crate::controller::command_controller::CommandController;
-use crate::controller::task_command::TaskCommandController;
-use crate::controller::general_command::GeneralCommandController;
 use crate::controller::debug_command::DebugCommandController;
+use crate::controller::general_command::GeneralCommandController;
 use crate::controller::project_command::ProjectCommandController;
 use crate::controller::project_command::ProjectManager;
+use crate::controller::task_command::TaskCommandController;
 use crate::models::command_controller_result::CommandControllerResult;
 use crate::models::ParseError;
 use crate::OutputWriter;
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 /// Manages the collection of command controllers and their active states.
 ///
@@ -25,12 +25,24 @@ pub struct CommandControllerRegistry<O: OutputWriter> {
 impl<O: OutputWriter> CommandControllerRegistry<O> {
     /// Creates a new CommandControllerRegistry with task and general controllers active,
     /// and debug controller inactive by default.
-    pub fn new(project_manager: Rc<RefCell<ProjectManager>>, output_writer: Rc<RefCell<O>>) -> Self {
+    pub fn new(
+        project_manager: Rc<RefCell<ProjectManager>>,
+        output_writer: Rc<RefCell<O>>,
+    ) -> Self {
         Self {
-            task_controller: TaskCommandController::new(Rc::clone(&project_manager), Rc::clone(&output_writer)),
+            task_controller: TaskCommandController::new(
+                Rc::clone(&project_manager),
+                Rc::clone(&output_writer),
+            ),
             general_controller: GeneralCommandController::new(Rc::clone(&output_writer)),
-            debug_controller: DebugCommandController::new(Rc::clone(&project_manager), Rc::clone(&output_writer)),
-            project_controller: ProjectCommandController::new(project_manager, Rc::clone(&output_writer)),
+            debug_controller: DebugCommandController::new(
+                Rc::clone(&project_manager),
+                Rc::clone(&output_writer),
+            ),
+            project_controller: ProjectCommandController::new(
+                project_manager,
+                Rc::clone(&output_writer),
+            ),
             is_debug_active: false,
         }
     }
@@ -59,7 +71,10 @@ impl<O: OutputWriter> CommandControllerRegistry<O> {
     /// # Returns
     ///
     /// `Some(Result)` if a controller handled the command, `None` if no controller recognized it
-    pub fn try_execute(&mut self, input: &str) -> Option<Result<CommandControllerResult, ParseError>> {
+    pub fn try_execute(
+        &mut self,
+        input: &str,
+    ) -> Option<Result<CommandControllerResult, ParseError>> {
         if let Some(result) = self.task_controller.try_execute(input) {
             return Some(result);
         }
@@ -86,19 +101,30 @@ mod tests {
     fn test_try_execute_with_task_command() {
         let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
         let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
-        let mut registry = CommandControllerRegistry::new(Rc::clone(&project_manager), Rc::new(RefCell::new(output)));
+        let mut registry = CommandControllerRegistry::new(
+            Rc::clone(&project_manager),
+            Rc::new(RefCell::new(output)),
+        );
 
         let result = registry.try_execute("add Test task");
         assert!(result.is_some());
         assert!(result.unwrap().is_ok());
-        assert_eq!(project_manager.borrow().get_current_todo_list().get_tasks().len(), 1);
+        assert_eq!(
+            project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_tasks()
+                .len(),
+            1
+        );
     }
 
     #[test]
     fn test_try_execute_with_general_command() {
         let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
         let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
-        let mut registry = CommandControllerRegistry::new(project_manager, Rc::new(RefCell::new(output)));
+        let mut registry =
+            CommandControllerRegistry::new(project_manager, Rc::new(RefCell::new(output)));
 
         let result = registry.try_execute("quit");
         assert!(result.is_some());
@@ -109,7 +135,8 @@ mod tests {
     fn test_try_execute_with_debug_command_inactive() {
         let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
         let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
-        let mut registry = CommandControllerRegistry::new(project_manager, Rc::new(RefCell::new(output)));
+        let mut registry =
+            CommandControllerRegistry::new(project_manager, Rc::new(RefCell::new(output)));
 
         // Debug controller is not active, so debug commands should not be recognized
         let result = registry.try_execute("debug:gen 5");
@@ -120,22 +147,34 @@ mod tests {
     fn test_try_execute_with_debug_command_active() {
         let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
         let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
-        let mut registry = CommandControllerRegistry::new(Rc::clone(&project_manager), Rc::new(RefCell::new(output)));
+        let mut registry = CommandControllerRegistry::new(
+            Rc::clone(&project_manager),
+            Rc::new(RefCell::new(output)),
+        );
         registry.enable_debug();
 
         let result = registry.try_execute("debug:gen 3");
         assert!(result.is_some());
         assert!(result.unwrap().is_ok());
         // Should have at least 3 tasks (parents), possibly more with subtasks
-        let total_tasks = project_manager.borrow().get_current_todo_list().get_tasks().len();
-        assert!(total_tasks >= 3, "Expected at least 3 tasks, got {}", total_tasks);
+        let total_tasks = project_manager
+            .borrow()
+            .get_current_todo_list()
+            .get_tasks()
+            .len();
+        assert!(
+            total_tasks >= 3,
+            "Expected at least 3 tasks, got {}",
+            total_tasks
+        );
     }
 
     #[test]
     fn test_try_execute_unknown_command() {
         let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
         let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
-        let mut registry = CommandControllerRegistry::new(project_manager, Rc::new(RefCell::new(output)));
+        let mut registry =
+            CommandControllerRegistry::new(project_manager, Rc::new(RefCell::new(output)));
 
         let result = registry.try_execute("unknown command");
         assert!(result.is_none());
@@ -145,9 +184,10 @@ mod tests {
     fn test_try_execute_with_disabled_task_controller() {
         let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
         let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
-        let mut registry = CommandControllerRegistry::new(project_manager, Rc::new(RefCell::new(output)));
+        let mut registry =
+            CommandControllerRegistry::new(project_manager, Rc::new(RefCell::new(output)));
         registry.disable_debug();
-        
+
         // Task controller is still active, so this should succeed
         let result = registry.try_execute("add Test task");
         assert!(result.is_some());
@@ -157,25 +197,27 @@ mod tests {
     fn test_try_execute_with_project_command() {
         let project_manager = Rc::new(RefCell::new(ProjectManager::new()));
         let output = crate::ui::output::FileOutputWriter::new(std::io::stdout());
-        let mut registry = CommandControllerRegistry::new(Rc::clone(&project_manager), Rc::new(RefCell::new(output)));
+        let mut registry = CommandControllerRegistry::new(
+            Rc::clone(&project_manager),
+            Rc::new(RefCell::new(output)),
+        );
 
         // Create a new project
         let result = registry.try_execute("new-project Work");
         assert!(result.is_some());
         assert!(result.unwrap().is_ok());
-        
+
         // Verify project was created
         assert_eq!(project_manager.borrow().project_count(), 2); // Default + Work
-        
+
         // Switch to the new project
         let result = registry.try_execute("switch-project Work");
         assert!(result.is_some());
         assert!(result.unwrap().is_ok());
-        
+
         // List projects
         let result = registry.try_execute("list-projects");
         assert!(result.is_some());
         assert!(result.unwrap().is_ok());
     }
 }
-    

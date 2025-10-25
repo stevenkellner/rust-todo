@@ -1,16 +1,14 @@
 use std::collections::HashSet;
 
-
 /// Result of handling a command.
 ///
 /// This enum allows commands to signal special actions
 /// like toggling debug mode.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CommandControllerResultAction {
-
     /// Exit the main loop
     ExitMainLoop,
-    
+
     /// Enable debug mode
     EnableDebugMode,
 
@@ -54,7 +52,10 @@ impl CommandControllerResult {
     }
 
     /// Adds multiple actions to the result.
-    pub fn add_actions(&mut self, actions: impl IntoIterator<Item = CommandControllerResultAction>) {
+    pub fn add_actions(
+        &mut self,
+        actions: impl IntoIterator<Item = CommandControllerResultAction>,
+    ) {
         self.actions.extend(actions);
     }
 

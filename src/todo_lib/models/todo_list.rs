@@ -1,10 +1,10 @@
-use super::task::{Task, TaskWithoutId};
-use super::priority::Priority;
-use super::task_filter::TaskFilter;
-use super::task_status::TaskStatus;
 use super::overdue_filter::OverdueFilter;
+use super::priority::Priority;
+use super::task::{Task, TaskWithoutId};
+use super::task_filter::TaskFilter;
 use super::task_statistics::TaskStatistics;
-use serde::{Serialize, Deserialize};
+use super::task_status::TaskStatus;
+use serde::{Deserialize, Serialize};
 
 /// A collection of tasks with methods to manage them.
 ///
@@ -49,7 +49,6 @@ impl TodoList {
             next_id: 1,
         }
     }
-
 }
 
 impl TodoList {
@@ -77,7 +76,7 @@ impl TodoList {
     /// let new_task = TaskWithoutId::new("Buy groceries".to_string());
     /// let id = list.add_task(new_task);
     /// assert_eq!(id, 1);
-    /// 
+    ///
     /// let new_task2 = TaskWithoutId::new("Walk the dog".to_string());
     /// let id2 = list.add_task(new_task2);
     /// assert_eq!(id2, 2);
@@ -110,10 +109,10 @@ impl TodoList {
     ///
     /// let mut list = TodoList::new();
     /// let parent_id = list.add_task(TaskWithoutId::new("Main task".to_string()));
-    /// 
+    ///
     /// let subtask_id = list.add_subtask(parent_id, "Subtask 1".to_string());
     /// assert!(subtask_id.is_some());
-    /// 
+    ///
     /// let invalid = list.add_subtask(999, "Invalid".to_string());
     /// assert!(invalid.is_none());
     /// ```
@@ -143,7 +142,7 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// list.add_task(TaskWithoutId::new("Task 2".to_string()));
-    /// 
+    ///
     /// assert_eq!(list.get_tasks().len(), 2);
     /// ```
     pub fn get_tasks(&self) -> &Vec<Task> {
@@ -170,7 +169,7 @@ impl TodoList {
     /// let parent_id = list.add_task(TaskWithoutId::new("Main task".to_string()));
     /// list.add_subtask(parent_id, "Subtask 1".to_string());
     /// list.add_subtask(parent_id, "Subtask 2".to_string());
-    /// 
+    ///
     /// let subtasks = list.get_subtasks(parent_id);
     /// assert_eq!(subtasks.len(), 2);
     /// ```
@@ -201,7 +200,7 @@ impl TodoList {
     /// let parent_id = list.add_task(TaskWithoutId::new("Main task".to_string()));
     /// list.add_subtask(parent_id, "Subtask 1".to_string());
     /// list.add_subtask(parent_id, "Subtask 2".to_string());
-    /// 
+    ///
     /// assert_eq!(list.get_subtask_count(parent_id), 2);
     /// ```
     pub fn get_subtask_count(&self, parent_id: usize) -> usize {
@@ -231,7 +230,7 @@ impl TodoList {
     /// let parent_id = list.add_task(TaskWithoutId::new("Main task".to_string()));
     /// let sub1 = list.add_subtask(parent_id, "Subtask 1".to_string()).unwrap();
     /// let sub2 = list.add_subtask(parent_id, "Subtask 2".to_string()).unwrap();
-    /// 
+    ///
     /// list.complete_task(sub1);
     /// assert_eq!(list.get_completed_subtask_count(parent_id), 1);
     /// ```
@@ -252,7 +251,7 @@ impl TodoList {
     ///
     /// let mut list = TodoList::new();
     /// assert!(list.is_empty());
-    /// 
+    ///
     /// list.add_task(TaskWithoutId::new("First task".to_string()));
     /// assert!(!list.is_empty());
     /// ```
@@ -273,7 +272,7 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// list.add_task(TaskWithoutId::new("Task 2".to_string()));
-    /// 
+    ///
     /// list.clear_all();
     /// assert!(list.is_empty());
     /// ```
@@ -299,7 +298,7 @@ impl TodoList {
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task(TaskWithoutId::new("Remove this".to_string()));
-    /// 
+    ///
     /// let removed = list.remove_task(id);
     /// assert!(removed.is_some());
     /// assert_eq!(removed.unwrap().description, "Remove this");
@@ -307,17 +306,19 @@ impl TodoList {
     pub fn remove_task(&mut self, id: usize) -> Option<Task> {
         if let Some(pos) = self.tasks.iter().position(|task| task.id == id) {
             let removed_task = self.tasks.remove(pos);
-            
+
             // If the removed task is a parent, also remove all its subtasks
-            let subtask_ids: Vec<usize> = self.tasks.iter()
+            let subtask_ids: Vec<usize> = self
+                .tasks
+                .iter()
                 .filter(|task| task.get_parent_id() == Some(id))
                 .map(|task| task.id)
                 .collect();
-            
+
             for subtask_id in subtask_ids {
                 self.tasks.retain(|task| task.id != subtask_id);
             }
-            
+
             Some(removed_task)
         } else {
             None
@@ -342,7 +343,7 @@ impl TodoList {
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task(TaskWithoutId::new("Toggle me".to_string()));
-    /// 
+    ///
     /// list.toggle_task(id);
     /// let task = list.get_tasks().iter().find(|t| t.id == id).unwrap();
     /// assert!(task.is_completed());
@@ -367,13 +368,16 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// let id1 = list.add_task(TaskWithoutId::new("Completed task".to_string()));
     /// let id2 = list.add_task(TaskWithoutId::new("Pending task".to_string()));
-    /// 
+    ///
     /// list.toggle_task(id1);
     /// let completed = list.get_completed_tasks();
     /// assert_eq!(completed.len(), 1);
     /// ```
     pub fn get_completed_tasks(&self) -> Vec<&Task> {
-        self.tasks.iter().filter(|task| task.is_completed()).collect()
+        self.tasks
+            .iter()
+            .filter(|task| task.is_completed())
+            .collect()
     }
 
     /// Returns a vector of references to all pending (incomplete) tasks.
@@ -387,13 +391,16 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// let id1 = list.add_task(TaskWithoutId::new("Completed task".to_string()));
     /// let id2 = list.add_task(TaskWithoutId::new("Pending task".to_string()));
-    /// 
+    ///
     /// list.toggle_task(id1);
     /// let pending = list.get_pending_tasks();
     /// assert_eq!(pending.len(), 1);
     /// ```
     pub fn get_pending_tasks(&self) -> Vec<&Task> {
-        self.tasks.iter().filter(|task| !task.is_completed()).collect()
+        self.tasks
+            .iter()
+            .filter(|task| !task.is_completed())
+            .collect()
     }
 
     /// Returns a vector of references to all tasks with the specified priority.
@@ -412,13 +419,16 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// let id1 = list.add_task(TaskWithoutId::new("High priority task".to_string()));
     /// let id2 = list.add_task(TaskWithoutId::new("Low priority task".to_string()));
-    /// 
+    ///
     /// list.set_task_priority(id1, Priority::High);
     /// let high_tasks = list.get_tasks_by_priority(Priority::High);
     /// assert_eq!(high_tasks.len(), 1);
     /// ```
     pub fn get_tasks_by_priority(&self, priority: Priority) -> Vec<&Task> {
-        self.tasks.iter().filter(|task| task.priority == priority).collect()
+        self.tasks
+            .iter()
+            .filter(|task| task.priority == priority)
+            .collect()
     }
 
     /// Gets tasks filtered by both status and priority.
@@ -443,39 +453,46 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// let id = list.add_task(TaskWithoutId::new("High priority task".to_string()));
     /// list.set_task_priority(id, Priority::High);
-    /// 
+    ///
     /// let filter = TaskFilter::all().with_status(TaskStatus::Pending).with_priority(Priority::High);
     /// let tasks = list.get_filtered_tasks(&filter);
     /// assert_eq!(tasks.len(), 1);
     /// ```
     pub fn get_filtered_tasks(&self, filter: &TaskFilter) -> Vec<&Task> {
         let today = chrono::Local::now().date_naive();
-        
-        self.tasks.iter().filter(|task| {
-            let status_matches = match filter.status {
-                Some(TaskStatus::Completed) => task.is_completed(),
-                Some(TaskStatus::Pending) => !task.is_completed(),
-                None => true,
-            };
-            
-            let priority_matches = match filter.priority {
-                Some(priority) => task.priority == priority,
-                None => true,
-            };
-            
-            let overdue_matches = match filter.overdue {
-                OverdueFilter::All => true,
-                OverdueFilter::OnlyOverdue => task.is_overdue(today),
-                OverdueFilter::OnlyNotOverdue => !task.is_overdue(today),
-            };
-            
-            let category_matches = match &filter.category {
-                Some(category) => task.category.as_ref().map(|c| c == category).unwrap_or(false),
-                None => true,
-            };
-            
-            status_matches && priority_matches && overdue_matches && category_matches
-        }).collect()
+
+        self.tasks
+            .iter()
+            .filter(|task| {
+                let status_matches = match filter.status {
+                    Some(TaskStatus::Completed) => task.is_completed(),
+                    Some(TaskStatus::Pending) => !task.is_completed(),
+                    None => true,
+                };
+
+                let priority_matches = match filter.priority {
+                    Some(priority) => task.priority == priority,
+                    None => true,
+                };
+
+                let overdue_matches = match filter.overdue {
+                    OverdueFilter::All => true,
+                    OverdueFilter::OnlyOverdue => task.is_overdue(today),
+                    OverdueFilter::OnlyNotOverdue => !task.is_overdue(today),
+                };
+
+                let category_matches = match &filter.category {
+                    Some(category) => task
+                        .category
+                        .as_ref()
+                        .map(|c| c == category)
+                        .unwrap_or(false),
+                    None => true,
+                };
+
+                status_matches && priority_matches && overdue_matches && category_matches
+            })
+            .collect()
     }
 
     /// Sets the priority of a task by its ID.
@@ -498,7 +515,7 @@ impl TodoList {
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task(TaskWithoutId::new("Important task".to_string()));
-    /// 
+    ///
     /// let task = list.set_task_priority(id, Priority::High);
     /// assert!(task.is_some());
     /// assert_eq!(task.unwrap().priority, Priority::High);
@@ -533,13 +550,14 @@ impl TodoList {
     /// list.add_task(TaskWithoutId::new("Buy groceries at the store".to_string()));
     /// list.add_task(TaskWithoutId::new("Read a book".to_string()));
     /// list.add_task(TaskWithoutId::new("Buy concert tickets".to_string()));
-    /// 
+    ///
     /// let results = list.search_tasks("buy");
     /// assert_eq!(results.len(), 2);
     /// ```
     pub fn search_tasks(&self, keyword: &str) -> Vec<&Task> {
         let keyword_lower = keyword.to_lowercase();
-        self.tasks.iter()
+        self.tasks
+            .iter()
             .filter(|task| task.description.to_lowercase().contains(&keyword_lower))
             .collect()
     }
@@ -566,7 +584,7 @@ impl TodoList {
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task(TaskWithoutId::new("Old description".to_string()));
-    /// 
+    ///
     /// list.edit_task(id, "New description".to_string());
     /// assert_eq!(list.get_tasks()[0].description, "New description");
     /// ```
@@ -600,14 +618,18 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// let id = list.add_task(TaskWithoutId::new("Submit report".to_string()));
     /// let due = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
-    /// 
+    ///
     /// list.set_due_date(id, Some(due));
     /// assert_eq!(list.get_tasks()[0].due_date, Some(due));
-    /// 
+    ///
     /// list.set_due_date(id, None);
     /// assert_eq!(list.get_tasks()[0].due_date, None);
     /// ```
-    pub fn set_due_date(&mut self, id: usize, due_date: Option<chrono::NaiveDate>) -> Option<&Task> {
+    pub fn set_due_date(
+        &mut self,
+        id: usize,
+        due_date: Option<chrono::NaiveDate>,
+    ) -> Option<&Task> {
         if let Some(task) = self.tasks.iter_mut().find(|task| task.id == id) {
             task.set_due_date(due_date);
             Some(task)
@@ -635,10 +657,10 @@ impl TodoList {
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task(TaskWithoutId::new("Write code".to_string()));
-    /// 
+    ///
     /// list.set_task_category(id, Some("work".to_string()));
     /// assert_eq!(list.get_tasks()[0].category, Some("work".to_string()));
-    /// 
+    ///
     /// list.set_task_category(id, None);
     /// assert_eq!(list.get_tasks()[0].category, None);
     /// ```
@@ -671,14 +693,18 @@ impl TodoList {
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task(TaskWithoutId::new("Daily task".to_string()));
-    /// 
+    ///
     /// list.set_task_recurrence(id, Some(Recurrence::Daily));
     /// assert_eq!(list.get_tasks()[0].get_recurrence(), Some(Recurrence::Daily));
-    /// 
+    ///
     /// list.set_task_recurrence(id, None);
     /// assert_eq!(list.get_tasks()[0].get_recurrence(), None);
     /// ```
-    pub fn set_task_recurrence(&mut self, id: usize, recurrence: Option<crate::models::recurrence::Recurrence>) -> Option<&Task> {
+    pub fn set_task_recurrence(
+        &mut self,
+        id: usize,
+        recurrence: Option<crate::models::recurrence::Recurrence>,
+    ) -> Option<&Task> {
         if let Some(task) = self.tasks.iter_mut().find(|task| task.id == id) {
             task.set_recurrence(recurrence);
             Some(task)
@@ -708,15 +734,19 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
-    /// 
+    ///
     /// let (updated, not_found) = list.set_recurrence_multiple(&[id1, id2, 999], Some(Recurrence::Weekly));
     /// assert_eq!(updated, 2);
     /// assert_eq!(not_found, vec![999]);
     /// ```
-    pub fn set_recurrence_multiple(&mut self, ids: &[usize], recurrence: Option<crate::models::recurrence::Recurrence>) -> (usize, Vec<usize>) {
+    pub fn set_recurrence_multiple(
+        &mut self,
+        ids: &[usize],
+        recurrence: Option<crate::models::recurrence::Recurrence>,
+    ) -> (usize, Vec<usize>) {
         let mut updated_count = 0;
         let mut not_found = Vec::new();
-        
+
         for &id in ids {
             if self.set_task_recurrence(id, recurrence).is_some() {
                 updated_count += 1;
@@ -724,7 +754,7 @@ impl TodoList {
                 not_found.push(id);
             }
         }
-        
+
         (updated_count, not_found)
     }
 
@@ -744,20 +774,21 @@ impl TodoList {
     /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
     /// let id3 = list.add_task(TaskWithoutId::new("Task 3".to_string()));
-    /// 
+    ///
     /// list.set_task_category(id1, Some("work".to_string()));
     /// list.set_task_category(id2, Some("personal".to_string()));
     /// list.set_task_category(id3, Some("work".to_string()));
-    /// 
+    ///
     /// let categories = list.get_all_categories();
     /// assert_eq!(categories, vec!["personal", "work"]);
     /// ```
     pub fn get_all_categories(&self) -> Vec<String> {
-        let mut categories: Vec<String> = self.tasks
+        let mut categories: Vec<String> = self
+            .tasks
             .iter()
             .filter_map(|task| task.category.clone())
             .collect();
-        
+
         // Remove duplicates and sort
         categories.sort();
         categories.dedup();
@@ -790,7 +821,7 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
-    /// 
+    ///
     /// let result = list.add_task_dependency(id2, id1);
     /// assert!(result.is_some());
     /// ```
@@ -801,8 +832,9 @@ impl TodoList {
         }
 
         // Check both tasks exist
-        if !self.tasks.iter().any(|t| t.id == task_id) || 
-           !self.tasks.iter().any(|t| t.id == depends_on_id) {
+        if !self.tasks.iter().any(|t| t.id == task_id)
+            || !self.tasks.iter().any(|t| t.id == depends_on_id)
+        {
             return None;
         }
 
@@ -840,7 +872,7 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
-    /// 
+    ///
     /// list.add_task_dependency(id2, id1);
     /// let result = list.remove_task_dependency(id2, id1);
     /// assert!(result.is_some());
@@ -926,10 +958,10 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
-    /// 
+    ///
     /// list.add_task_dependency(id2, id1);
     /// assert!(!list.are_dependencies_completed(id2));
-    /// 
+    ///
     /// list.complete_task(id1);
     /// assert!(list.are_dependencies_completed(id2));
     /// ```
@@ -975,13 +1007,13 @@ impl TodoList {
     /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
     /// let id3 = list.add_task(TaskWithoutId::new("Task 3".to_string()));
-    /// 
+    ///
     /// list.add_task_dependency(id3, id1);
     /// list.add_task_dependency(id3, id2);
-    /// 
+    ///
     /// let incomplete = list.get_incomplete_dependencies(id3);
     /// assert_eq!(incomplete.len(), 2);
-    /// 
+    ///
     /// list.complete_task(id1);
     /// let incomplete = list.get_incomplete_dependencies(id3);
     /// assert_eq!(incomplete.len(), 1);
@@ -994,7 +1026,7 @@ impl TodoList {
         };
 
         let mut incomplete = Vec::new();
-        
+
         // Check each dependency
         for &dep_id in task.get_dependencies() {
             if let Some(dep_task) = self.tasks.iter().find(|t| t.id == dep_id) {
@@ -1033,10 +1065,10 @@ impl TodoList {
     /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
     /// let id3 = list.add_task(TaskWithoutId::new("Task 3".to_string()));
-    /// 
+    ///
     /// list.add_task_dependency(id2, id1);
     /// list.add_task_dependency(id3, id1);
-    /// 
+    ///
     /// let dependents = list.get_dependent_tasks(id1);
     /// assert_eq!(dependents.len(), 2);
     /// assert!(dependents.contains(&id2));
@@ -1070,7 +1102,7 @@ impl TodoList {
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task(TaskWithoutId::new("Finish this".to_string()));
-    /// 
+    ///
     /// list.complete_task(id);
     /// let task = list.get_tasks().iter().find(|t| t.id == id).unwrap();
     /// assert!(task.is_completed());
@@ -1106,10 +1138,10 @@ impl TodoList {
     ///
     /// let mut list = TodoList::new();
     /// let id = list.add_task(TaskWithoutId::new("Do this again".to_string()));
-    /// 
+    ///
     /// list.complete_task(id);
     /// assert!(list.get_tasks()[0].is_completed());
-    /// 
+    ///
     /// list.uncomplete_task(id);
     /// assert!(!list.get_tasks()[0].is_completed());
     /// ```
@@ -1145,7 +1177,7 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
-    /// 
+    ///
     /// let (completed, not_found) = list.complete_tasks(&[id1, id2]);
     /// assert_eq!(completed, 2);
     /// assert_eq!(not_found.len(), 0);
@@ -1186,7 +1218,7 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
-    /// 
+    ///
     /// let (removed, not_found) = list.remove_tasks(&[id1, id2]);
     /// assert_eq!(removed, 2);
     /// assert_eq!(not_found.len(), 0);
@@ -1227,7 +1259,7 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// list.add_task(TaskWithoutId::new("Task 2".to_string()));
-    /// 
+    ///
     /// let completed = list.complete_all_tasks();
     /// assert_eq!(completed, 2);
     /// assert!(list.get_tasks().iter().all(|t| t.is_completed()));
@@ -1253,7 +1285,7 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// list.add_task(TaskWithoutId::new("Task 2".to_string()));
-    /// 
+    ///
     /// let removed = list.remove_all_tasks();
     /// assert_eq!(removed, 2);
     /// assert_eq!(list.get_tasks().len(), 0);
@@ -1287,7 +1319,7 @@ impl TodoList {
     /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
     /// list.complete_task(id1);
     /// list.complete_task(id2);
-    /// 
+    ///
     /// let (uncompleted, not_found) = list.uncomplete_tasks(&[id1, id2]);
     /// assert_eq!(uncompleted, 2);
     /// assert_eq!(not_found.len(), 0);
@@ -1323,7 +1355,7 @@ impl TodoList {
     /// list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// list.add_task(TaskWithoutId::new("Task 2".to_string()));
     /// list.complete_all_tasks();
-    /// 
+    ///
     /// let uncompleted = list.uncomplete_all_tasks();
     /// assert_eq!(uncompleted, 2);
     /// assert!(list.get_tasks().iter().all(|t| !t.is_completed()));
@@ -1355,7 +1387,7 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
-    /// 
+    ///
     /// let (toggled, not_found) = list.toggle_tasks(&[id1, id2]);
     /// assert_eq!(toggled, 2);
     /// assert_eq!(not_found.len(), 0);
@@ -1391,7 +1423,7 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// list.add_task(TaskWithoutId::new("Task 2".to_string()));
-    /// 
+    ///
     /// let toggled = list.toggle_all_tasks();
     /// assert_eq!(toggled, 2);
     /// assert!(list.get_tasks().iter().all(|t| t.is_completed()));
@@ -1425,12 +1457,16 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
-    /// 
+    ///
     /// let (updated, not_found) = list.set_priority_multiple(&[id1, id2], Priority::High);
     /// assert_eq!(updated, 2);
     /// assert_eq!(not_found.len(), 0);
     /// ```
-    pub fn set_priority_multiple(&mut self, ids: &[usize], priority: Priority) -> (usize, Vec<usize>) {
+    pub fn set_priority_multiple(
+        &mut self,
+        ids: &[usize],
+        priority: Priority,
+    ) -> (usize, Vec<usize>) {
         let mut updated_count = 0;
         let mut not_found = Vec::new();
 
@@ -1467,12 +1503,16 @@ impl TodoList {
     /// let mut list = TodoList::new();
     /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
     /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
-    /// 
+    ///
     /// let (updated, not_found) = list.set_category_multiple(&[id1, id2], Some("work".to_string()));
     /// assert_eq!(updated, 2);
     /// assert_eq!(not_found.len(), 0);
     /// ```
-    pub fn set_category_multiple(&mut self, ids: &[usize], category: Option<String>) -> (usize, Vec<usize>) {
+    pub fn set_category_multiple(
+        &mut self,
+        ids: &[usize],
+        category: Option<String>,
+    ) -> (usize, Vec<usize>) {
         let mut updated_count = 0;
         let mut not_found = Vec::new();
 
@@ -1519,23 +1559,29 @@ impl TodoList {
         let total = self.tasks.len();
         let completed = self.tasks.iter().filter(|t| t.is_completed()).count();
         let pending = total - completed;
-        
+
         let completion_percentage = if total > 0 {
             (completed as f64 / total as f64) * 100.0
         } else {
             0.0
         };
-        
-        let high_priority = self.tasks.iter()
+
+        let high_priority = self
+            .tasks
+            .iter()
             .filter(|t| t.get_priority() == Priority::High)
             .count();
-        let medium_priority = self.tasks.iter()
+        let medium_priority = self
+            .tasks
+            .iter()
             .filter(|t| t.get_priority() == Priority::Medium)
             .count();
-        let low_priority = self.tasks.iter()
+        let low_priority = self
+            .tasks
+            .iter()
             .filter(|t| t.get_priority() == Priority::Low)
             .count();
-        
+
         TaskStatistics {
             total,
             completed,
@@ -1569,11 +1615,11 @@ mod tests {
     fn test_add_task() {
         let mut todo_list = TodoList::new();
         let task_id = todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
-        
+
         assert_eq!(task_id, 1);
         assert!(!todo_list.is_empty());
         assert_eq!(todo_list.get_tasks().len(), 1);
-        
+
         let task = &todo_list.get_tasks()[0];
         assert_eq!(task.description, "Test task");
         assert!(!task.completed);
@@ -1584,7 +1630,7 @@ mod tests {
         let mut todo_list = TodoList::new();
         let task1_id = todo_list.add_task(TaskWithoutId::new("First task".to_string()));
         let task2_id = todo_list.add_task(TaskWithoutId::new("Second task".to_string()));
-        
+
         assert_eq!(task1_id, 1);
         assert_eq!(task2_id, 2);
         assert_eq!(todo_list.get_tasks().len(), 2);
@@ -1594,7 +1640,7 @@ mod tests {
     fn test_remove_task() {
         let mut todo_list = TodoList::new();
         let task_id = todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
-        
+
         let removed_task = todo_list.remove_task(task_id);
         assert!(removed_task.is_some());
         assert_eq!(removed_task.unwrap().description, "Test task");
@@ -1612,11 +1658,11 @@ mod tests {
     fn test_toggle_task() {
         let mut todo_list = TodoList::new();
         let task_id = todo_list.add_task(TaskWithoutId::new("Test task".to_string()));
-        
+
         let task = todo_list.toggle_task(task_id);
         assert!(task.is_some());
         assert!(task.unwrap().is_completed());
-        
+
         let task = todo_list.toggle_task(task_id);
         assert!(task.is_some());
         assert!(!task.unwrap().is_completed());
@@ -1634,12 +1680,12 @@ mod tests {
         let mut todo_list = TodoList::new();
         let task1_id = todo_list.add_task(TaskWithoutId::new("Completed task".to_string()));
         let _task2_id = todo_list.add_task(TaskWithoutId::new("Pending task".to_string()));
-        
+
         todo_list.toggle_task(task1_id);
-        
+
         let completed_tasks = todo_list.get_completed_tasks();
         let pending_tasks = todo_list.get_pending_tasks();
-        
+
         assert_eq!(completed_tasks.len(), 1);
         assert_eq!(pending_tasks.len(), 1);
         assert_eq!(completed_tasks[0].description, "Completed task");
@@ -1652,13 +1698,13 @@ mod tests {
         todo_list.add_task(TaskWithoutId::new("Buy groceries at the store".to_string()));
         todo_list.add_task(TaskWithoutId::new("Read a book".to_string()));
         todo_list.add_task(TaskWithoutId::new("Buy concert tickets".to_string()));
-        
+
         let results = todo_list.search_tasks("buy");
         assert_eq!(results.len(), 2);
-        
+
         let results = todo_list.search_tasks("BUY");
         assert_eq!(results.len(), 2);
-        
+
         let results = todo_list.search_tasks("Buy");
         assert_eq!(results.len(), 2);
     }
@@ -1669,7 +1715,7 @@ mod tests {
         todo_list.add_task(TaskWithoutId::new("Programming homework".to_string()));
         todo_list.add_task(TaskWithoutId::new("Program the microwave".to_string()));
         todo_list.add_task(TaskWithoutId::new("Write documentation".to_string()));
-        
+
         let results = todo_list.search_tasks("program");
         assert_eq!(results.len(), 2);
     }
@@ -1679,7 +1725,7 @@ mod tests {
         let mut todo_list = TodoList::new();
         todo_list.add_task(TaskWithoutId::new("Task one".to_string()));
         todo_list.add_task(TaskWithoutId::new("Task two".to_string()));
-        
+
         let results = todo_list.search_tasks("nonexistent");
         assert_eq!(results.len(), 0);
     }
@@ -1687,7 +1733,7 @@ mod tests {
     #[test]
     fn test_search_tasks_empty_list() {
         let todo_list = TodoList::new();
-        
+
         let results = todo_list.search_tasks("anything");
         assert_eq!(results.len(), 0);
     }
@@ -1698,12 +1744,12 @@ mod tests {
         let task1_id = todo_list.add_task(TaskWithoutId::new("Buy milk".to_string()));
         todo_list.add_task(TaskWithoutId::new("Buy bread".to_string()));
         todo_list.add_task(TaskWithoutId::new("Sell old laptop".to_string()));
-        
+
         todo_list.complete_task(task1_id);
-        
+
         let results = todo_list.search_tasks("buy");
         assert_eq!(results.len(), 2);
-        
+
         // Verify both completed and pending tasks are found
         let completed_count = results.iter().filter(|t| t.is_completed()).count();
         assert_eq!(completed_count, 1);

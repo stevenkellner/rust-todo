@@ -1,6 +1,6 @@
+use super::overdue_filter::OverdueFilter;
 use super::priority::Priority;
 use super::task_status::TaskStatus;
-use super::overdue_filter::OverdueFilter;
 
 /// Filter options for listing tasks.
 ///
@@ -9,13 +9,13 @@ use super::overdue_filter::OverdueFilter;
 pub struct TaskFilter {
     /// Filter by completion status (None means all statuses)
     pub status: Option<TaskStatus>,
-    
+
     /// Filter by priority level (None means all priorities)
     pub priority: Option<Priority>,
-    
+
     /// Filter by overdue status
     pub overdue: OverdueFilter,
-    
+
     /// Filter by category (None means all categories)
     pub category: Option<String>,
 }

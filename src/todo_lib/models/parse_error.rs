@@ -8,13 +8,25 @@ pub enum ParseError {
     /// Task ID is not a valid number
     InvalidId(String),
     /// Input format is incorrect (e.g., date format, filter syntax)
-    InvalidFormat { field: String, expected: String, actual: String },
+    InvalidFormat {
+        field: String,
+        expected: String,
+        actual: String,
+    },
     /// Required field is empty (e.g., task description, search keyword)
     EmptyInput(String),
     /// Value is not valid for the field (e.g., priority level, date)
-    InvalidValue { field: String, value: String, allowed: String },
+    InvalidValue {
+        field: String,
+        value: String,
+        allowed: String,
+    },
     /// Value exceeds allowed range
-    OutOfRange { field: String, value: String, range: String },
+    OutOfRange {
+        field: String,
+        value: String,
+        range: String,
+    },
     /// Date parsing or validation failed
     InvalidDate(String),
     /// No command was entered
@@ -27,21 +39,33 @@ impl ParseError {
     /// Returns the error message.
     pub fn message(&self) -> String {
         match self {
-            ParseError::MissingArguments { command: _, usage } => 
-                format!("Usage: {}", usage),
+            ParseError::MissingArguments { command: _, usage } => format!("Usage: {}", usage),
             ParseError::InvalidId(msg) => msg.clone(),
-            ParseError::InvalidFormat { field, expected, actual } => 
-                format!("Invalid {} format. Expected: {}, got: {}", field, expected, actual),
-            ParseError::EmptyInput(field) => 
-                format!("{} cannot be empty.", field),
-            ParseError::InvalidValue { field, value, allowed } => 
-                format!("Invalid {} '{}'. Allowed values: {}", field, value, allowed),
-            ParseError::OutOfRange { field, value, range } => 
-                format!("{} '{}' is out of range. {}", field, value, range),
+            ParseError::InvalidFormat {
+                field,
+                expected,
+                actual,
+            } => format!(
+                "Invalid {} format. Expected: {}, got: {}",
+                field, expected, actual
+            ),
+            ParseError::EmptyInput(field) => format!("{} cannot be empty.", field),
+            ParseError::InvalidValue {
+                field,
+                value,
+                allowed,
+            } => format!("Invalid {} '{}'. Allowed values: {}", field, value, allowed),
+            ParseError::OutOfRange {
+                field,
+                value,
+                range,
+            } => format!("{} '{}' is out of range. {}", field, value, range),
             ParseError::InvalidDate(msg) => msg.clone(),
             ParseError::EmptyCommand(msg) => msg.clone(),
-            ParseError::UnknownCommand(cmd) => 
-                format!("Unknown command '{}'. Type 'help' for available commands.", cmd),
+            ParseError::UnknownCommand(cmd) => format!(
+                "Unknown command '{}'. Type 'help' for available commands.",
+                cmd
+            ),
         }
     }
 }
@@ -53,4 +77,3 @@ impl fmt::Display for ParseError {
 }
 
 impl std::error::Error for ParseError {}
-

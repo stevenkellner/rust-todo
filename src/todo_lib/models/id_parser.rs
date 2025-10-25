@@ -18,52 +18,63 @@
 /// ```
 pub fn parse_ids(input: &str) -> Result<Vec<usize>, String> {
     let mut ids = Vec::new();
-    
+
     // Split by comma for multiple segments
     for segment in input.split(',') {
         let segment = segment.trim();
-        
+
         if segment.is_empty() {
             continue;
         }
-        
+
         // Check if it's a range (contains '-')
         if segment.contains('-') {
             let parts: Vec<&str> = segment.split('-').collect();
-            
+
             if parts.len() != 2 {
-                return Err(format!("Invalid range format: '{}'. Expected format: 'start-end'", segment));
+                return Err(format!(
+                    "Invalid range format: '{}'. Expected format: 'start-end'",
+                    segment
+                ));
             }
-            
-            let start = parts[0].trim().parse::<usize>()
+
+            let start = parts[0]
+                .trim()
+                .parse::<usize>()
                 .map_err(|_| format!("Invalid number in range: '{}'", parts[0]))?;
-            let end = parts[1].trim().parse::<usize>()
+            let end = parts[1]
+                .trim()
+                .parse::<usize>()
                 .map_err(|_| format!("Invalid number in range: '{}'", parts[1]))?;
-            
+
             if start > end {
-                return Err(format!("Invalid range: {}-{}. Start must be less than or equal to end", start, end));
+                return Err(format!(
+                    "Invalid range: {}-{}. Start must be less than or equal to end",
+                    start, end
+                ));
             }
-            
+
             // Add all IDs in the range (inclusive)
             for id in start..=end {
                 ids.push(id);
             }
         } else {
             // Single ID
-            let id = segment.parse::<usize>()
+            let id = segment
+                .parse::<usize>()
                 .map_err(|_| format!("Invalid task ID: '{}'", segment))?;
             ids.push(id);
         }
     }
-    
+
     if ids.is_empty() {
         return Err("No task IDs provided".to_string());
     }
-    
+
     // Remove duplicates and sort
     ids.sort_unstable();
     ids.dedup();
-    
+
     Ok(ids)
 }
 

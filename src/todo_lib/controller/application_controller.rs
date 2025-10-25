@@ -1,12 +1,14 @@
-use crate::controller::CommandControllerRegistry;
 use crate::controller::project_command::ProjectManager;
-use crate::models::command_controller_result::{CommandControllerResult, CommandControllerResultAction};
+use crate::controller::CommandControllerRegistry;
+use crate::models::command_controller_result::{
+    CommandControllerResult, CommandControllerResultAction,
+};
 use crate::models::loop_control::LoopControl;
 use crate::persistence::TodoListStorage;
 use crate::ui::{InputStream, OutputManager};
 use crate::{FileInputStream, FileOutputWriter, OutputWriter};
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 /// Controls the todo list application by coordinating specialized controllers.
 ///
@@ -39,7 +41,6 @@ pub struct ApplicationController<I: InputStream, O: OutputWriter> {
 }
 
 impl<I: InputStream, O: OutputWriter> ApplicationController<I, O> {
-
     /// Creates a new manager with an empty todo list and new UI components.
     ///
     /// # Arguments
@@ -65,7 +66,11 @@ impl<I: InputStream, O: OutputWriter> ApplicationController<I, O> {
     ///     "tasks.json"
     /// );
     /// ```
-    pub fn new<P: AsRef<std::path::Path>>(input_stream: Rc<RefCell<I>>, output_writer: Rc<RefCell<O>>, storage_path: P) -> Self {
+    pub fn new<P: AsRef<std::path::Path>>(
+        input_stream: Rc<RefCell<I>>,
+        output_writer: Rc<RefCell<O>>,
+        storage_path: P,
+    ) -> Self {
         let storage = TodoListStorage::new(storage_path);
 
         // During tests we prefer a fresh in-memory ProjectManager to avoid interfering with
@@ -73,7 +78,9 @@ impl<I: InputStream, O: OutputWriter> ApplicationController<I, O> {
         let project_manager_inner = if cfg!(test) {
             ProjectManager::new()
         } else {
-            storage.load_projects().unwrap_or_else(|_| ProjectManager::new())
+            storage
+                .load_projects()
+                .unwrap_or_else(|_| ProjectManager::new())
         };
 
         let project_manager = Rc::new(RefCell::new(project_manager_inner));
@@ -84,7 +91,7 @@ impl<I: InputStream, O: OutputWriter> ApplicationController<I, O> {
             output_manager: OutputManager::new(Rc::clone(&output_writer)),
             command_controller_registry: CommandControllerRegistry::new(
                 Rc::clone(&project_manager),
-                Rc::clone(&output_writer)
+                Rc::clone(&output_writer),
             ),
             storage,
         }
@@ -110,12 +117,15 @@ impl ApplicationController<FileInputStream<std::io::Stdin>, FileOutputWriter<std
     pub fn with_stdio_default() -> Self {
         let input_stream = Rc::new(RefCell::new(FileInputStream::new(std::io::stdin())));
         let output_writer = Rc::new(RefCell::new(FileOutputWriter::new(std::io::stdout())));
-        Self::new(input_stream, output_writer, std::env::temp_dir().join("tasks.json"))
+        Self::new(
+            input_stream,
+            output_writer,
+            std::env::temp_dir().join("tasks.json"),
+        )
     }
 }
 
 impl<I: InputStream, O: OutputWriter> ApplicationController<I, O> {
-
     /// Starts the interactive command loop.
     ///
     /// This method displays a welcome message and enters an event loop
@@ -145,7 +155,7 @@ impl<I: InputStream, O: OutputWriter> ApplicationController<I, O> {
         loop {
             self.output_manager.print_prompt();
             let input = self.input_stream.borrow_mut().get_next_input();
-            
+
             if self.handle_input(&input) == LoopControl::Exit {
                 break;
             }
@@ -163,7 +173,7 @@ impl<I: InputStream, O: OutputWriter> ApplicationController<I, O> {
     /// `LoopControl::Continue` to continue the event loop, `LoopControl::Exit` to quit
     fn handle_input(&mut self, input: &str) -> LoopControl {
         let trimmed = input.trim();
-        
+
         // Empty input
         if trimmed.is_empty() {
             return LoopControl::Continue;
@@ -196,7 +206,8 @@ impl<I: InputStream, O: OutputWriter> ApplicationController<I, O> {
                 }
                 CommandControllerResultAction::SaveTodoList => {
                     if let Err(e) = self.save_tasks_to_disk() {
-                        self.output_manager.show_error(&format!("failed to save tasks: {}", e));
+                        self.output_manager
+                            .show_error(&format!("failed to save tasks: {}", e));
                     }
                 }
             }
@@ -226,8 +237,16 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("new_controller");
-        let manager = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        assert!(manager.project_manager.borrow().get_current_todo_list().is_empty());
+        let manager = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+        assert!(manager
+            .project_manager
+            .borrow()
+            .get_current_todo_list()
+            .is_empty());
     }
 
     #[test]
@@ -235,11 +254,31 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("add_task");
-        let mut manager = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
+        let mut manager = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
         manager.handle_input("add Test task");
-        
-        assert_eq!(manager.project_manager.borrow().get_current_todo_list().get_tasks().len(), 1);
-        assert_eq!(manager.project_manager.borrow().get_current_todo_list().get_tasks()[0].description, "Test task");
+
+        assert_eq!(
+            manager
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_tasks()
+                .len(),
+            1
+        );
+        assert_eq!(
+            manager
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_tasks()[0]
+                .description,
+            "Test task"
+        );
     }
 
     #[test]
@@ -247,13 +286,25 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("add_multiple_tasks");
-         let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         controller.handle_input("add Task 1");
         controller.handle_input("add Task 2");
         controller.handle_input("add Task 3");
-        
-        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_tasks().len(), 3);
+
+        assert_eq!(
+            controller
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_tasks()
+                .len(),
+            3
+        );
     }
 
     #[test]
@@ -261,14 +312,27 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("remove_task");
-         let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         controller.handle_input("add Task to remove");
-        let task_id = controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].id;
-        
+        let task_id = controller
+            .project_manager
+            .borrow()
+            .get_current_todo_list()
+            .get_tasks()[0]
+            .id;
+
         controller.handle_input(&format!("remove {}", task_id));
-        
-        assert!(controller.project_manager.borrow().get_current_todo_list().is_empty());
+
+        assert!(controller
+            .project_manager
+            .borrow()
+            .get_current_todo_list()
+            .is_empty());
     }
 
     #[test]
@@ -276,12 +340,24 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("remove_nonexistent_task");
-         let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         controller.handle_input("add Test task");
         controller.handle_input("remove 999");
-        
-        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_tasks().len(), 1);
+
+        assert_eq!(
+            controller
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_tasks()
+                .len(),
+            1
+        );
     }
 
     #[test]
@@ -289,15 +365,37 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("complete_task");
-         let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         controller.handle_input("add Task to complete");
-        let task_id = controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].id;
-        
+        let task_id = controller
+            .project_manager
+            .borrow()
+            .get_current_todo_list()
+            .get_tasks()[0]
+            .id;
+
         controller.handle_input(&format!("complete {}", task_id));
-        
-        assert!(controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
-        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_completed_tasks().len(), 1);
+
+        assert!(controller
+            .project_manager
+            .borrow()
+            .get_current_todo_list()
+            .get_tasks()[0]
+            .is_completed());
+        assert_eq!(
+            controller
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_completed_tasks()
+                .len(),
+            1
+        );
     }
 
     #[test]
@@ -305,12 +403,21 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("complete_nonexistent_task");
-         let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         controller.handle_input("add Test task");
         controller.handle_input("complete 999");
-        
-        assert!(!controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
+
+        assert!(!controller
+            .project_manager
+            .borrow()
+            .get_current_todo_list()
+            .get_tasks()[0]
+            .is_completed());
     }
 
     #[test]
@@ -318,17 +425,44 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("uncomplete_task");
-         let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         controller.handle_input("add Task to uncomplete");
-        let task_id = controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].id;
-        
+        let task_id = controller
+            .project_manager
+            .borrow()
+            .get_current_todo_list()
+            .get_tasks()[0]
+            .id;
+
         controller.handle_input(&format!("complete {}", task_id));
-        assert!(controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
-        
+        assert!(controller
+            .project_manager
+            .borrow()
+            .get_current_todo_list()
+            .get_tasks()[0]
+            .is_completed());
+
         controller.handle_input(&format!("uncomplete {}", task_id));
-        assert!(!controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
-        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_pending_tasks().len(), 1);
+        assert!(!controller
+            .project_manager
+            .borrow()
+            .get_current_todo_list()
+            .get_tasks()[0]
+            .is_completed());
+        assert_eq!(
+            controller
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_pending_tasks()
+                .len(),
+            1
+        );
     }
 
     #[test]
@@ -336,12 +470,21 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("uncomplete_nonexistent_task");
-         let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         controller.handle_input("add Test task");
         controller.handle_input("uncomplete 999");
-        
-        assert!(!controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
+
+        assert!(!controller
+            .project_manager
+            .borrow()
+            .get_current_todo_list()
+            .get_tasks()[0]
+            .is_completed());
     }
 
     #[test]
@@ -349,18 +492,42 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("toggle_task");
-         let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         controller.handle_input("add Task to toggle");
-        let task_id = controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].id;
-        
-        assert!(!controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
-        
+        let task_id = controller
+            .project_manager
+            .borrow()
+            .get_current_todo_list()
+            .get_tasks()[0]
+            .id;
+
+        assert!(!controller
+            .project_manager
+            .borrow()
+            .get_current_todo_list()
+            .get_tasks()[0]
+            .is_completed());
+
         controller.handle_input(&format!("toggle {}", task_id));
-        assert!(controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
-        
+        assert!(controller
+            .project_manager
+            .borrow()
+            .get_current_todo_list()
+            .get_tasks()[0]
+            .is_completed());
+
         controller.handle_input(&format!("toggle {}", task_id));
-        assert!(!controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed());
+        assert!(!controller
+            .project_manager
+            .borrow()
+            .get_current_todo_list()
+            .get_tasks()[0]
+            .is_completed());
     }
 
     #[test]
@@ -368,14 +535,31 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("toggle_nonexistent_task");
-        let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         controller.handle_input("add Test task");
-        let initial_status = controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed();
-        
+        let initial_status = controller
+            .project_manager
+            .borrow()
+            .get_current_todo_list()
+            .get_tasks()[0]
+            .is_completed();
+
         controller.handle_input("toggle 999");
-        
-        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_tasks()[0].is_completed(), initial_status);
+
+        assert_eq!(
+            controller
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_tasks()[0]
+                .is_completed(),
+            initial_status
+        );
     }
 
     #[test]
@@ -383,15 +567,27 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("list_tasks_all");
-         let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         controller.handle_input("add Task 1");
         controller.handle_input("add Task 2");
         controller.handle_input("complete 1");
-        
+
         controller.handle_input("list");
-        
-        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_tasks().len(), 2);
+
+        assert_eq!(
+            controller
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_tasks()
+                .len(),
+            2
+        );
     }
 
     #[test]
@@ -399,15 +595,27 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("list_tasks_completed");
-         let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         controller.handle_input("add Task 1");
         controller.handle_input("add Task 2");
         controller.handle_input("complete 1");
-        
+
         controller.handle_input("list completed");
-        
-        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_completed_tasks().len(), 1);
+
+        assert_eq!(
+            controller
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_completed_tasks()
+                .len(),
+            1
+        );
     }
 
     #[test]
@@ -415,15 +623,27 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("list_tasks_pending");
-         let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         controller.handle_input("add Task 1");
         controller.handle_input("add Task 2");
         controller.handle_input("complete 1");
-        
+
         controller.handle_input("list pending");
-        
-        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_pending_tasks().len(), 1);
+
+        assert_eq!(
+            controller
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_pending_tasks()
+                .len(),
+            1
+        );
     }
 
     #[test]
@@ -431,10 +651,14 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("quit_command");
-        let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         let control = controller.handle_input("quit");
-        
+
         assert_eq!(control, LoopControl::Exit);
     }
 
@@ -443,10 +667,14 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("help_command");
-        let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         let control = controller.handle_input("help");
-        
+
         assert_eq!(control, LoopControl::Continue);
     }
 
@@ -455,12 +683,24 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("add_command_returns_continue");
-        let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         let control = controller.handle_input("add New task");
-        
+
         assert_eq!(control, LoopControl::Continue);
-        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_tasks().len(), 1);
+        assert_eq!(
+            controller
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_tasks()
+                .len(),
+            1
+        );
     }
 
     #[test]
@@ -468,10 +708,14 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("empty_input");
-        let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         let control = controller.handle_input("");
-        
+
         assert_eq!(control, LoopControl::Continue);
     }
 
@@ -480,10 +724,14 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("unknown_command");
-        let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         let control = controller.handle_input("invalidcommand");
-        
+
         assert_eq!(control, LoopControl::Continue);
     }
 
@@ -492,32 +740,84 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("complex_workflow");
-        let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         // Add multiple tasks
         controller.handle_input("add Task 1");
         controller.handle_input("add Task 2");
         controller.handle_input("add Task 3");
-        
-        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_tasks().len(), 3);
-        
+
+        assert_eq!(
+            controller
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_tasks()
+                .len(),
+            3
+        );
+
         // Complete some tasks
         controller.handle_input("complete 1");
         controller.handle_input("complete 2");
-        
-        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_completed_tasks().len(), 2);
-        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_pending_tasks().len(), 1);
-        
+
+        assert_eq!(
+            controller
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_completed_tasks()
+                .len(),
+            2
+        );
+        assert_eq!(
+            controller
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_pending_tasks()
+                .len(),
+            1
+        );
+
         // Remove a task
         controller.handle_input("remove 3");
-        
-        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_tasks().len(), 2);
-        
+
+        assert_eq!(
+            controller
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_tasks()
+                .len(),
+            2
+        );
+
         // Toggle a task
         controller.handle_input("toggle 1");
-        
-        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_completed_tasks().len(), 1);
-        assert_eq!(controller.project_manager.borrow().get_current_todo_list().get_pending_tasks().len(), 1);
+
+        assert_eq!(
+            controller
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_completed_tasks()
+                .len(),
+            1
+        );
+        assert_eq!(
+            controller
+                .project_manager
+                .borrow()
+                .get_current_todo_list()
+                .get_pending_tasks()
+                .len(),
+            1
+        );
     }
 
     #[test]
@@ -525,14 +825,18 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("search_tasks");
-        let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         controller.handle_input("add Buy groceries");
         controller.handle_input("add Read a book");
         controller.handle_input("add Buy concert tickets");
-        
+
         controller.handle_input("search buy");
-        
+
         // No panic means search executed successfully
         // The actual display is tested in OutputWriter tests
     }
@@ -542,13 +846,17 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("search_tasks_no_results");
-        let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         controller.handle_input("add Task one");
         controller.handle_input("add Task two");
-        
+
         controller.handle_input("search nonexistent");
-        
+
         // Should handle gracefully with no results
     }
 
@@ -557,10 +865,14 @@ mod tests {
         let input_stream = FileInputStream::new(std::io::stdin());
         let output_writer = FileOutputWriter::new(std::io::stdout());
         let storage_path = get_test_storage_path("search_tasks_empty_list");
-        let mut controller = ApplicationController::new(Rc::new(RefCell::new(input_stream)), Rc::new(RefCell::new(output_writer)), storage_path);
-        
+        let mut controller = ApplicationController::new(
+            Rc::new(RefCell::new(input_stream)),
+            Rc::new(RefCell::new(output_writer)),
+            storage_path,
+        );
+
         controller.handle_input("search anything");
-        
+
         // Should handle gracefully with empty list
     }
 }

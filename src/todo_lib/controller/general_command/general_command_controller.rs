@@ -1,13 +1,13 @@
 use crate::controller::command_controller::CommandController;
 use crate::controller::general_command::GeneralCommand;
+use crate::controller::general_command::GeneralCommandInputParser;
+use crate::controller::general_command::GeneralCommandOutputManager;
 use crate::models::command_controller_result::CommandControllerResult;
 use crate::models::command_controller_result::CommandControllerResultAction;
 use crate::models::ParseError;
-use crate::controller::general_command::GeneralCommandInputParser;
-use crate::controller::general_command::GeneralCommandOutputManager;
 use crate::OutputWriter;
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 /// Handler for general application commands.
 ///
@@ -79,7 +79,7 @@ impl<O: OutputWriter> GeneralCommandController<O> {
 impl<O: OutputWriter> CommandController for GeneralCommandController<O> {
     fn try_execute(&mut self, input: &str) -> Option<Result<CommandControllerResult, ParseError>> {
         let parts: Vec<&str> = input.split_whitespace().collect();
-        
+
         if parts.is_empty() {
             return None;
         }
@@ -127,7 +127,10 @@ mod tests {
         let output_writer = FileOutputWriter::new(buffer);
         let mut handler = GeneralCommandController::new(Rc::new(RefCell::new(output_writer)));
         let result = handler.handle_command(&GeneralCommand::Quit);
-        assert_eq!(result.actions().collect::<Vec<_>>(), vec![&CommandControllerResultAction::ExitMainLoop]);
+        assert_eq!(
+            result.actions().collect::<Vec<_>>(),
+            vec![&CommandControllerResultAction::ExitMainLoop]
+        );
     }
 
     #[test]
@@ -136,8 +139,14 @@ mod tests {
         let output_writer = FileOutputWriter::new(buffer);
         let mut handler = GeneralCommandController::new(Rc::new(RefCell::new(output_writer)));
         let result = handler.handle_command(&GeneralCommand::ToggleDebug);
-        assert_eq!(result.actions().collect::<Vec<_>>(), vec![&CommandControllerResultAction::EnableDebugMode]);
+        assert_eq!(
+            result.actions().collect::<Vec<_>>(),
+            vec![&CommandControllerResultAction::EnableDebugMode]
+        );
         let result = handler.handle_command(&GeneralCommand::ToggleDebug);
-        assert_eq!(result.actions().collect::<Vec<_>>(), vec![&CommandControllerResultAction::DisableDebugMode]);
+        assert_eq!(
+            result.actions().collect::<Vec<_>>(),
+            vec![&CommandControllerResultAction::DisableDebugMode]
+        );
     }
 }

@@ -1,5 +1,8 @@
 # Todo List Manager
 
+[![CI](https://github.com/stevenkellner/rust-todo/actions/workflows/ci.yml/badge.svg)](https://github.com/stevenkellner/rust-todo/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/stevenkellner/rust-todo/branch/main/graph/badge.svg)](https://codecov.io/gh/stevenkellner/rust-todo)
+
 A command-line todo list application built in Rust with a clean, layered architecture and comprehensive test coverage.
 
 ## Features

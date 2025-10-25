@@ -63,4 +63,4 @@ pub mod ui;
 pub use controller::ApplicationController;
 pub use models::{LoopControl, Priority, Task, TaskFilter, TaskStatus, TodoList};
 pub use persistence::TodoListStorage;
-pub use ui::{InputStream, FileInputStream, OutputWriter, FileOutputWriter};
+pub use ui::{FileInputStream, FileOutputWriter, InputStream, OutputWriter};

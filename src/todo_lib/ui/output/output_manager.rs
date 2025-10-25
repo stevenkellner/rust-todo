@@ -1,7 +1,7 @@
 use crate::ui::output::OutputWriter;
 use colored::*;
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 /// Manages all UI operations for the application.
 ///
@@ -14,29 +14,83 @@ pub struct OutputManager<O: OutputWriter> {
 impl<O: OutputWriter> OutputManager<O> {
     /// Creates a new UI manager with a custom output writer.
     pub fn new(output_writer: Rc<RefCell<O>>) -> Self {
-        Self {
-            output_writer
-        }
+        Self { output_writer }
     }
 
     /// Displays the welcome message.
     pub fn show_welcome(&mut self) {
         self.output_writer.borrow_mut().write_line("");
-        self.output_writer.borrow_mut().write_line(&"═════════════════════════════════════════════════════".bright_cyan().bold().to_string());
-        self.output_writer.borrow_mut().write_line(&"       ████████╗  ██████╗  ██████╗   ██████╗       ".bright_cyan().bold().to_string());
-        self.output_writer.borrow_mut().write_line(&"       ╚══██╔══╝ ██╔═══██╗ ██╔══██╗ ██╔═══██╗      ".bright_cyan().bold().to_string());
-        self.output_writer.borrow_mut().write_line(&"          ██║    ██║   ██║ ██║  ██║ ██║   ██║      ".bright_cyan().bold().to_string());
-        self.output_writer.borrow_mut().write_line(&"          ██║    ██║   ██║ ██║  ██║ ██║   ██║      ".bright_cyan().bold().to_string());
-        self.output_writer.borrow_mut().write_line(&"          ██║    ╚██████╔╝ ██████╔╝ ╚██████╔╝      ".bright_cyan().bold().to_string());
-        self.output_writer.borrow_mut().write_line(&"          ╚═╝     ╚═════╝  ╚═════╝   ╚═════╝       ".bright_cyan().bold().to_string());
-        self.output_writer.borrow_mut().write_line(&"                 📝 LIST MANAGER 📝                 ".bright_green().bold().to_string());
-        self.output_writer.borrow_mut().write_line(&"═════════════════════════════════════════════════════".bright_cyan().bold().to_string());
+        self.output_writer.borrow_mut().write_line(
+            &"═════════════════════════════════════════════════════"
+                .bright_cyan()
+                .bold()
+                .to_string(),
+        );
+        self.output_writer.borrow_mut().write_line(
+            &"       ████████╗  ██████╗  ██████╗   ██████╗       "
+                .bright_cyan()
+                .bold()
+                .to_string(),
+        );
+        self.output_writer.borrow_mut().write_line(
+            &"       ╚══██╔══╝ ██╔═══██╗ ██╔══██╗ ██╔═══██╗      "
+                .bright_cyan()
+                .bold()
+                .to_string(),
+        );
+        self.output_writer.borrow_mut().write_line(
+            &"          ██║    ██║   ██║ ██║  ██║ ██║   ██║      "
+                .bright_cyan()
+                .bold()
+                .to_string(),
+        );
+        self.output_writer.borrow_mut().write_line(
+            &"          ██║    ██║   ██║ ██║  ██║ ██║   ██║      "
+                .bright_cyan()
+                .bold()
+                .to_string(),
+        );
+        self.output_writer.borrow_mut().write_line(
+            &"          ██║    ╚██████╔╝ ██████╔╝ ╚██████╔╝      "
+                .bright_cyan()
+                .bold()
+                .to_string(),
+        );
+        self.output_writer.borrow_mut().write_line(
+            &"          ╚═╝     ╚═════╝  ╚═════╝   ╚═════╝       "
+                .bright_cyan()
+                .bold()
+                .to_string(),
+        );
+        self.output_writer.borrow_mut().write_line(
+            &"                 📝 LIST MANAGER 📝                 "
+                .bright_green()
+                .bold()
+                .to_string(),
+        );
+        self.output_writer.borrow_mut().write_line(
+            &"═════════════════════════════════════════════════════"
+                .bright_cyan()
+                .bold()
+                .to_string(),
+        );
         self.output_writer.borrow_mut().write_line("");
-        self.output_writer.borrow_mut().write_line(&"    Welcome to your personal task management system!".white().to_string());
+        self.output_writer.borrow_mut().write_line(
+            &"    Welcome to your personal task management system!"
+                .white()
+                .to_string(),
+        );
         self.output_writer.borrow_mut().write_line("");
-        self.output_writer.borrow_mut().write_line(&format!("    Type {} to see available commands.", "help".bright_yellow().bold()));
+        self.output_writer.borrow_mut().write_line(&format!(
+            "    Type {} to see available commands.",
+            "help".bright_yellow().bold()
+        ));
         self.output_writer.borrow_mut().write_line("");
-        self.output_writer.borrow_mut().write_line(&"─────────────────────────────────────────────────────".bright_black().to_string());
+        self.output_writer.borrow_mut().write_line(
+            &"─────────────────────────────────────────────────────"
+                .bright_black()
+                .to_string(),
+        );
         self.output_writer.borrow_mut().write_line("");
     }
 
@@ -52,7 +106,10 @@ impl<O: OutputWriter> OutputManager<O> {
 
     /// Handles an unknown command by displaying an error message.
     pub fn handle_unknown_command(&mut self, command: &str) {
-        self.output_writer.borrow_mut().show_error(&format!("Unknown command '{}'. Type help for available commands.", command));
+        self.output_writer.borrow_mut().show_error(&format!(
+            "Unknown command '{}'. Type help for available commands.",
+            command
+        ));
     }
 }
 
@@ -90,9 +147,9 @@ mod tests {
             let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.show_welcome();
         }
-        
+
         let output_str = String::from_utf8(output).unwrap();
-        
+
         // Check that welcome message contains key elements
         assert!(output_str.contains("TODO") || output_str.contains("LIST MANAGER"));
         assert!(output_str.contains("Welcome to your personal task management system!"));
@@ -108,9 +165,9 @@ mod tests {
             let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.show_error("Test error message");
         }
-        
+
         let output_str = String::from_utf8(output).unwrap();
-        
+
         // Check that error message is displayed
         assert!(output_str.contains("Test error message"));
     }
@@ -124,9 +181,9 @@ mod tests {
             let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.show_error("Error: File 'test.txt' not found!");
         }
-        
+
         let output_str = String::from_utf8(output).unwrap();
-        
+
         assert!(output_str.contains("Error: File 'test.txt' not found!"));
     }
 
@@ -139,9 +196,9 @@ mod tests {
             let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.handle_unknown_command("invalidcmd");
         }
-        
+
         let output_str = String::from_utf8(output).unwrap();
-        
+
         // Check that unknown command message is displayed
         assert!(output_str.contains("Unknown command 'invalidcmd'"));
         assert!(output_str.contains("Type help for available commands"));
@@ -156,9 +213,9 @@ mod tests {
             let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.handle_unknown_command("badcommand arg1 arg2");
         }
-        
+
         let output_str = String::from_utf8(output).unwrap();
-        
+
         assert!(output_str.contains("Unknown command 'badcommand arg1 arg2'"));
     }
 
@@ -169,14 +226,14 @@ mod tests {
         {
             let output_writer = FileOutputWriter::new(&mut output);
             let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
-            
+
             manager.show_error("First error");
             manager.show_error("Second error");
             manager.handle_unknown_command("unknown");
         }
-        
+
         let output_str = String::from_utf8(output).unwrap();
-        
+
         // All messages should be in output
         assert!(output_str.contains("First error"));
         assert!(output_str.contains("Second error"));
@@ -192,9 +249,9 @@ mod tests {
             let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.show_error("");
         }
-        
+
         let output_str = String::from_utf8(output).unwrap();
-        
+
         // Output should exist even with empty message
         assert!(!output_str.is_empty());
     }
@@ -208,9 +265,9 @@ mod tests {
             let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.handle_unknown_command("");
         }
-        
+
         let output_str = String::from_utf8(output).unwrap();
-        
+
         assert!(output_str.contains("Unknown command ''"));
     }
 
@@ -221,13 +278,13 @@ mod tests {
         {
             let output_writer = FileOutputWriter::new(&mut output);
             let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
-            
+
             // Verify we can call multiple mutable methods
             manager.show_error("Error 1");
             manager.handle_unknown_command("cmd1");
             manager.show_error("Error 2");
         }
-        
+
         // Should compile and work
         let output_str = String::from_utf8(output).unwrap();
         assert!(output_str.contains("Error 1"));
@@ -244,9 +301,9 @@ mod tests {
             let mut manager = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager.show_welcome();
         }
-        
+
         let output_str = String::from_utf8(output).unwrap();
-        
+
         // Verify branding elements
         assert!(output_str.len() > 100); // Welcome message should be substantial
     }
@@ -256,28 +313,26 @@ mod tests {
         setup();
         let mut output1 = Vec::new();
         let mut output2 = Vec::new();
-        
+
         {
             let output_writer = FileOutputWriter::new(&mut output1);
             let mut manager1 = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager1.show_error("Specific error A");
         }
-        
+
         {
             let output_writer = FileOutputWriter::new(&mut output2);
             let mut manager2 = OutputManager::new(Rc::new(RefCell::new(output_writer)));
             manager2.show_error("Specific error B");
         }
-        
+
         let output_str1 = String::from_utf8(output1).unwrap();
         let output_str2 = String::from_utf8(output2).unwrap();
-        
+
         assert!(output_str1.contains("Specific error A"));
         assert!(!output_str1.contains("Specific error B"));
-        
+
         assert!(output_str2.contains("Specific error B"));
         assert!(!output_str2.contains("Specific error A"));
     }
 }
-
-

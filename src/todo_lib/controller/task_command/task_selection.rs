@@ -3,10 +3,10 @@
 pub enum TaskSelection {
     /// Single task by ID
     Single(usize),
-    
+
     /// Multiple tasks by IDs
     Multiple(Vec<usize>),
-    
+
     /// All tasks
     All,
 }

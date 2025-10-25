@@ -1,5 +1,5 @@
-use std::io::{BufRead, BufReader, Read};
 use super::input_stream::InputStream;
+use std::io::{BufRead, BufReader, Read};
 
 /// File-based implementation of InputStream for the command-line interface.
 ///

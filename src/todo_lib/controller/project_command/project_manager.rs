@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
 use crate::models::project::Project;
 use crate::models::todo_list::TodoList;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Manages multiple projects and tracks the current active project.
 ///
@@ -11,7 +11,7 @@ use crate::models::todo_list::TodoList;
 pub struct ProjectManager {
     /// Map of project names to Project instances
     projects: HashMap<String, Project>,
-    
+
     /// Name of the currently active project
     current_project: String,
 }
@@ -32,15 +32,15 @@ impl ProjectManager {
         let mut projects = HashMap::new();
         projects.insert(
             default_project_name.clone(),
-            Project::new(default_project_name.clone())
+            Project::new(default_project_name.clone()),
         );
-        
+
         Self {
             projects,
             current_project: default_project_name,
         }
     }
-    
+
     /// Creates a new project with the given name.
     ///
     /// Returns `Some(())` if the project was created successfully,
@@ -67,7 +67,7 @@ impl ProjectManager {
             Some(())
         }
     }
-    
+
     /// Deletes a project by name.
     ///
     /// Returns `Some(())` if the project was deleted successfully,
@@ -94,16 +94,16 @@ impl ProjectManager {
         if name == self.current_project {
             return None;
         }
-        
+
         // Can't delete if doesn't exist
         if !self.projects.contains_key(&name) {
             return None;
         }
-        
+
         self.projects.remove(&name);
         Some(())
     }
-    
+
     /// Switches to a different project.
     ///
     /// Returns `Some(())` if the switch was successful,
@@ -131,7 +131,7 @@ impl ProjectManager {
             None
         }
     }
-    
+
     /// Renames a project.
     ///
     /// Returns `Some(())` if the rename was successful,
@@ -156,28 +156,28 @@ impl ProjectManager {
         if self.projects.contains_key(&new_name) {
             return None;
         }
-        
+
         // Can't rename if old name doesn't exist
         if !self.projects.contains_key(&old_name) {
             return None;
         }
-        
+
         // Remove the old entry and create a new one with updated name
         if let Some(mut project) = self.projects.remove(&old_name) {
             project.name = new_name.clone();
             self.projects.insert(new_name.clone(), project);
-            
+
             // Update current project if it was the renamed one
             if self.current_project == old_name {
                 self.current_project = new_name;
             }
-            
+
             Some(())
         } else {
             None
         }
     }
-    
+
     /// Returns the name of the current project.
     ///
     /// # Examples
@@ -191,7 +191,7 @@ impl ProjectManager {
     pub fn get_current_project_name(&self) -> &str {
         &self.current_project
     }
-    
+
     /// Returns a reference to the current project's TodoList.
     ///
     /// # Examples
@@ -206,7 +206,7 @@ impl ProjectManager {
     pub fn get_current_todo_list(&self) -> &TodoList {
         &self.projects.get(&self.current_project).unwrap().todo_list
     }
-    
+
     /// Returns a mutable reference to the current project's TodoList.
     ///
     /// # Examples
@@ -221,9 +221,13 @@ impl ProjectManager {
     /// assert_eq!(manager.get_current_todo_list().get_tasks().len(), 1);
     /// ```
     pub fn get_current_todo_list_mut(&mut self) -> &mut TodoList {
-        &mut self.projects.get_mut(&self.current_project).unwrap().todo_list
+        &mut self
+            .projects
+            .get_mut(&self.current_project)
+            .unwrap()
+            .todo_list
     }
-    
+
     /// Returns a list of all project names.
     ///
     /// # Examples
@@ -234,7 +238,7 @@ impl ProjectManager {
     /// let mut manager = ProjectManager::new();
     /// manager.create_project("Work".to_string());
     /// manager.create_project("Personal".to_string());
-    /// 
+    ///
     /// let projects = manager.list_projects();
     /// assert_eq!(projects.len(), 3);
     /// assert!(projects.contains(&"default".to_string()));
@@ -246,7 +250,7 @@ impl ProjectManager {
         names.sort();
         names
     }
-    
+
     /// Returns the number of projects.
     ///
     /// # Examples
@@ -256,7 +260,7 @@ impl ProjectManager {
     ///
     /// let mut manager = ProjectManager::new();
     /// assert_eq!(manager.project_count(), 1); // default project
-    /// 
+    ///
     /// manager.create_project("Work".to_string());
     /// assert_eq!(manager.project_count(), 2);
     /// ```
@@ -288,7 +292,7 @@ mod tests {
         let mut manager = ProjectManager::new();
         assert!(manager.create_project("Work".to_string()).is_some());
         assert_eq!(manager.project_count(), 2);
-        
+
         // Can't create duplicate
         assert!(manager.create_project("Work".to_string()).is_none());
     }
@@ -298,14 +302,14 @@ mod tests {
         let mut manager = ProjectManager::new();
         manager.create_project("Work".to_string());
         manager.create_project("Personal".to_string());
-        
+
         // Can delete non-current project
         assert!(manager.delete_project("Work".to_string()).is_some());
         assert_eq!(manager.project_count(), 2);
-        
+
         // Can't delete current project
         assert!(manager.delete_project("default".to_string()).is_none());
-        
+
         // Can't delete non-existent project
         assert!(manager.delete_project("Work".to_string()).is_none());
     }
@@ -314,10 +318,10 @@ mod tests {
     fn test_switch_project() {
         let mut manager = ProjectManager::new();
         manager.create_project("Work".to_string());
-        
+
         assert!(manager.switch_project("Work".to_string()).is_some());
         assert_eq!(manager.get_current_project_name(), "Work");
-        
+
         // Can't switch to non-existent project
         assert!(manager.switch_project("NonExistent".to_string()).is_none());
     }
@@ -325,17 +329,23 @@ mod tests {
     #[test]
     fn test_rename_project() {
         let mut manager = ProjectManager::new();
-        
-        assert!(manager.rename_project("default".to_string(), "personal".to_string()).is_some());
+
+        assert!(manager
+            .rename_project("default".to_string(), "personal".to_string())
+            .is_some());
         assert_eq!(manager.get_current_project_name(), "personal");
         assert_eq!(manager.project_count(), 1);
-        
+
         // Can't rename to existing name
         manager.create_project("Work".to_string());
-        assert!(manager.rename_project("personal".to_string(), "Work".to_string()).is_none());
-        
+        assert!(manager
+            .rename_project("personal".to_string(), "Work".to_string())
+            .is_none());
+
         // Can't rename non-existent project
-        assert!(manager.rename_project("NonExistent".to_string(), "New".to_string()).is_none());
+        assert!(manager
+            .rename_project("NonExistent".to_string(), "New".to_string())
+            .is_none());
     }
 
     #[test]
@@ -358,7 +368,7 @@ mod tests {
         let mut manager = ProjectManager::new();
         manager.create_project("Work".to_string());
         manager.create_project("Personal".to_string());
-        
+
         let projects = manager.list_projects();
         assert_eq!(projects.len(), 3);
         assert_eq!(projects, vec!["Personal", "Work", "default"]); // Sorted
@@ -368,19 +378,19 @@ mod tests {
     fn test_projects_are_independent() {
         let mut manager = ProjectManager::new();
         manager.create_project("Work".to_string());
-        
+
         // Add task to default project
         let task1 = TaskWithoutId::new("Default Task".to_string());
         manager.get_current_todo_list_mut().add_task(task1);
-        
+
         // Switch to Work and add task
         manager.switch_project("Work".to_string());
         let task2 = TaskWithoutId::new("Work Task".to_string());
         manager.get_current_todo_list_mut().add_task(task2);
-        
+
         // Work should have 1 task
         assert_eq!(manager.get_current_todo_list().get_tasks().len(), 1);
-        
+
         // Switch back to default, should still have 1 task
         manager.switch_project("default".to_string());
         assert_eq!(manager.get_current_todo_list().get_tasks().len(), 1);

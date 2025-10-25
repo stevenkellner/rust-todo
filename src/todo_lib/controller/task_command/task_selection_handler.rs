@@ -2,16 +2,16 @@ use crate::controller::task_command::TaskSelection;
 use crate::models::command_controller_result::CommandControllerResult;
 
 /// Handler for dispatching task operations based on TaskSelection (Single, Multiple, All)
-/// 
+///
 /// This eliminates repetitive match statements in the controller by providing
 /// a generic dispatch mechanism.
 pub struct TaskSelectionHandler;
 
 impl TaskSelectionHandler {
     /// Executes a task operation based on the selection type
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `selection` - The task selection (Single, Multiple, or All)
     /// * `single_fn` - Function to execute for a single task
     /// * `multiple_fn` - Function to execute for multiple tasks
@@ -35,7 +35,7 @@ impl TaskSelectionHandler {
     }
 
     /// Executes a task operation with an additional parameter based on the selection type
-    /// 
+    ///
     /// This is useful for operations like set_priority or set_category that require
     /// an additional parameter.
     pub fn execute_with_param<P, F1, F2, F3>(
@@ -76,7 +76,7 @@ mod tests {
             |_ids| panic!("Should not call multiple_fn"),
             || panic!("Should not call all_fn"),
         );
-        
+
         assert!(!result.has_action(&CommandControllerResultAction::SaveTodoList));
     }
 
@@ -92,7 +92,7 @@ mod tests {
             },
             || panic!("Should not call all_fn"),
         );
-        
+
         assert!(result.has_action(&CommandControllerResultAction::SaveTodoList));
     }
 
@@ -105,7 +105,7 @@ mod tests {
             |_ids| panic!("Should not call multiple_fn"),
             CommandControllerResult::empty,
         );
-        
+
         assert!(!result.has_action(&CommandControllerResultAction::SaveTodoList));
     }
 
@@ -123,7 +123,7 @@ mod tests {
             |_ids, _param| panic!("Should not call multiple_fn"),
             |_param| panic!("Should not call all_fn"),
         );
-        
+
         assert!(!result.has_action(&CommandControllerResultAction::SaveTodoList));
     }
 
@@ -141,7 +141,7 @@ mod tests {
             },
             |_param| panic!("Should not call all_fn"),
         );
-        
+
         assert!(!result.has_action(&CommandControllerResultAction::SaveTodoList));
     }
 
@@ -158,7 +158,7 @@ mod tests {
                 CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
             },
         );
-        
+
         assert!(result.has_action(&CommandControllerResultAction::SaveTodoList));
     }
 }

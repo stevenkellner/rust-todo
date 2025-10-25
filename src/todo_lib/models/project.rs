@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::models::todo_list::TodoList;
+use serde::{Deserialize, Serialize};
 
 /// Represents a project containing a todo list.
 ///
@@ -10,7 +10,7 @@ use crate::models::todo_list::TodoList;
 pub struct Project {
     /// The name of the project
     pub name: String,
-    
+
     /// The todo list associated with this project
     pub todo_list: TodoList,
 }
@@ -41,7 +41,7 @@ impl Project {
             todo_list: TodoList::new(),
         }
     }
-    
+
     /// Returns a reference to the project's todo list.
     ///
     /// # Examples
@@ -56,7 +56,7 @@ impl Project {
     pub fn get_todo_list(&self) -> &TodoList {
         &self.todo_list
     }
-    
+
     /// Returns a mutable reference to the project's todo list.
     ///
     /// # Examples

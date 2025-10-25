@@ -1,7 +1,7 @@
 use super::priority::Priority;
 use super::recurrence::Recurrence;
-use chrono::{NaiveDate, Datelike};
-use serde::{Serialize, Deserialize};
+use chrono::{Datelike, NaiveDate};
+use serde::{Deserialize, Serialize};
 
 /// Represents task data without an ID.
 ///
@@ -214,10 +214,10 @@ impl Task {
     ///
     /// let mut task = Task::new(1, "Do laundry".to_string());
     /// assert!(!task.is_completed());
-    /// 
+    ///
     /// task.toggle_completion();
     /// assert!(task.is_completed());
-    /// 
+    ///
     /// task.toggle_completion();
     /// assert!(!task.is_completed());
     /// ```
@@ -250,12 +250,16 @@ impl Task {
     ///
     /// let mut task = Task::new(1, "Clean room".to_string());
     /// assert_eq!(task.get_status_symbol(), " ");
-    /// 
+    ///
     /// task.toggle_completion();
     /// assert_eq!(task.get_status_symbol(), "✓");
     /// ```
     pub fn get_status_symbol(&self) -> &str {
-        if self.completed { "✓" } else { " " }
+        if self.completed {
+            "✓"
+        } else {
+            " "
+        }
     }
 
     /// Sets the due date for the task.
@@ -540,7 +544,13 @@ impl Task {
                         // Handle day-of-month edge cases (e.g., Jan 31 -> Feb 28/29)
                         let day = due_date.day();
                         let max_day = match month {
-                            2 => if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) { 29 } else { 28 },
+                            2 => {
+                                if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) {
+                                    29
+                                } else {
+                                    28
+                                }
+                            }
                             4 | 6 | 9 | 11 => 30,
                             _ => 31,
                         };
@@ -674,10 +684,10 @@ mod tests {
     fn test_toggle_completion() {
         let mut task = Task::new(1, "Test task".to_string());
         assert!(!task.is_completed());
-        
+
         task.toggle_completion();
         assert!(task.is_completed());
-        
+
         task.toggle_completion();
         assert!(!task.is_completed());
     }
@@ -686,7 +696,7 @@ mod tests {
     fn test_status_symbol() {
         let mut task = Task::new(1, "Test task".to_string());
         assert_eq!(task.get_status_symbol(), " ");
-        
+
         task.toggle_completion();
         assert_eq!(task.get_status_symbol(), "✓");
     }
@@ -700,10 +710,10 @@ mod tests {
     #[test]
     fn test_set_priority() {
         let mut task = Task::new(1, "Test task".to_string());
-        
+
         task.set_priority(Priority::High);
         assert_eq!(task.get_priority(), Priority::High);
-        
+
         task.set_priority(Priority::Low);
         assert_eq!(task.get_priority(), Priority::Low);
     }
@@ -713,14 +723,14 @@ mod tests {
         assert_eq!(Priority::from_str("high"), Some(Priority::High));
         assert_eq!(Priority::from_str("h"), Some(Priority::High));
         assert_eq!(Priority::from_str("HIGH"), Some(Priority::High));
-        
+
         assert_eq!(Priority::from_str("medium"), Some(Priority::Medium));
         assert_eq!(Priority::from_str("med"), Some(Priority::Medium));
         assert_eq!(Priority::from_str("m"), Some(Priority::Medium));
-        
+
         assert_eq!(Priority::from_str("low"), Some(Priority::Low));
         assert_eq!(Priority::from_str("l"), Some(Priority::Low));
-        
+
         assert_eq!(Priority::from_str("invalid"), None);
     }
 

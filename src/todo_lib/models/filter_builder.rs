@@ -1,7 +1,7 @@
-use crate::models::task_filter::TaskFilter;
-use crate::models::task_status::TaskStatus;
 use crate::models::overdue_filter::OverdueFilter;
 use crate::models::priority::Priority;
+use crate::models::task_filter::TaskFilter;
+use crate::models::task_status::TaskStatus;
 
 /// Builds a TaskFilter from command-line arguments.
 ///
@@ -75,7 +75,7 @@ impl FilterBuilder {
     /// Returns an error if the argument is invalid or conflicts with existing filters.
     pub fn parse_argument(self, arg: &str) -> Result<Self, String> {
         let arg_lower = arg.to_lowercase();
-        
+
         // Check for category filter (format: category:name or cat:name)
         if arg_lower.starts_with("category:") || arg_lower.starts_with("cat:") {
             let category = if arg_lower.starts_with("category:") {
@@ -85,7 +85,7 @@ impl FilterBuilder {
             };
             return self.with_category(category);
         }
-        
+
         match arg_lower.as_str() {
             "completed" | "done" => self.with_status(TaskStatus::Completed),
             "pending" | "todo" => self.with_status(TaskStatus::Pending),
@@ -104,10 +104,11 @@ impl FilterBuilder {
     ///
     /// Returns None if no filters were applied (meaning show all tasks).
     pub fn build(self) -> Option<TaskFilter> {
-        if !self.status_set 
-            && !self.priority_set 
+        if !self.status_set
+            && !self.priority_set
             && !self.category_set
-            && self.filter.overdue == OverdueFilter::All {
+            && self.filter.overdue == OverdueFilter::All
+        {
             None
         } else {
             Some(self.filter)
@@ -151,9 +152,7 @@ mod tests {
 
     #[test]
     fn test_filter_builder_with_priority() {
-        let builder = FilterBuilder::new()
-            .with_priority(Priority::High)
-            .unwrap();
+        let builder = FilterBuilder::new().with_priority(Priority::High).unwrap();
         let filter = builder.build().unwrap();
         assert_eq!(filter.priority, Some(Priority::High));
     }
@@ -178,25 +177,20 @@ mod tests {
 
     #[test]
     fn test_filter_builder_empty_category() {
-        let result = FilterBuilder::new()
-            .with_category("".to_string());
+        let result = FilterBuilder::new().with_category("".to_string());
         assert!(result.is_err());
     }
 
     #[test]
     fn test_filter_builder_parse_argument_completed() {
-        let builder = FilterBuilder::new()
-            .parse_argument("completed")
-            .unwrap();
+        let builder = FilterBuilder::new().parse_argument("completed").unwrap();
         let filter = builder.build().unwrap();
         assert_eq!(filter.status, Some(TaskStatus::Completed));
     }
 
     #[test]
     fn test_filter_builder_parse_argument_high() {
-        let builder = FilterBuilder::new()
-            .parse_argument("high")
-            .unwrap();
+        let builder = FilterBuilder::new().parse_argument("high").unwrap();
         let filter = builder.build().unwrap();
         assert_eq!(filter.priority, Some(Priority::High));
     }
@@ -212,17 +206,14 @@ mod tests {
 
     #[test]
     fn test_filter_builder_parse_argument_overdue() {
-        let builder = FilterBuilder::new()
-            .parse_argument("overdue")
-            .unwrap();
+        let builder = FilterBuilder::new().parse_argument("overdue").unwrap();
         let filter = builder.build().unwrap();
         assert_eq!(filter.overdue, OverdueFilter::OnlyOverdue);
     }
 
     #[test]
     fn test_filter_builder_parse_argument_invalid() {
-        let result = FilterBuilder::new()
-            .parse_argument("invalid");
+        let result = FilterBuilder::new().parse_argument("invalid");
         assert!(result.is_err());
     }
 

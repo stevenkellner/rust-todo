@@ -1,8 +1,8 @@
-use crate::models::TodoList;
 use crate::controller::project_command::ProjectManager;
-use std::path::{Path, PathBuf};
+use crate::models::TodoList;
 use std::fs;
 use std::io::Write;
+use std::path::{Path, PathBuf};
 
 /// Handles persistence operations for TodoList.
 ///
@@ -72,7 +72,7 @@ impl TodoListStorage {
     /// ```
     pub fn save(&self, todo_list: &TodoList) -> Result<(), String> {
         let path = &self.storage_path;
-        
+
         // Create parent directories if they don't exist
         if let Some(parent) = path.parent() {
             if !parent.exists() {
@@ -86,9 +86,9 @@ impl TodoListStorage {
             .map_err(|e| format!("Failed to serialize TodoList: {}", e))?;
 
         // Write to file
-        let mut file = fs::File::create(path)
-            .map_err(|e| format!("Failed to create file: {}", e))?;
-        
+        let mut file =
+            fs::File::create(path).map_err(|e| format!("Failed to create file: {}", e))?;
+
         file.write_all(json.as_bytes())
             .map_err(|e| format!("Failed to write to file: {}", e))?;
 
@@ -111,14 +111,14 @@ impl TodoListStorage {
     /// ```
     pub fn load(&self) -> Result<TodoList, String> {
         let path = &self.storage_path;
-        
+
         // Read file contents
-        let contents = fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read file: {}", e))?;
+        let contents =
+            fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;
 
         // Deserialize from JSON
-        let todo_list: TodoList = serde_json::from_str(&contents)
-            .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+        let todo_list: TodoList =
+            serde_json::from_str(&contents).map_err(|e| format!("Failed to parse JSON: {}", e))?;
 
         Ok(todo_list)
     }
@@ -136,7 +136,7 @@ impl TodoListStorage {
     /// `Ok(())` on success, or `Err(String)` with an error message on failure.
     pub fn save_projects(&self, project_manager: &ProjectManager) -> Result<(), String> {
         let path = &self.storage_path;
-        
+
         // Create parent directories if they don't exist
         if let Some(parent) = path.parent() {
             if !parent.exists() {
@@ -150,9 +150,9 @@ impl TodoListStorage {
             .map_err(|e| format!("Failed to serialize ProjectManager: {}", e))?;
 
         // Write to file
-        let mut file = fs::File::create(path)
-            .map_err(|e| format!("Failed to create file: {}", e))?;
-        
+        let mut file =
+            fs::File::create(path).map_err(|e| format!("Failed to create file: {}", e))?;
+
         file.write_all(json.as_bytes())
             .map_err(|e| format!("Failed to write to file: {}", e))?;
 
@@ -160,7 +160,7 @@ impl TodoListStorage {
     }
 
     /// Loads a ProjectManager from a JSON file at the configured storage path.
-    /// 
+    ///
     /// For backward compatibility, if the file contains an old TodoList format,
     /// it will be loaded into the default project of a new ProjectManager.
     ///
@@ -169,10 +169,10 @@ impl TodoListStorage {
     /// `Ok(ProjectManager)` on success, or `Err(String)` with an error message on failure.
     pub fn load_projects(&self) -> Result<ProjectManager, String> {
         let path = &self.storage_path;
-        
+
         // Read file contents
-        let contents = fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read file: {}", e))?;
+        let contents =
+            fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;
 
         // Try to deserialize as ProjectManager first
         if let Ok(project_manager) = serde_json::from_str::<ProjectManager>(&contents) {
@@ -190,7 +190,6 @@ impl TodoListStorage {
         Err("Failed to parse file as either ProjectManager or TodoList".to_string())
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -288,10 +287,14 @@ mod tests {
         let temp_path = "test_projects_with_tasks.json";
         let storage = TodoListStorage::new(temp_path);
         let mut project_manager = ProjectManager::new();
-        
+
         // Add tasks to default project
-        project_manager.get_current_todo_list_mut().add_task(TaskWithoutId::new("Task 1".to_string()));
-        project_manager.get_current_todo_list_mut().add_task(TaskWithoutId::new("Task 2".to_string()));
+        project_manager
+            .get_current_todo_list_mut()
+            .add_task(TaskWithoutId::new("Task 1".to_string()));
+        project_manager
+            .get_current_todo_list_mut()
+            .add_task(TaskWithoutId::new("Task 2".to_string()));
 
         // Save
         storage.save_projects(&project_manager).unwrap();
@@ -299,8 +302,14 @@ mod tests {
         // Load
         let loaded_manager = storage.load_projects().unwrap();
         assert_eq!(loaded_manager.get_current_todo_list().get_tasks().len(), 2);
-        assert_eq!(loaded_manager.get_current_todo_list().get_tasks()[0].description, "Task 1");
-        assert_eq!(loaded_manager.get_current_todo_list().get_tasks()[1].description, "Task 2");
+        assert_eq!(
+            loaded_manager.get_current_todo_list().get_tasks()[0].description,
+            "Task 1"
+        );
+        assert_eq!(
+            loaded_manager.get_current_todo_list().get_tasks()[1].description,
+            "Task 2"
+        );
 
         // Cleanup
         let _ = fs::remove_file(temp_path);
@@ -311,21 +320,31 @@ mod tests {
         let temp_path = "test_multiple_projects.json";
         let storage = TodoListStorage::new(temp_path);
         let mut project_manager = ProjectManager::new();
-        
+
         // Create additional projects
         project_manager.create_project("Work".to_string()).unwrap();
-        project_manager.create_project("Personal".to_string()).unwrap();
-        
+        project_manager
+            .create_project("Personal".to_string())
+            .unwrap();
+
         // Add tasks to default project
-        project_manager.get_current_todo_list_mut().add_task(TaskWithoutId::new("Default task".to_string()));
-        
+        project_manager
+            .get_current_todo_list_mut()
+            .add_task(TaskWithoutId::new("Default task".to_string()));
+
         // Switch to Work and add tasks
         project_manager.switch_project("Work".to_string()).unwrap();
-        project_manager.get_current_todo_list_mut().add_task(TaskWithoutId::new("Work task".to_string()));
-        
+        project_manager
+            .get_current_todo_list_mut()
+            .add_task(TaskWithoutId::new("Work task".to_string()));
+
         // Switch to Personal and add tasks
-        project_manager.switch_project("Personal".to_string()).unwrap();
-        project_manager.get_current_todo_list_mut().add_task(TaskWithoutId::new("Personal task".to_string()));
+        project_manager
+            .switch_project("Personal".to_string())
+            .unwrap();
+        project_manager
+            .get_current_todo_list_mut()
+            .add_task(TaskWithoutId::new("Personal task".to_string()));
 
         // Save
         storage.save_projects(&project_manager).unwrap();
@@ -333,10 +352,13 @@ mod tests {
         // Load and verify
         let loaded_manager = storage.load_projects().unwrap();
         assert_eq!(loaded_manager.project_count(), 3);
-        
+
         // Check Personal project (current)
         assert_eq!(loaded_manager.get_current_todo_list().get_tasks().len(), 1);
-        assert_eq!(loaded_manager.get_current_todo_list().get_tasks()[0].description, "Personal task");
+        assert_eq!(
+            loaded_manager.get_current_todo_list().get_tasks()[0].description,
+            "Personal task"
+        );
 
         // Cleanup
         let _ = fs::remove_file(temp_path);
@@ -346,7 +368,7 @@ mod tests {
     fn test_backward_compatibility_load_old_todolist() {
         let temp_path = "test_backward_compat.json";
         let storage = TodoListStorage::new(temp_path);
-        
+
         // Save old TodoList format
         let mut old_todo_list = TodoList::new();
         old_todo_list.add_task(TaskWithoutId::new("Old task 1".to_string()));
@@ -357,8 +379,14 @@ mod tests {
         let loaded_manager = storage.load_projects().unwrap();
         assert_eq!(loaded_manager.project_count(), 1); // Default project
         assert_eq!(loaded_manager.get_current_todo_list().get_tasks().len(), 2);
-        assert_eq!(loaded_manager.get_current_todo_list().get_tasks()[0].description, "Old task 1");
-        assert_eq!(loaded_manager.get_current_todo_list().get_tasks()[1].description, "Old task 2");
+        assert_eq!(
+            loaded_manager.get_current_todo_list().get_tasks()[0].description,
+            "Old task 1"
+        );
+        assert_eq!(
+            loaded_manager.get_current_todo_list().get_tasks()[1].description,
+            "Old task 2"
+        );
 
         // Cleanup
         let _ = fs::remove_file(temp_path);

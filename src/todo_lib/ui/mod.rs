@@ -8,5 +8,5 @@ pub mod input;
 pub mod output;
 
 // Re-export commonly used types
-pub use input::{InputStream, FileInputStream};
-pub use output::{OutputWriter, FileOutputWriter, OutputManager};
+pub use input::{FileInputStream, InputStream};
+pub use output::{FileOutputWriter, OutputManager, OutputWriter};

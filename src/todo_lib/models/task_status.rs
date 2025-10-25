@@ -5,7 +5,7 @@
 pub enum TaskStatus {
     /// Show only completed tasks
     Completed,
-    
+
     /// Show only pending (incomplete) tasks
     Pending,
 }

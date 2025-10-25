@@ -77,15 +77,15 @@ mod tests {
         assert_eq!(Recurrence::from_str("daily"), Ok(Recurrence::Daily));
         assert_eq!(Recurrence::from_str("DAILY"), Ok(Recurrence::Daily));
         assert_eq!(Recurrence::from_str("d"), Ok(Recurrence::Daily));
-        
+
         assert_eq!(Recurrence::from_str("weekly"), Ok(Recurrence::Weekly));
         assert_eq!(Recurrence::from_str("WEEKLY"), Ok(Recurrence::Weekly));
         assert_eq!(Recurrence::from_str("w"), Ok(Recurrence::Weekly));
-        
+
         assert_eq!(Recurrence::from_str("monthly"), Ok(Recurrence::Monthly));
         assert_eq!(Recurrence::from_str("MONTHLY"), Ok(Recurrence::Monthly));
         assert_eq!(Recurrence::from_str("m"), Ok(Recurrence::Monthly));
-        
+
         assert!(Recurrence::from_str("invalid").is_err());
         assert!(Recurrence::from_str("").is_err());
     }

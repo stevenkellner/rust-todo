@@ -1,13 +1,13 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::models::priority::Priority;
 use crate::ui::input::InputStream;
 #[cfg(test)]
 use crate::ui::output::FileOutputWriter;
 use crate::ui::output::OutputWriter;
-use crate::models::priority::Priority;
-use colored::Colorize;
 use chrono::NaiveDate;
+use colored::Colorize;
 
 /// Handles interactive prompts for user input.
 ///
@@ -26,22 +26,32 @@ impl<I: InputStream, O: OutputWriter> InteractiveTaskPropertiesPrompt<I, O> {
     /// * `input` - The input reader for getting user input
     /// * `output` - The output writer for displaying prompts
     pub fn new(input_stream: Rc<RefCell<I>>, output_writer: Rc<RefCell<O>>) -> Self {
-        InteractiveTaskPropertiesPrompt { input_stream, output_writer }
+        InteractiveTaskPropertiesPrompt {
+            input_stream,
+            output_writer,
+        }
     }
 
     /// Prompts for all task properties (priority, due date, category).
     ///
     /// Returns a tuple of (`Option<Priority>`, `Option<NaiveDate>`, `Option<String>`)
-    pub fn prompt_task_properties(&mut self) -> (Option<Priority>, Option<NaiveDate>, Option<String>) {
+    pub fn prompt_task_properties(
+        &mut self,
+    ) -> (Option<Priority>, Option<NaiveDate>, Option<String>) {
         self.output_writer.borrow_mut().write_line("");
-        self.output_writer.borrow_mut().write_line(&"Set additional properties (press Enter to skip):".bright_cyan().bold().to_string());
+        self.output_writer.borrow_mut().write_line(
+            &"Set additional properties (press Enter to skip):"
+                .bright_cyan()
+                .bold()
+                .to_string(),
+        );
 
         let priority = self.prompt_priority();
         let due_date = self.prompt_due_date();
         let category = self.prompt_category();
-        
+
         self.output_writer.borrow_mut().write_line("");
-        
+
         (priority, due_date, category)
     }
 
@@ -50,11 +60,12 @@ impl<I: InputStream, O: OutputWriter> InteractiveTaskPropertiesPrompt<I, O> {
     /// Returns Some(Priority) if valid input was provided, None if skipped or invalid.
     pub fn prompt_priority(&mut self) -> Option<Priority> {
         self.output_writer.borrow_mut().write_line("");
-        self.output_writer.borrow_mut().write_line(&format!("{} {}", 
-            "Priority".bright_yellow().bold(), 
+        self.output_writer.borrow_mut().write_line(&format!(
+            "{} {}",
+            "Priority".bright_yellow().bold(),
             "[high/medium/low]:".bright_black()
         ));
-        
+
         let input = self.input_stream.borrow_mut().get_next_input();
         if input.is_empty() {
             return None;
@@ -62,11 +73,15 @@ impl<I: InputStream, O: OutputWriter> InteractiveTaskPropertiesPrompt<I, O> {
 
         match Priority::from_str(&input) {
             Some(priority) => {
-                self.output_writer.borrow_mut().show_success(&format!("Priority set to {}", priority.as_str()));
+                self.output_writer
+                    .borrow_mut()
+                    .show_success(&format!("Priority set to {}", priority.as_str()));
                 Some(priority)
             }
             None => {
-                self.output_writer.borrow_mut().show_error("Invalid priority. Skipping.");
+                self.output_writer
+                    .borrow_mut()
+                    .show_error("Invalid priority. Skipping.");
                 None
             }
         }
@@ -77,11 +92,12 @@ impl<I: InputStream, O: OutputWriter> InteractiveTaskPropertiesPrompt<I, O> {
     /// Returns Some(NaiveDate) if valid date was provided, None if skipped or invalid.
     pub fn prompt_due_date(&mut self) -> Option<NaiveDate> {
         self.output_writer.borrow_mut().write_line("");
-        self.output_writer.borrow_mut().write_line(&format!("{} {}", 
-            "Due date".bright_yellow().bold(), 
+        self.output_writer.borrow_mut().write_line(&format!(
+            "{} {}",
+            "Due date".bright_yellow().bold(),
             "[DD.MM.YYYY]:".bright_black()
         ));
-        
+
         let input = self.input_stream.borrow_mut().get_next_input();
         if input.is_empty() {
             return None;
@@ -89,11 +105,15 @@ impl<I: InputStream, O: OutputWriter> InteractiveTaskPropertiesPrompt<I, O> {
 
         match NaiveDate::parse_from_str(&input, "%d.%m.%Y") {
             Ok(date) => {
-                self.output_writer.borrow_mut().show_success(&format!("Due date set to {}", date.format("%d.%m.%Y")));
+                self.output_writer
+                    .borrow_mut()
+                    .show_success(&format!("Due date set to {}", date.format("%d.%m.%Y")));
                 Some(date)
             }
             Err(_) => {
-                self.output_writer.borrow_mut().show_error("Invalid date format. Use DD.MM.YYYY");
+                self.output_writer
+                    .borrow_mut()
+                    .show_error("Invalid date format. Use DD.MM.YYYY");
                 None
             }
         }
@@ -104,13 +124,17 @@ impl<I: InputStream, O: OutputWriter> InteractiveTaskPropertiesPrompt<I, O> {
     /// Returns Some(String) if input was provided, None if skipped.
     pub fn prompt_category(&mut self) -> Option<String> {
         self.output_writer.borrow_mut().write_line("");
-        self.output_writer.borrow_mut().write_line(&format!("{}:", "Category".bright_yellow().bold()));
-        
+        self.output_writer
+            .borrow_mut()
+            .write_line(&format!("{}:", "Category".bright_yellow().bold()));
+
         let input = self.input_stream.borrow_mut().get_next_input();
         if input.is_empty() {
             None
         } else {
-            self.output_writer.borrow_mut().show_success(&format!("Category set to '{}'", input));
+            self.output_writer
+                .borrow_mut()
+                .show_success(&format!("Category set to '{}'", input));
             Some(input)
         }
     }
@@ -127,10 +151,13 @@ mod tests {
         let input_reader = FileInputStream::new(&input_data[..]);
         let mut buffer = Vec::new();
         let output_writer = FileOutputWriter::new(&mut buffer);
-        
-        let mut prompt = InteractiveTaskPropertiesPrompt::new(Rc::new(RefCell::new(input_reader)), Rc::new(RefCell::new(output_writer)));
+
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(
+            Rc::new(RefCell::new(input_reader)),
+            Rc::new(RefCell::new(output_writer)),
+        );
         let result = prompt.prompt_priority();
-        
+
         assert_eq!(result, Some(Priority::High));
     }
 
@@ -140,10 +167,13 @@ mod tests {
         let input_reader = FileInputStream::new(&input_data[..]);
         let mut buffer = Vec::new();
         let output_writer = FileOutputWriter::new(&mut buffer);
-        
-        let mut prompt = InteractiveTaskPropertiesPrompt::new(Rc::new(RefCell::new(input_reader)), Rc::new(RefCell::new(output_writer)));
+
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(
+            Rc::new(RefCell::new(input_reader)),
+            Rc::new(RefCell::new(output_writer)),
+        );
         let result = prompt.prompt_priority();
-        
+
         assert_eq!(result, Some(Priority::Medium));
     }
 
@@ -153,10 +183,13 @@ mod tests {
         let input_reader = FileInputStream::new(&input_data[..]);
         let mut buffer = Vec::new();
         let output_writer = FileOutputWriter::new(&mut buffer);
-        
-        let mut prompt = InteractiveTaskPropertiesPrompt::new(Rc::new(RefCell::new(input_reader)), Rc::new(RefCell::new(output_writer)));
+
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(
+            Rc::new(RefCell::new(input_reader)),
+            Rc::new(RefCell::new(output_writer)),
+        );
         let result = prompt.prompt_priority();
-        
+
         assert_eq!(result, Some(Priority::Low));
     }
 
@@ -166,10 +199,13 @@ mod tests {
         let input_reader = FileInputStream::new(&input_data[..]);
         let mut buffer = Vec::new();
         let output_writer = FileOutputWriter::new(&mut buffer);
-        
-        let mut prompt = InteractiveTaskPropertiesPrompt::new(Rc::new(RefCell::new(input_reader)), Rc::new(RefCell::new(output_writer)));
+
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(
+            Rc::new(RefCell::new(input_reader)),
+            Rc::new(RefCell::new(output_writer)),
+        );
         let result = prompt.prompt_priority();
-        
+
         assert_eq!(result, None);
     }
 
@@ -179,10 +215,13 @@ mod tests {
         let input_reader = FileInputStream::new(&input_data[..]);
         let mut buffer = Vec::new();
         let output_writer = FileOutputWriter::new(&mut buffer);
-        
-        let mut prompt = InteractiveTaskPropertiesPrompt::new(Rc::new(RefCell::new(input_reader)), Rc::new(RefCell::new(output_writer)));
+
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(
+            Rc::new(RefCell::new(input_reader)),
+            Rc::new(RefCell::new(output_writer)),
+        );
         let result = prompt.prompt_priority();
-        
+
         assert_eq!(result, None);
         let output = String::from_utf8(buffer).unwrap();
         assert!(output.contains("Invalid priority"));
@@ -194,10 +233,13 @@ mod tests {
         let input_reader = FileInputStream::new(&input_data[..]);
         let mut buffer = Vec::new();
         let output_writer = FileOutputWriter::new(&mut buffer);
-        
-        let mut prompt = InteractiveTaskPropertiesPrompt::new(Rc::new(RefCell::new(input_reader)), Rc::new(RefCell::new(output_writer)));
+
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(
+            Rc::new(RefCell::new(input_reader)),
+            Rc::new(RefCell::new(output_writer)),
+        );
         let result = prompt.prompt_due_date();
-        
+
         assert!(result.is_some());
         let date = result.unwrap();
         assert_eq!(date.format("%d.%m.%Y").to_string(), "25.12.2025");
@@ -209,10 +251,13 @@ mod tests {
         let input_reader = FileInputStream::new(&input_data[..]);
         let mut buffer = Vec::new();
         let output_writer = FileOutputWriter::new(&mut buffer);
-        
-        let mut prompt = InteractiveTaskPropertiesPrompt::new(Rc::new(RefCell::new(input_reader)), Rc::new(RefCell::new(output_writer)));
+
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(
+            Rc::new(RefCell::new(input_reader)),
+            Rc::new(RefCell::new(output_writer)),
+        );
         let result = prompt.prompt_due_date();
-        
+
         assert_eq!(result, None);
     }
 
@@ -222,10 +267,13 @@ mod tests {
         let input_reader = FileInputStream::new(&input_data[..]);
         let mut buffer = Vec::new();
         let output_writer = FileOutputWriter::new(&mut buffer);
-        
-        let mut prompt = InteractiveTaskPropertiesPrompt::new(Rc::new(RefCell::new(input_reader)), Rc::new(RefCell::new(output_writer)));
+
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(
+            Rc::new(RefCell::new(input_reader)),
+            Rc::new(RefCell::new(output_writer)),
+        );
         let result = prompt.prompt_due_date();
-        
+
         assert_eq!(result, None);
         let output = String::from_utf8(buffer).unwrap();
         assert!(output.contains("Invalid date format"));
@@ -237,10 +285,13 @@ mod tests {
         let input_reader = FileInputStream::new(&input_data[..]);
         let mut buffer = Vec::new();
         let output_writer = FileOutputWriter::new(&mut buffer);
-        
-        let mut prompt = InteractiveTaskPropertiesPrompt::new(Rc::new(RefCell::new(input_reader)), Rc::new(RefCell::new(output_writer)));
+
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(
+            Rc::new(RefCell::new(input_reader)),
+            Rc::new(RefCell::new(output_writer)),
+        );
         let result = prompt.prompt_category();
-        
+
         assert_eq!(result, Some("Work".to_string()));
     }
 
@@ -250,10 +301,13 @@ mod tests {
         let input_reader = FileInputStream::new(&input_data[..]);
         let mut buffer = Vec::new();
         let output_writer = FileOutputWriter::new(&mut buffer);
-        
-        let mut prompt = InteractiveTaskPropertiesPrompt::new(Rc::new(RefCell::new(input_reader)), Rc::new(RefCell::new(output_writer)));
+
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(
+            Rc::new(RefCell::new(input_reader)),
+            Rc::new(RefCell::new(output_writer)),
+        );
         let result = prompt.prompt_category();
-        
+
         assert_eq!(result, None);
     }
 
@@ -263,10 +317,13 @@ mod tests {
         let input_reader = FileInputStream::new(&input_data[..]);
         let mut buffer = Vec::new();
         let output_writer = FileOutputWriter::new(&mut buffer);
-        
-        let mut prompt = InteractiveTaskPropertiesPrompt::new(Rc::new(RefCell::new(input_reader)), Rc::new(RefCell::new(output_writer)));
+
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(
+            Rc::new(RefCell::new(input_reader)),
+            Rc::new(RefCell::new(output_writer)),
+        );
         let (priority, due_date, category) = prompt.prompt_task_properties();
-        
+
         assert_eq!(priority, Some(Priority::High));
         assert!(due_date.is_some());
         assert_eq!(category, Some("Work".to_string()));
@@ -278,10 +335,13 @@ mod tests {
         let input_reader = FileInputStream::new(&input_data[..]);
         let mut buffer = Vec::new();
         let output_writer = FileOutputWriter::new(&mut buffer);
-        
-        let mut prompt = InteractiveTaskPropertiesPrompt::new(Rc::new(RefCell::new(input_reader)), Rc::new(RefCell::new(output_writer)));
+
+        let mut prompt = InteractiveTaskPropertiesPrompt::new(
+            Rc::new(RefCell::new(input_reader)),
+            Rc::new(RefCell::new(output_writer)),
+        );
         let (priority, due_date, category) = prompt.prompt_task_properties();
-        
+
         assert_eq!(priority, None);
         assert_eq!(due_date, None);
         assert_eq!(category, None);
