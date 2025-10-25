@@ -457,31 +457,6 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 ---
 
-### 21. Progress Analytics
-
-**Status:** Pending  
-**Complexity:** Medium  
-**Description:**
-
-- ASCII progress bars
-- Weekly/monthly completion graphs
-- Productivity statistics
-
-**Implementation Details:**
-
-- Add `analytics` command
-- Display:
-  - Completion rate over time
-  - Tasks completed per day/week/month
-  - Average completion time
-  - Most productive days
-  - Category breakdown
-  - Priority completion rates
-- ASCII bar charts for visualization
-- Trend analysis
-
----
-
 ### 24. Task Sorting
 
 **Status:** Pending  
