@@ -136,9 +136,11 @@ impl<O: OutputWriter> GeneralCommandOutputManager<O> {
         self.output_writer.borrow_mut().write_line("");
         self.output_writer.borrow_mut().write_line(&"Additional debug commands available:".bright_yellow().to_string());
         self.output_writer.borrow_mut().write_line("");
-        self.output_writer.borrow_mut().write_line(&format!("  {} <count>  - Generate random tasks", "debug:gen".bright_cyan()));
-        self.output_writer.borrow_mut().write_line(&format!("  {}          - Clear all tasks", "debug:clear".bright_cyan()));
-        self.output_writer.borrow_mut().write_line(&format!("  {}          - Disable debug mode", "debug".bright_cyan()));
+        self.output_writer.borrow_mut().write_line(&format!("  {} <count>                - Generate random tasks", "debug:gen".bright_cyan()));
+        self.output_writer.borrow_mut().write_line(&format!("  {}                        - Clear all tasks", "debug:clear".bright_cyan()));
+        self.output_writer.borrow_mut().write_line(&format!("  {} <projects> <tasks>  - Generate random projects with tasks", "debug:gen-projects".bright_cyan()));
+        self.output_writer.borrow_mut().write_line(&format!("  {}                - Clear all projects (keep default)", "debug:clear-projects".bright_cyan()));
+        self.output_writer.borrow_mut().write_line(&format!("  {}                        - Disable debug mode", "debug".bright_cyan()));
         self.output_writer.borrow_mut().write_line("");
     }
 
@@ -208,6 +210,8 @@ mod tests {
         assert!(output_str.contains("Debug mode enabled"));
         assert!(output_str.contains("debug:gen"));
         assert!(output_str.contains("debug:clear"));
+        assert!(output_str.contains("debug:gen-projects"));
+        assert!(output_str.contains("debug:clear-projects"));
         assert!(output_str.contains("Additional debug commands"));
     }
 

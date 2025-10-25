@@ -9,6 +9,7 @@ pub struct RandomTaskGenerator {
     subtask_templates: Vec<&'static str>,
     priorities: Vec<Priority>,
     categories: Vec<&'static str>,
+    project_templates: Vec<&'static str>,
 }
 
 impl RandomTaskGenerator {
@@ -72,6 +73,28 @@ impl RandomTaskGenerator {
                 "maintenance",
                 "research",
             ],
+            project_templates: vec![
+                "Work",
+                "Personal",
+                "Home",
+                "Shopping",
+                "Health",
+                "Finance",
+                "Learning",
+                "Projects",
+                "Goals",
+                "Ideas",
+                "Research",
+                "Development",
+                "Marketing",
+                "Design",
+                "Testing",
+                "Documentation",
+                "Client Work",
+                "Side Projects",
+                "Hobbies",
+                "Travel",
+            ],
         }
     }
 
@@ -134,6 +157,55 @@ impl RandomTaskGenerator {
         } else {
             None
         }
+    }
+
+    /// Generates a random project name
+    /// 
+    /// # Returns
+    /// 
+    /// A random project name string
+    pub fn generate_project_name(&self) -> String {
+        let mut rng = rand::rng();
+        let project_idx = rng.random_range(0..self.project_templates.len());
+        self.project_templates[project_idx].to_string()
+    }
+
+    /// Generates multiple random project names
+    /// 
+    /// # Arguments
+    /// 
+    /// * `count` - Number of project names to generate
+    /// 
+    /// # Returns
+    /// 
+    /// A vector of unique project name strings
+    pub fn generate_project_names(&self, count: usize) -> Vec<String> {
+        let mut names = Vec::new();
+        let mut used_indices = Vec::new();
+        let mut rng = rand::rng();
+        
+        // Generate unique project names
+        for i in 0..count {
+            if i < self.project_templates.len() {
+                // For the first pass, pick random unique names
+                let mut idx;
+                loop {
+                    idx = rng.random_range(0..self.project_templates.len());
+                    if !used_indices.contains(&idx) {
+                        used_indices.push(idx);
+                        break;
+                    }
+                }
+                names.push(self.project_templates[idx].to_string());
+            } else {
+                // If we run out of unique names, add suffixes
+                let base_idx = rng.random_range(0..self.project_templates.len());
+                let base_name = self.project_templates[base_idx];
+                names.push(format!("{} {}", base_name, i - self.project_templates.len() + 2));
+            }
+        }
+        
+        names
     }
 
     /// Generates an optional random recurrence pattern
@@ -408,6 +480,52 @@ mod tests {
         assert!(recurrence.is_some());
         let pattern = recurrence.unwrap();
         assert!(matches!(pattern, Recurrence::Daily | Recurrence::Weekly | Recurrence::Monthly));
+    }
+
+    #[test]
+    fn test_generate_project_name() {
+        let generator = RandomTaskGenerator::new();
+        
+        let project_name = generator.generate_project_name();
+        
+        assert!(!project_name.is_empty());
+        assert!(generator.project_templates.contains(&project_name.as_str()));
+    }
+
+    #[test]
+    fn test_generate_project_names() {
+        let generator = RandomTaskGenerator::new();
+        
+        let project_names = generator.generate_project_names(5);
+        
+        assert_eq!(project_names.len(), 5);
+        for name in &project_names {
+            assert!(!name.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_generate_project_names_more_than_templates() {
+        let generator = RandomTaskGenerator::new();
+        let template_count = generator.project_templates.len();
+        
+        // Request more projects than we have templates
+        let project_names = generator.generate_project_names(template_count + 5);
+        
+        assert_eq!(project_names.len(), template_count + 5);
+        // All names should be unique or have suffixes
+        for name in &project_names {
+            assert!(!name.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_generate_project_names_zero() {
+        let generator = RandomTaskGenerator::new();
+        
+        let project_names = generator.generate_project_names(0);
+        
+        assert_eq!(project_names.len(), 0);
     }
 
 }
