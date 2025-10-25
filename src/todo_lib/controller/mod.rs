@@ -9,7 +9,7 @@ pub mod debug_command;
 pub mod general_command;
 pub mod project_command;
 pub mod task_command;
-pub mod todo_manager;
+pub mod application_controller;
 
 // Re-export commonly used types
 pub use command_controller::CommandController;
@@ -20,4 +20,4 @@ pub use project_command::ProjectCommandController;
 pub use project_command::ProjectManager;
 pub use task_command::TaskCommandController;
 pub use debug_command::RandomTaskGenerator;
-pub use todo_manager::TodoManager;
+pub use application_controller::ApplicationController;

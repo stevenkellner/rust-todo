@@ -433,7 +433,7 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 ### 16. Multiple Lists/Projects
 
-**Status:** Pending  
+**Status:** ✅ Complete  
 **Complexity:** Advanced  
 **Description:**
 
@@ -454,52 +454,6 @@ This document tracks the 19 features selected for implementation in the TODO man
   - `rename-project <old> <new>`
 - Save/load multiple projects
 - Display current project in prompt
-
----
-
-### 17. Reminders/Notifications
-
-**Status:** Pending  
-**Complexity:** Advanced  
-**Description:**
-
-- Desktop notifications for due tasks
-- Reminder system
-- Custom reminder times
-
-**Implementation Details:**
-
-- Use `notify-rust` crate for desktop notifications
-- Add `reminder_time: Option<NaiveDateTime>` to Task
-- Add `remind <id> <time>` command
-- Background thread to check reminders
-- Notify when:
-  - Task is due today
-  - Task is overdue
-  - Custom reminder time reached
-- Add `snooze <id> <minutes>` command
-
----
-
-### 20. Task History
-
-**Status:** Pending  
-**Complexity:** Medium  
-**Description:**
-
-- View completed tasks history
-- Completion timeline
-- Archive old tasks
-
-**Implementation Details:**
-
-- Add `completed_at: Option<NaiveDateTime>` to Task
-- Add `archived: bool` field to Task
-- Add `history` command to view completed tasks
-- Add `archive <id>` command
-- Add `unarchive <id>` command
-- Filter archived tasks from normal list
-- Display completion date in history
 
 ---
 

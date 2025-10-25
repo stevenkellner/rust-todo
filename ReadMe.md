@@ -185,7 +185,7 @@ Handles all user interaction and terminal I/O.
 
 Coordinates between UI and model layers.
 
-- **`todo_manager.rs`** - Top-level application manager (`TodoManager`):
+- **`application_controller.rs`** - Top-level application manager (`ApplicationController`):
   - Coordinates specialized command controllers
   - Processes commands by delegating to the registry
   - Manages the main application loop and I/O
@@ -255,7 +255,7 @@ use todo_manager::ui::input::FileInputStream;
 use todo_manager::ui::output::FileOutputWriter;
 
 // Controller (application orchestration)
-use todo_manager::controller::TodoManager;
+use todo_manager::controller::ApplicationController;
 
 // Persistence
 use todo_manager::persistence::TodoListStorage;

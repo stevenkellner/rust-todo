@@ -32,12 +32,12 @@
 //! ### Controller Layer (`controller`)
 //! - `todo_controller`: Orchestrates UI events with model operations
 //! ### Controller Layer (`controller`)
-//! - `todo_manager` / `TodoManager`: Coordinates specialized command controllers and the main application loop
+//! - `application_controller` / `ApplicationController`: Coordinates specialized command controllers and the main application loop
 //!
 //! ## Examples
 //!
 //! ```no_run
-//! use todo_manager::TodoManager;
+//! use todo_manager::ApplicationController;
 //! use todo_manager::FileInputStream;
 //! use todo_manager::FileOutputWriter;
 //! use std::rc::Rc;
@@ -45,12 +45,12 @@
 //!
 //! let input_stream = FileInputStream::new(std::io::stdin());
 //! let output_writer = FileOutputWriter::new(std::io::stdout());
-//! let mut manager = TodoManager::new(
+//! let mut controller = ApplicationController::new(
 //!     Rc::new(RefCell::new(input_stream)),
 //!     Rc::new(RefCell::new(output_writer)),
 //!     "tasks.json"
 //! );
-//! manager.run();  // Starts the interactive application
+//! controller.run();  // Starts the interactive application
 //! ```
 
 // Module declarations
@@ -60,7 +60,7 @@ pub mod persistence;
 pub mod ui;
 
 // Re-export commonly used types for convenience
-pub use controller::TodoManager;
+pub use controller::ApplicationController;
 pub use models::{LoopControl, Priority, Task, TaskFilter, TaskStatus, TodoList};
 pub use persistence::TodoListStorage;
 pub use ui::{InputStream, FileInputStream, OutputWriter, FileOutputWriter};

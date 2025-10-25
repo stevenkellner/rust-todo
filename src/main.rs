@@ -1,6 +1,6 @@
-use todo_manager::controller::TodoManager;
+use todo_manager::controller::ApplicationController;
 
 fn main() {
-    let mut manager = TodoManager::with_stdio_default();
-    manager.run();
+    let mut controller = ApplicationController::with_stdio_default();
+    controller.run();
 }
