@@ -44,6 +44,215 @@ impl<O: OutputWriter> TaskCommandOutputManager<O> {
         self.output_writer.borrow_mut().show_success(&format!("Task '{}' marked as pending.", description));
     }
 
+    /// Displays a success message after completing multiple tasks.
+    pub fn show_multiple_tasks_completed(&mut self, completed_count: usize, not_found: &[usize]) {
+        if completed_count > 0 {
+            let message = if completed_count == 1 {
+                "Completed 1 task.".to_string()
+            } else {
+                format!("Completed {} tasks.", completed_count)
+            };
+            self.output_writer.borrow_mut().show_success(&message);
+        }
+        
+        if !not_found.is_empty() {
+            let ids = not_found.iter()
+                .map(|id| id.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            self.output_writer.borrow_mut().show_error(&format!("Tasks with IDs {} not found.", ids));
+        }
+        
+        if completed_count == 0 && not_found.is_empty() {
+            self.output_writer.borrow_mut().show_error("No tasks to complete.");
+        }
+    }
+
+    /// Displays a success message after completing all tasks.
+    pub fn show_all_tasks_completed(&mut self, count: usize) {
+        if count > 0 {
+            let message = if count == 1 {
+                "Completed 1 task.".to_string()
+            } else {
+                format!("Completed all {} tasks.", count)
+            };
+            self.output_writer.borrow_mut().show_success(&message);
+        } else {
+            self.output_writer.borrow_mut().show_error("No tasks to complete.");
+        }
+    }
+
+    /// Displays a success message after removing multiple tasks.
+    pub fn show_multiple_tasks_removed(&mut self, removed_count: usize, not_found: &[usize]) {
+        if removed_count > 0 {
+            let message = if removed_count == 1 {
+                "Removed 1 task.".to_string()
+            } else {
+                format!("Removed {} tasks.", removed_count)
+            };
+            self.output_writer.borrow_mut().show_success(&message);
+        }
+        
+        if !not_found.is_empty() {
+            let ids = not_found.iter()
+                .map(|id| id.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            self.output_writer.borrow_mut().show_error(&format!("Tasks with IDs {} not found.", ids));
+        }
+        
+        if removed_count == 0 && not_found.is_empty() {
+            self.output_writer.borrow_mut().show_error("No tasks to remove.");
+        }
+    }
+
+    /// Displays a success message after removing all tasks.
+    pub fn show_all_tasks_removed(&mut self, count: usize) {
+        if count > 0 {
+            let message = if count == 1 {
+                "Removed 1 task.".to_string()
+            } else {
+                format!("Removed all {} tasks.", count)
+            };
+            self.output_writer.borrow_mut().show_success(&message);
+        } else {
+            self.output_writer.borrow_mut().show_error("No tasks to remove.");
+        }
+    }
+
+    /// Displays a success message after marking multiple tasks as pending.
+    pub fn show_multiple_tasks_uncompleted(&mut self, uncompleted_count: usize, not_found: &[usize]) {
+        if uncompleted_count > 0 {
+            let message = if uncompleted_count == 1 {
+                "Marked 1 task as pending.".to_string()
+            } else {
+                format!("Marked {} tasks as pending.", uncompleted_count)
+            };
+            self.output_writer.borrow_mut().show_success(&message);
+        }
+        
+        if !not_found.is_empty() {
+            let ids = not_found.iter()
+                .map(|id| id.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            self.output_writer.borrow_mut().show_error(&format!("Tasks with IDs {} not found.", ids));
+        }
+        
+        if uncompleted_count == 0 && not_found.is_empty() {
+            self.output_writer.borrow_mut().show_error("No tasks to mark as pending.");
+        }
+    }
+
+    /// Displays a success message after marking all tasks as pending.
+    pub fn show_all_tasks_uncompleted(&mut self, count: usize) {
+        if count > 0 {
+            let message = if count == 1 {
+                "Marked 1 task as pending.".to_string()
+            } else {
+                format!("Marked all {} tasks as pending.", count)
+            };
+            self.output_writer.borrow_mut().show_success(&message);
+        } else {
+            self.output_writer.borrow_mut().show_error("No tasks to mark as pending.");
+        }
+    }
+
+    /// Displays a success message after toggling multiple tasks.
+    pub fn show_multiple_tasks_toggled(&mut self, toggled_count: usize, not_found: &[usize]) {
+        if toggled_count > 0 {
+            let message = if toggled_count == 1 {
+                "Toggled 1 task.".to_string()
+            } else {
+                format!("Toggled {} tasks.", toggled_count)
+            };
+            self.output_writer.borrow_mut().show_success(&message);
+        }
+        
+        if !not_found.is_empty() {
+            let ids = not_found.iter()
+                .map(|id| id.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            self.output_writer.borrow_mut().show_error(&format!("Tasks with IDs {} not found.", ids));
+        }
+        
+        if toggled_count == 0 && not_found.is_empty() {
+            self.output_writer.borrow_mut().show_error("No tasks to toggle.");
+        }
+    }
+
+    /// Displays a success message after toggling all tasks.
+    pub fn show_all_tasks_toggled(&mut self, count: usize) {
+        if count > 0 {
+            let message = if count == 1 {
+                "Toggled 1 task.".to_string()
+            } else {
+                format!("Toggled all {} tasks.", count)
+            };
+            self.output_writer.borrow_mut().show_success(&message);
+        } else {
+            self.output_writer.borrow_mut().show_error("No tasks to toggle.");
+        }
+    }
+
+    /// Displays a success message after setting priority for multiple tasks.
+    pub fn show_multiple_priorities_set(&mut self, updated_count: usize, priority: Priority, not_found: &[usize]) {
+        use crate::ui::formatters::TaskFormatter;
+        let colored_priority = TaskFormatter::format_priority_with_name(priority);
+        
+        if updated_count > 0 {
+            let message = if updated_count == 1 {
+                format!("Set priority to {} for 1 task.", colored_priority)
+            } else {
+                format!("Set priority to {} for {} tasks.", colored_priority, updated_count)
+            };
+            self.output_writer.borrow_mut().show_success(&message);
+        }
+        
+        if !not_found.is_empty() {
+            let ids = not_found.iter()
+                .map(|id| id.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            self.output_writer.borrow_mut().show_error(&format!("Tasks with IDs {} not found.", ids));
+        }
+        
+        if updated_count == 0 && not_found.is_empty() {
+            self.output_writer.borrow_mut().show_error("No tasks to update.");
+        }
+    }
+
+    /// Displays a success message after setting category for multiple tasks.
+    pub fn show_multiple_categories_set(&mut self, updated_count: usize, category: Option<&str>, not_found: &[usize]) {
+        if updated_count > 0 {
+            let message = if let Some(cat) = category {
+                if updated_count == 1 {
+                    format!("Set category to '{}' for 1 task.", cat)
+                } else {
+                    format!("Set category to '{}' for {} tasks.", cat, updated_count)
+                }
+            } else if updated_count == 1 {
+                "Cleared category for 1 task.".to_string()
+            } else {
+                format!("Cleared category for {} tasks.", updated_count)
+            };
+            self.output_writer.borrow_mut().show_success(&message);
+        }
+        
+        if !not_found.is_empty() {
+            let ids = not_found.iter()
+                .map(|id| id.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            self.output_writer.borrow_mut().show_error(&format!("Tasks with IDs {} not found.", ids));
+        }
+        
+        if updated_count == 0 && not_found.is_empty() {
+            self.output_writer.borrow_mut().show_error("No tasks to update.");
+        }
+    }
+
     /// Displays a success message after updating a task.
     pub fn show_task_updated(&mut self, old_desc: &str, new_desc: &str) {
         self.output_writer.borrow_mut().show_success(&format!("Task '{}' updated to '{}'.", old_desc, new_desc));

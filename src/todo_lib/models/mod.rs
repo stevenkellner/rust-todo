@@ -5,6 +5,7 @@
 
 pub mod command_controller_result;
 pub mod filter_builder;
+pub mod id_parser;
 pub mod loop_control;
 pub mod overdue_filter;
 pub mod parse_error;
@@ -17,6 +18,7 @@ pub mod task_statistics;
 
 // Re-export commonly used types
 pub use filter_builder::FilterBuilder;
+pub use id_parser::parse_ids;
 pub use loop_control::LoopControl;
 pub use parse_error::ParseError;
 pub use priority::Priority;

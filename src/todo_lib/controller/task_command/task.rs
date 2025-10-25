@@ -1,6 +1,7 @@
 use crate::models::task_filter::TaskFilter;
 use crate::models::priority::Priority;
 use chrono::NaiveDate;
+use super::TaskSelection;
 
 /// Represents task-related commands.
 ///
@@ -14,20 +15,20 @@ pub enum TaskCommand {
     /// List tasks with an optional filter
     List(Option<TaskFilter>),
     
-    /// Remove a task by ID
-    Remove(usize),
+    /// Remove task(s) by ID, IDs, or all
+    Remove(TaskSelection),
     
-    /// Mark a task as completed
-    Complete(usize),
+    /// Mark task(s) as completed
+    Complete(TaskSelection),
     
-    /// Mark a task as pending (incomplete)
-    Uncomplete(usize),
+    /// Mark task(s) as pending (incomplete)
+    Uncomplete(TaskSelection),
     
-    /// Toggle a task's completion status
-    Toggle(usize),
+    /// Toggle task(s) completion status
+    Toggle(TaskSelection),
     
-    /// Set the priority of a task
-    SetPriority(usize, Priority),
+    /// Set the priority of task(s)
+    SetPriority(TaskSelection, Priority),
     
     /// Set the due date of a task
     SetDueDate(usize, Option<NaiveDate>),
@@ -35,8 +36,8 @@ pub enum TaskCommand {
     /// Edit a task's description
     Edit(usize, String),
     
-    /// Set the category of a task
-    SetCategory(usize, Option<String>),
+    /// Set the category of task(s)
+    SetCategory(TaskSelection, Option<String>),
     
     /// List all categories
     ListCategories,

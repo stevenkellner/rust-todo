@@ -1,7 +1,8 @@
-use crate::controller::task_command::TaskCommand;
+use crate::controller::task_command::{TaskCommand, TaskSelection};
 use crate::models::filter_builder::FilterBuilder;
 use crate::models::priority::Priority;
 use crate::models::parse_error::ParseError;
+use crate::models::parse_ids;
 use chrono::NaiveDate;
 
 /// Parser for task-related commands.
@@ -81,80 +82,76 @@ impl TaskCommandInputParser {
     }
 
     /// Parses the 'remove' command with task ID validation.
+    /// Supports single ID, ID ranges (1-5), lists (1,3,5), combined (1-3,7), or "all"
     fn parse_remove_command(&self, args: &[&str]) -> Result<TaskCommand, ParseError> {
-        if args.is_empty() {
-            Err(ParseError::MissingArguments { 
-                command: "remove".to_string(), 
-                usage: "remove <task id>".to_string() 
-            })
-        } else if let Ok(id) = args[0].parse::<usize>() {
-            Ok(TaskCommand::Remove(id))
-        } else {
-            Err(ParseError::InvalidId("Invalid task ID. Please provide a number.".to_string()))
-        }
+        let selection = self.parse_task_selection(args, "remove")?;
+        Ok(TaskCommand::Remove(selection))
     }
 
     /// Parses the 'complete' command.
+    /// Supports single ID, ID ranges (1-5), lists (1,3,5), combined (1-3,7), or "all"
     fn parse_complete_command(&self, args: &[&str]) -> Result<TaskCommand, ParseError> {
-        if args.is_empty() {
-            Err(ParseError::MissingArguments { 
-                command: "complete".to_string(), 
-                usage: "complete <task id>".to_string() 
-            })
-        } else if let Ok(id) = args[0].parse::<usize>() {
-            Ok(TaskCommand::Complete(id))
-        } else {
-            Err(ParseError::InvalidId("Invalid task ID. Please provide a number.".to_string()))
-        }
+        let selection = self.parse_task_selection(args, "complete")?;
+        Ok(TaskCommand::Complete(selection))
     }
 
     /// Parses the 'uncomplete' command.
+    /// Supports single ID, ID ranges (1-5), lists (1,3,5), combined (1-3,7), or "all"
     fn parse_uncomplete_command(&self, args: &[&str]) -> Result<TaskCommand, ParseError> {
-        if args.is_empty() {
-            Err(ParseError::MissingArguments { 
-                command: "uncomplete".to_string(), 
-                usage: "uncomplete <task id>".to_string() 
-            })
-        } else if let Ok(id) = args[0].parse::<usize>() {
-            Ok(TaskCommand::Uncomplete(id))
-        } else {
-            Err(ParseError::InvalidId("Invalid task ID. Please provide a number.".to_string()))
-        }
+        let selection = self.parse_task_selection(args, "uncomplete")?;
+        Ok(TaskCommand::Uncomplete(selection))
     }
 
     /// Parses the 'toggle' command.
+    /// Supports single ID, ID ranges (1-5), lists (1,3,5), combined (1-3,7), or "all"
     fn parse_toggle_command(&self, args: &[&str]) -> Result<TaskCommand, ParseError> {
+        let selection = self.parse_task_selection(args, "toggle")?;
+        Ok(TaskCommand::Toggle(selection))
+    }
+
+    /// Helper method to parse task selection (single, multiple, or all)
+    fn parse_task_selection(&self, args: &[&str], command_name: &str) -> Result<TaskSelection, ParseError> {
         if args.is_empty() {
             Err(ParseError::MissingArguments { 
-                command: "toggle".to_string(), 
-                usage: "toggle <task id>".to_string() 
+                command: command_name.to_string(), 
+                usage: format!("{} <task id|range|all>", command_name)
             })
+        } else if args[0].eq_ignore_ascii_case("all") {
+            Ok(TaskSelection::All)
+        } else if args[0].contains('-') || args[0].contains(',') {
+            // ID range or list format
+            match parse_ids(args[0]) {
+                Ok(ids) => Ok(TaskSelection::Multiple(ids)),
+                Err(err) => Err(ParseError::InvalidId(err))
+            }
         } else if let Ok(id) = args[0].parse::<usize>() {
-            Ok(TaskCommand::Toggle(id))
+            Ok(TaskSelection::Single(id))
         } else {
-            Err(ParseError::InvalidId("Invalid task ID. Please provide a number.".to_string()))
+            Err(ParseError::InvalidId("Invalid task ID. Please provide a number, range (e.g., 1-5), list (e.g., 1,3,5), or 'all'.".to_string()))
         }
     }
 
     /// Parses the 'priority' command with priority level validation.
+    /// Supports single ID, ID ranges (1-5), lists (1,3,5), combined (1-3,7), or "all"
     fn parse_priority_command(&self, args: &[&str]) -> Result<TaskCommand, ParseError> {
         if args.len() < 2 {
             Err(ParseError::MissingArguments { 
                 command: "priority".to_string(), 
-                usage: "priority <task id> <priority level (high/h, medium/med/m, low/l)>".to_string() 
+                usage: "priority <task id|range|all> <priority level (high/h, medium/med/m, low/l)>".to_string() 
             })
-        } else if let Ok(id) = args[0].parse::<usize>() {
+        } else {
             let priority_str = args[1].to_lowercase();
-            match Priority::from_str(&priority_str) {
-                Some(priority) => Ok(TaskCommand::SetPriority(id, priority)),
-                None => Err(ParseError::InvalidValue { 
+            let priority = match Priority::from_str(&priority_str) {
+                Some(p) => p,
+                None => return Err(ParseError::InvalidValue { 
                     field: "priority level".to_string(), 
                     value: priority_str, 
                     allowed: "high/h, medium/med/m, or low/l".to_string() 
                 }),
-            }
-        } else {
-            Err(ParseError::InvalidId("Invalid task ID. Please provide a number.".to_string()))
+            };
+
+            let selection = self.parse_task_selection(&args[0..1], "priority")?;
+            Ok(TaskCommand::SetPriority(selection, priority))
         }
     }
 
@@ -203,24 +200,25 @@ impl TaskCommandInputParser {
     }
 
     /// Parses the 'set-category' command.
+    /// Supports single ID, ID ranges (1-5), lists (1,3,5), combined (1-3,7), or "all"
     fn parse_set_category_command(&self, args: &[&str]) -> Result<TaskCommand, ParseError> {
         if args.len() < 2 {
             Err(ParseError::MissingArguments { 
                 command: "set-category".to_string(), 
-                usage: "set-category <task id> <category name or 'none' to clear>".to_string() 
+                usage: "set-category <task id|range|all> <category name or 'none' to clear>".to_string() 
             })
-        } else if let Ok(id) = args[0].parse::<usize>() {
-            let category = args[1..].join(" ");
-            
-            if category.to_lowercase() == "none" {
-                Ok(TaskCommand::SetCategory(id, None))
-            } else if category.is_empty() {
-                Err(ParseError::EmptyInput("Category name".to_string()))
-            } else {
-                Ok(TaskCommand::SetCategory(id, Some(category)))
-            }
         } else {
-            Err(ParseError::InvalidId("Invalid task ID. Please provide a number.".to_string()))
+            let category_str = args[1..].join(" ");
+            let category = if category_str.to_lowercase() == "none" {
+                None
+            } else if category_str.is_empty() {
+                return Err(ParseError::EmptyInput("Category name".to_string()));
+            } else {
+                Some(category_str)
+            };
+
+            let selection = self.parse_task_selection(&args[0..1], "set-category")?;
+            Ok(TaskCommand::SetCategory(selection, category))
         }
     }
 

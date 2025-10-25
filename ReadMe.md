@@ -8,6 +8,7 @@ A command-line todo list application built in Rust with a clean, layered archite
 - 🔍 List all tasks, or filter by completion status, priority, and category
 - ✔️ Mark tasks as complete or incomplete
 - 🔄 Toggle task completion status
+- 📦 **Bulk operations** - Complete/remove multiple tasks using ID ranges (e.g., `1-5`), lists (e.g., `1,3,5`), or `all`
 - 🎯 Set task priorities (Low, Medium, High) with colored indicators
 - 🔖 Assign categories/tags to tasks for better organization
 - 📅 Set due dates for tasks with visual indicators for overdue items
@@ -98,12 +99,12 @@ When you run the application, you'll see a command prompt where you can enter va
 |---------|-------------|---------|
 | `add <description>` | Add a new task | `add Buy groceries` |
 | `list [status] [priority]` | List tasks with optional filters | `list`, `list pending high` |
-| `remove <id>` | Remove a task by ID | `remove 1` |
-| `complete <id>` | Mark task as completed | `complete 1` |
-| `uncomplete <id>` | Mark task as pending | `uncomplete 1` |
-| `toggle <id>` | Toggle task completion status | `toggle 1` |
-| `priority <id> <level>` | Set task priority (high/medium/low) | `priority 1 high` |
-| `set-category <id> <name>` | Assign category to task | `set-category 1 work` |
+| `remove <id\|range\|all>` | Remove task(s) by ID, range, or all | `remove 1`, `remove 1-5`, `remove 1,3,5`, `remove all` |
+| `complete <id\|range\|all>` | Mark task(s) as completed | `complete 1`, `complete 1-5`, `complete 1,3,5`, `complete all` |
+| `uncomplete <id\|range\|all>` | Mark task(s) as pending | `uncomplete 1`, `uncomplete 1-5`, `uncomplete all` |
+| `toggle <id\|range\|all>` | Toggle task(s) completion status | `toggle 1`, `toggle 1-5`, `toggle all` |
+| `priority <id\|range> <level>` | Set task priority (high/medium/low) | `priority 1 high`, `priority 1-5 medium` |
+| `set-category <id\|range> <name>` | Assign category to task(s) | `set-category 1 work`, `set-category 1-3 personal` |
 | `categories` | List all categories | `categories` |
 | `set-due <id> <date>` | Set task due date (YYYY-MM-DD) | `set-due 1 2024-12-31` |
 | `edit <id> <description>` | Edit task description | `edit 1 New description` |
@@ -111,6 +112,14 @@ When you run the application, you'll see a command prompt where you can enter va
 | `statistics` | Show task statistics | `statistics` |
 | `help` | Show help message | `help` |
 | `quit` | Exit the program | `quit` |
+
+**Note:** The `complete`, `remove`, `uncomplete`, `toggle`, `priority`, and `set-category` commands support bulk operations:
+
+- Single ID: `complete 1` or `priority 1 high`
+- ID range: `complete 1-5` (completes tasks 1, 2, 3, 4, 5)
+- ID list: `remove 1,3,5` (removes tasks 1, 3, and 5)
+- Combined: `complete 1-3,7,9-11` (completes tasks 1,2,3,7,9,10,11)
+- All tasks (where applicable): `complete all`, `remove all`, `uncomplete all`, `toggle all`
 
 ### Debug Mode Commands
 

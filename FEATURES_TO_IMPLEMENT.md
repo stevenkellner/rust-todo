@@ -295,7 +295,7 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 ### 11. Bulk Operations
 
-**Status:** Pending  
+**Status:** ✅ Completed  
 **Complexity:** Medium  
 **Description:**
 
@@ -305,14 +305,24 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 **Implementation Details:**
 
-- Create ID parser for ranges and lists
-- Update commands to accept multiple IDs:
-  - `complete 1-5`
-  - `remove 1,3,5`
-  - `complete 1-3,7,9-11`
-- Add `complete-all` and `remove-all` commands
-- Add confirmation for bulk deletes
-- Display count of affected tasks
+- ✅ Create ID parser for ranges and lists (`parse_ids` function in `id_parser.rs`)
+- ✅ Update commands to accept multiple IDs:
+  - `complete 1-5` - Complete tasks with IDs 1 through 5
+  - `remove 1,3,5` - Remove tasks with IDs 1, 3, and 5
+  - `complete 1-3,7,9-11` - Complete tasks in ranges 1-3 and 9-11, plus task 7
+- ✅ Add `complete all` and `remove all` commands
+- ✅ Display count of affected tasks in output
+- ⚠️ Bulk delete confirmation not yet implemented (could be added later)
+
+**Files Modified:**
+
+- `src/todo_lib/models/id_parser.rs` - NEW file with parse_ids() function
+- `src/todo_lib/models/mod.rs` - Exported parse_ids function
+- `src/todo_lib/models/todo_list.rs` - Added complete_tasks(), remove_tasks(), complete_all_tasks(), remove_all_tasks()
+- `src/todo_lib/controller/task_command/task.rs` - Added CompleteMultiple, RemoveMultiple, CompleteAll, RemoveAll variants
+- `src/todo_lib/controller/task_command/task_command_input_parser.rs` - Updated parsers to handle ID ranges
+- `src/todo_lib/controller/task_command/task_command_controller.rs` - Added bulk operation handlers
+- `src/todo_lib/controller/task_command/task_command_output_manager.rs` - Added output methods for bulk operations
 
 ---
 

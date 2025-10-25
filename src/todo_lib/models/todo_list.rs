@@ -615,6 +615,369 @@ impl TodoList {
         }
     }
 
+    /// Completes multiple tasks specified by their IDs.
+    ///
+    /// # Arguments
+    ///
+    /// * `ids` - A slice of task IDs to complete
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing:
+    /// - Number of tasks successfully completed
+    /// - Vector of IDs that were not found
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// 
+    /// let (completed, not_found) = list.complete_tasks(&[id1, id2]);
+    /// assert_eq!(completed, 2);
+    /// assert_eq!(not_found.len(), 0);
+    /// ```
+    pub fn complete_tasks(&mut self, ids: &[usize]) -> (usize, Vec<usize>) {
+        let mut completed_count = 0;
+        let mut not_found = Vec::new();
+
+        for &id in ids {
+            if self.complete_task(id).is_some() {
+                completed_count += 1;
+            } else {
+                not_found.push(id);
+            }
+        }
+
+        (completed_count, not_found)
+    }
+
+    /// Removes multiple tasks specified by their IDs.
+    ///
+    /// # Arguments
+    ///
+    /// * `ids` - A slice of task IDs to remove
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing:
+    /// - Number of tasks successfully removed
+    /// - Vector of IDs that were not found
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// 
+    /// let (removed, not_found) = list.remove_tasks(&[id1, id2]);
+    /// assert_eq!(removed, 2);
+    /// assert_eq!(not_found.len(), 0);
+    /// assert_eq!(list.get_tasks().len(), 0);
+    /// ```
+    pub fn remove_tasks(&mut self, ids: &[usize]) -> (usize, Vec<usize>) {
+        let mut removed_count = 0;
+        let mut not_found = Vec::new();
+
+        // Sort IDs in descending order to avoid index shifting issues
+        let mut sorted_ids: Vec<usize> = ids.to_vec();
+        sorted_ids.sort_unstable_by(|a, b| b.cmp(a));
+        sorted_ids.dedup();
+
+        for id in sorted_ids {
+            if self.remove_task(id).is_some() {
+                removed_count += 1;
+            } else {
+                not_found.push(id);
+            }
+        }
+
+        (removed_count, not_found)
+    }
+
+    /// Completes all tasks in the list.
+    ///
+    /// # Returns
+    ///
+    /// The number of tasks that were completed
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// 
+    /// let completed = list.complete_all_tasks();
+    /// assert_eq!(completed, 2);
+    /// assert!(list.get_tasks().iter().all(|t| t.is_completed()));
+    /// ```
+    pub fn complete_all_tasks(&mut self) -> usize {
+        let ids: Vec<usize> = self.tasks.iter().map(|t| t.id).collect();
+        let (completed, _) = self.complete_tasks(&ids);
+        completed
+    }
+
+    /// Removes all tasks from the list.
+    ///
+    /// # Returns
+    ///
+    /// The number of tasks that were removed
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// 
+    /// let removed = list.remove_all_tasks();
+    /// assert_eq!(removed, 2);
+    /// assert_eq!(list.get_tasks().len(), 0);
+    /// ```
+    pub fn remove_all_tasks(&mut self) -> usize {
+        let count = self.tasks.len();
+        self.tasks.clear();
+        count
+    }
+
+    /// Marks multiple tasks as pending (incomplete) by their IDs.
+    ///
+    /// # Arguments
+    ///
+    /// * `ids` - A slice of task IDs to mark as pending
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing:
+    /// - Number of tasks successfully marked as pending
+    /// - Vector of IDs that were not found
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// list.complete_task(id1);
+    /// list.complete_task(id2);
+    /// 
+    /// let (uncompleted, not_found) = list.uncomplete_tasks(&[id1, id2]);
+    /// assert_eq!(uncompleted, 2);
+    /// assert_eq!(not_found.len(), 0);
+    /// ```
+    pub fn uncomplete_tasks(&mut self, ids: &[usize]) -> (usize, Vec<usize>) {
+        let mut uncompleted_count = 0;
+        let mut not_found = Vec::new();
+
+        for &id in ids {
+            if self.uncomplete_task(id).is_some() {
+                uncompleted_count += 1;
+            } else {
+                not_found.push(id);
+            }
+        }
+
+        (uncompleted_count, not_found)
+    }
+
+    /// Marks all tasks as pending (incomplete).
+    ///
+    /// # Returns
+    ///
+    /// The number of tasks that were marked as pending
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// list.complete_all_tasks();
+    /// 
+    /// let uncompleted = list.uncomplete_all_tasks();
+    /// assert_eq!(uncompleted, 2);
+    /// assert!(list.get_tasks().iter().all(|t| !t.is_completed()));
+    /// ```
+    pub fn uncomplete_all_tasks(&mut self) -> usize {
+        let ids: Vec<usize> = self.tasks.iter().map(|t| t.id).collect();
+        let (uncompleted, _) = self.uncomplete_tasks(&ids);
+        uncompleted
+    }
+
+    /// Toggles the completion status of multiple tasks by their IDs.
+    ///
+    /// # Arguments
+    ///
+    /// * `ids` - A slice of task IDs to toggle
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing:
+    /// - Number of tasks successfully toggled
+    /// - Vector of IDs that were not found
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// 
+    /// let (toggled, not_found) = list.toggle_tasks(&[id1, id2]);
+    /// assert_eq!(toggled, 2);
+    /// assert_eq!(not_found.len(), 0);
+    /// assert!(list.get_tasks().iter().all(|t| t.is_completed()));
+    /// ```
+    pub fn toggle_tasks(&mut self, ids: &[usize]) -> (usize, Vec<usize>) {
+        let mut toggled_count = 0;
+        let mut not_found = Vec::new();
+
+        for &id in ids {
+            if self.toggle_task(id).is_some() {
+                toggled_count += 1;
+            } else {
+                not_found.push(id);
+            }
+        }
+
+        (toggled_count, not_found)
+    }
+
+    /// Toggles the completion status of all tasks.
+    ///
+    /// # Returns
+    ///
+    /// The number of tasks that were toggled
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// 
+    /// let toggled = list.toggle_all_tasks();
+    /// assert_eq!(toggled, 2);
+    /// assert!(list.get_tasks().iter().all(|t| t.is_completed()));
+    /// ```
+    pub fn toggle_all_tasks(&mut self) -> usize {
+        let ids: Vec<usize> = self.tasks.iter().map(|t| t.id).collect();
+        let (toggled, _) = self.toggle_tasks(&ids);
+        toggled
+    }
+
+    /// Sets the priority of multiple tasks by their IDs.
+    ///
+    /// # Arguments
+    ///
+    /// * `ids` - A slice of task IDs
+    /// * `priority` - The priority level to set
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing:
+    /// - Number of tasks successfully updated
+    /// - Vector of IDs that were not found
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    /// use todo_manager::models::priority::Priority;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// 
+    /// let (updated, not_found) = list.set_priority_multiple(&[id1, id2], Priority::High);
+    /// assert_eq!(updated, 2);
+    /// assert_eq!(not_found.len(), 0);
+    /// ```
+    pub fn set_priority_multiple(&mut self, ids: &[usize], priority: Priority) -> (usize, Vec<usize>) {
+        let mut updated_count = 0;
+        let mut not_found = Vec::new();
+
+        for &id in ids {
+            if self.set_task_priority(id, priority).is_some() {
+                updated_count += 1;
+            } else {
+                not_found.push(id);
+            }
+        }
+
+        (updated_count, not_found)
+    }
+
+    /// Sets the category of multiple tasks by their IDs.
+    ///
+    /// # Arguments
+    ///
+    /// * `ids` - A slice of task IDs
+    /// * `category` - The category to set, or None to clear
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing:
+    /// - Number of tasks successfully updated
+    /// - Vector of IDs that were not found
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use todo_manager::models::todo_list::TodoList;
+    /// use todo_manager::models::task::TaskWithoutId;
+    ///
+    /// let mut list = TodoList::new();
+    /// let id1 = list.add_task(TaskWithoutId::new("Task 1".to_string()));
+    /// let id2 = list.add_task(TaskWithoutId::new("Task 2".to_string()));
+    /// 
+    /// let (updated, not_found) = list.set_category_multiple(&[id1, id2], Some("work".to_string()));
+    /// assert_eq!(updated, 2);
+    /// assert_eq!(not_found.len(), 0);
+    /// ```
+    pub fn set_category_multiple(&mut self, ids: &[usize], category: Option<String>) -> (usize, Vec<usize>) {
+        let mut updated_count = 0;
+        let mut not_found = Vec::new();
+
+        for &id in ids {
+            if self.set_task_category(id, category.clone()).is_some() {
+                updated_count += 1;
+            } else {
+                not_found.push(id);
+            }
+        }
+
+        (updated_count, not_found)
+    }
+
     /// Gets statistics about the tasks in the todo list.
     ///
     /// Returns a `TaskStatistics` struct containing:

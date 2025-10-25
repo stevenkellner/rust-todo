@@ -2,7 +2,7 @@ use crate::controller::command_controller::CommandController;
 use crate::models::command_controller_result::CommandControllerResult;
 use crate::models::command_controller_result::CommandControllerResultAction;
 use crate::models::todo_list::TodoList;
-use crate::controller::task_command::TaskCommand;
+use crate::controller::task_command::{TaskCommand, TaskSelection};
 use crate::models::task::TaskWithoutId;
 use crate::models::priority::Priority;
 use crate::models::task_filter::TaskFilter;
@@ -40,13 +40,13 @@ impl<O: OutputWriter> TaskCommandController<O> {
         match command {
             TaskCommand::Add(description) => self.add_task(description),
             TaskCommand::List(filter) => self.list_tasks(filter),
-            TaskCommand::Remove(id) => self.remove_task(*id),
-            TaskCommand::Complete(id) => self.complete_task(*id),
-            TaskCommand::Uncomplete(id) => self.uncomplete_task(*id),
-            TaskCommand::Toggle(id) => self.toggle_task(*id),
-            TaskCommand::SetPriority(id, priority) => self.set_priority(*id, *priority),
+            TaskCommand::Remove(selection) => self.handle_remove(selection),
+            TaskCommand::Complete(selection) => self.handle_complete(selection),
+            TaskCommand::Uncomplete(selection) => self.handle_uncomplete(selection),
+            TaskCommand::Toggle(selection) => self.handle_toggle(selection),
+            TaskCommand::SetPriority(selection, priority) => self.handle_set_priority(selection, *priority),
             TaskCommand::SetDueDate(id, due_date) => self.set_due_date(*id, *due_date),
-            TaskCommand::SetCategory(id, category) => self.set_category(*id, category.clone()),
+            TaskCommand::SetCategory(selection, category) => self.handle_set_category(selection, category.clone()),
             TaskCommand::ListCategories => self.list_categories(),
             TaskCommand::Edit(id, new_description) => self.edit_task(*id, new_description),
             TaskCommand::Search(keyword) => self.search_tasks(keyword),
@@ -118,6 +118,86 @@ impl<O: OutputWriter> TaskCommandController<O> {
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
     }
 
+    /// Completes multiple tasks by their IDs.
+    fn complete_multiple_tasks(&mut self, ids: &[usize]) -> CommandControllerResult {
+        let (completed_count, not_found) = self.todo_list.borrow_mut().complete_tasks(ids);
+        
+        self.output_manager.show_multiple_tasks_completed(completed_count, &not_found);
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+    }
+
+    /// Completes all tasks.
+    fn complete_all_tasks(&mut self) -> CommandControllerResult {
+        let count = self.todo_list.borrow_mut().complete_all_tasks();
+        
+        self.output_manager.show_all_tasks_completed(count);
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+    }
+
+    /// Removes multiple tasks by their IDs.
+    fn remove_multiple_tasks(&mut self, ids: &[usize]) -> CommandControllerResult {
+        let (removed_count, not_found) = self.todo_list.borrow_mut().remove_tasks(ids);
+        
+        self.output_manager.show_multiple_tasks_removed(removed_count, &not_found);
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+    }
+
+    /// Removes all tasks.
+    fn remove_all_tasks(&mut self) -> CommandControllerResult {
+        let count = self.todo_list.borrow_mut().remove_all_tasks();
+        
+        self.output_manager.show_all_tasks_removed(count);
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+    }
+
+    /// Marks multiple tasks as pending (incomplete) by their IDs.
+    fn uncomplete_multiple_tasks(&mut self, ids: &[usize]) -> CommandControllerResult {
+        let (uncompleted_count, not_found) = self.todo_list.borrow_mut().uncomplete_tasks(ids);
+        
+        self.output_manager.show_multiple_tasks_uncompleted(uncompleted_count, &not_found);
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+    }
+
+    /// Marks all tasks as pending (incomplete).
+    fn uncomplete_all_tasks(&mut self) -> CommandControllerResult {
+        let count = self.todo_list.borrow_mut().uncomplete_all_tasks();
+        
+        self.output_manager.show_all_tasks_uncompleted(count);
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+    }
+
+    /// Toggles multiple tasks' completion status by their IDs.
+    fn toggle_multiple_tasks(&mut self, ids: &[usize]) -> CommandControllerResult {
+        let (toggled_count, not_found) = self.todo_list.borrow_mut().toggle_tasks(ids);
+        
+        self.output_manager.show_multiple_tasks_toggled(toggled_count, &not_found);
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+    }
+
+    /// Toggles all tasks' completion status.
+    fn toggle_all_tasks(&mut self) -> CommandControllerResult {
+        let count = self.todo_list.borrow_mut().toggle_all_tasks();
+        
+        self.output_manager.show_all_tasks_toggled(count);
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+    }
+
+    /// Sets the priority of multiple tasks by their IDs.
+    fn set_priority_multiple(&mut self, ids: &[usize], priority: Priority) -> CommandControllerResult {
+        let (updated_count, not_found) = self.todo_list.borrow_mut().set_priority_multiple(ids, priority);
+        
+        self.output_manager.show_multiple_priorities_set(updated_count, priority, &not_found);
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+    }
+
+    /// Sets the category of multiple tasks by their IDs.
+    fn set_category_multiple(&mut self, ids: &[usize], category: Option<String>) -> CommandControllerResult {
+        let (updated_count, not_found) = self.todo_list.borrow_mut().set_category_multiple(ids, category.clone());
+        
+        self.output_manager.show_multiple_categories_set(updated_count, category.as_deref(), &not_found);
+        CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+    }
+
     /// Toggles a task's completion status.
     fn toggle_task(&mut self, id: usize) -> CommandControllerResult {
         if let Some(task) = self.todo_list.borrow_mut().toggle_task(id) {
@@ -156,6 +236,66 @@ impl<O: OutputWriter> TaskCommandController<O> {
             self.output_manager.show_task_not_found(id);
         }
         CommandControllerResult::with_action(CommandControllerResultAction::SaveTodoList)
+    }
+
+    /// Handles remove command based on TaskSelection.
+    fn handle_remove(&mut self, selection: &TaskSelection) -> CommandControllerResult {
+        match selection {
+            TaskSelection::Single(id) => self.remove_task(*id),
+            TaskSelection::Multiple(ids) => self.remove_multiple_tasks(ids),
+            TaskSelection::All => self.remove_all_tasks(),
+        }
+    }
+
+    /// Handles complete command based on TaskSelection.
+    fn handle_complete(&mut self, selection: &TaskSelection) -> CommandControllerResult {
+        match selection {
+            TaskSelection::Single(id) => self.complete_task(*id),
+            TaskSelection::Multiple(ids) => self.complete_multiple_tasks(ids),
+            TaskSelection::All => self.complete_all_tasks(),
+        }
+    }
+
+    /// Handles uncomplete command based on TaskSelection.
+    fn handle_uncomplete(&mut self, selection: &TaskSelection) -> CommandControllerResult {
+        match selection {
+            TaskSelection::Single(id) => self.uncomplete_task(*id),
+            TaskSelection::Multiple(ids) => self.uncomplete_multiple_tasks(ids),
+            TaskSelection::All => self.uncomplete_all_tasks(),
+        }
+    }
+
+    /// Handles toggle command based on TaskSelection.
+    fn handle_toggle(&mut self, selection: &TaskSelection) -> CommandControllerResult {
+        match selection {
+            TaskSelection::Single(id) => self.toggle_task(*id),
+            TaskSelection::Multiple(ids) => self.toggle_multiple_tasks(ids),
+            TaskSelection::All => self.toggle_all_tasks(),
+        }
+    }
+
+    /// Handles set priority command based on TaskSelection.
+    fn handle_set_priority(&mut self, selection: &TaskSelection, priority: Priority) -> CommandControllerResult {
+        match selection {
+            TaskSelection::Single(id) => self.set_priority(*id, priority),
+            TaskSelection::Multiple(ids) => self.set_priority_multiple(ids, priority),
+            TaskSelection::All => {
+                let all_ids: Vec<usize> = self.todo_list.borrow().get_tasks().iter().map(|t| t.id).collect();
+                self.set_priority_multiple(&all_ids, priority)
+            }
+        }
+    }
+
+    /// Handles set category command based on TaskSelection.
+    fn handle_set_category(&mut self, selection: &TaskSelection, category: Option<String>) -> CommandControllerResult {
+        match selection {
+            TaskSelection::Single(id) => self.set_category(*id, category),
+            TaskSelection::Multiple(ids) => self.set_category_multiple(ids, category),
+            TaskSelection::All => {
+                let all_ids: Vec<usize> = self.todo_list.borrow().get_tasks().iter().map(|t| t.id).collect();
+                self.set_category_multiple(&all_ids, category)
+            }
+        }
     }
 
     fn list_categories(&mut self) -> CommandControllerResult {
