@@ -58,9 +58,11 @@ pub mod controller;
 pub mod models;
 pub mod persistence;
 pub mod ui;
+pub mod tui;
 
 // Re-export commonly used types for convenience
 pub use controller::ApplicationController;
 pub use models::{LoopControl, Priority, Task, TaskFilter, TaskStatus, TodoList};
 pub use persistence::TodoListStorage;
 pub use ui::{FileInputStream, FileOutputWriter, InputStream, OutputWriter};
+pub use tui::{App, run_tui};

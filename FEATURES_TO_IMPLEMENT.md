@@ -514,7 +514,7 @@ This document tracks the 19 features selected for implementation in the TODO man
 
 ### 26. TUI (Text User Interface)
 
-**Status:** Pending  
+**Status:** ✅ Complete  
 **Complexity:** Advanced  
 **Description:**
 
@@ -544,6 +544,65 @@ This document tracks the 19 features selected for implementation in the TODO man
   - `q`: Quit
   - `/`: Search
   - `?`: Help
+
+**Implementation Notes:**
+
+- Added `ratatui = "0.28"` and `crossterm = "0.28"` dependencies to Cargo.toml
+- Created `tui` module with three main components:
+  - `app.rs` - Application state management with App struct
+  - `ui.rs` - UI rendering with ratatui
+  - `event.rs` - Event handling with crossterm
+- **App struct** manages TUI state:
+  - `InputMode` enum: Normal, Adding, Editing, Searching, Help
+  - Task selection and navigation tracking
+  - Filter state (all/pending/completed)
+  - Search query with live filtering
+  - Input buffer for modals
+  - Status messages for user feedback
+- **UI Layout**:
+  - Title bar showing current mode
+  - Main area split 60/40 between task list and details
+  - Task list with colored priority indicators (▲/■/▼)
+  - Completed tasks shown crossed out in gray
+  - Due dates color-coded (red=overdue, yellow=today, cyan=future)
+  - Details panel shows:
+    - Full task information (ID, description, status, priority)
+    - Due date with overdue warning
+    - Category, recurrence, dependencies
+    - Parent task and subtasks
+    - Overall statistics (total, completed, pending, percentage)
+    - Priority breakdown
+  - Status bar at bottom for messages and help hint
+  - Modal dialogs for add/edit/search with centered popup
+  - Full-screen help overlay with keyboard shortcuts
+- **Event Handling**:
+  - Navigation: ↑/k (up), ↓/j (down) - vim-style and arrow keys
+  - Actions: Enter/Space (toggle completion), a (add), e (edit), d (delete)
+  - Search: / (open search), c (clear search)
+  - Filter: f (cycle through all/pending/completed)
+  - Help: ? (show help screen)
+  - Quit: q or Esc (exit TUI, cancel input)
+  - Input modes support: character entry, backspace, Enter (submit), Esc (cancel)
+- **Features**:
+  - Live search filtering - type to filter tasks by description
+  - Filter cycling - press 'f' to toggle between all/pending/completed views
+  - Selection persistence - selected task stays highlighted during operations
+  - Status messages - confirmation messages for add, edit, delete, toggle actions
+  - Graceful error handling - proper terminal cleanup on exit
+  - Auto-save - saves task list when exiting TUI
+- **Integration**:
+  - Updated `main.rs` to check for `--tui` command-line argument
+  - TUI mode loads tasks from `tasks.json` and saves on exit
+  - Normal CLI mode runs if no `--tui` flag provided
+  - Added `tui` module to `lib.rs` with public exports
+- **Terminal Management**:
+  - Enters alternate screen (preserves terminal history)
+  - Enables raw mode for key capture
+  - Enables mouse capture (if needed in future)
+  - Proper cleanup on exit - restores terminal state
+  - Shows cursor after exit
+- All 266 tests passing (254 unit + 12 sorting tests)
+- Launch with: `cargo run -- --tui`
 
 ---
 
